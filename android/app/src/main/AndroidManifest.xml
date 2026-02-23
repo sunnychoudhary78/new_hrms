@@ -10,7 +10,7 @@
 <!-- (optional but recommended for background edge cases) -->
 <uses-permission android:name="android.permission.ACCESS_LOCATION_EXTRA_COMMANDS"/>
     <application
-        android:label="Immortal-HRMS"
+        android:label="IMT-HRMS"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

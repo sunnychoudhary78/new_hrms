@@ -1,7 +1,8 @@
 class ApiConstants {
-  static const String baseUrl = 'http://88.222.244.233/uatlms-admin/api';
+  static const String baseUrl =
+      'https://hrms.immortaltechnovation.com/api-hrms/api';
   static const String imageBaseUrl =
-      'http://88.222.244.233/uatlms-admin/api/uploads/';
+      'https://hrms.immortaltechnovation.com/api-hrms/api/uploads/';
 }
 
 // class ApiConstants {

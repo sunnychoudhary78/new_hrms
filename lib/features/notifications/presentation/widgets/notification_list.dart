@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:lms/features/auth/presentation/providers/auth_provider.dart';
 import 'package:lms/features/dashboard/presentation/screens/employee_attendence_calender_screen.dart';
+import 'package:lms/features/leave/presentation/screens/leave_details_screen.dart';
 import 'package:lms/features/notifications/presentation/providers/notifications_provider.dart';
+import 'package:lms/features/notifications/presentation/screens/notification_details_screen.dart';
 import 'package:lms/features/notifications/presentation/widgets/notification_tile.dart';
 
 import 'package:lms/features/dashboard/data/models/team_dashboard_model.dart';
@@ -111,54 +113,109 @@ class NotificationList extends ConsumerWidget {
 
             /// ✅ TAP HANDLER WITH FULL DEBUG
             onTap: () {
-              print("========== NOTIFICATION TAP ==========");
-              print("Notification ID: $id");
-              print("Notification Type: ${n["type"]}");
-              print("Sender Raw: ${n["sender"]}");
-              print("======================================");
-
-              /// ALWAYS mark as read
+              /// MARK AS READ
               if (isUnread) {
                 ref.read(notificationProvider.notifier).markAsRead(id);
               }
 
-              /// BLOCK employees
-              if (!canViewTeamAttendance) {
-                print("Blocked: User has no permission");
-                return;
-              }
-
+              final notificationType = n["type"]?.toString();
               final senderRaw = n["sender"];
+              final data = n["data"];
 
-              /// ignore if sender missing
-              if (senderRaw == null) {
-                print("Sender is null → ignoring");
-                return;
+              debugPrint("🔔 Notification tapped");
+              debugPrint("ID: $id");
+              debugPrint("Type: $notificationType");
+              debugPrint("Data: $data");
+
+              /// =====================================================
+              /// MANAGER FLOW → Open Employee Attendance Calendar
+              /// =====================================================
+              if (canViewTeamAttendance) {
+                if (senderRaw is Map<String, dynamic>) {
+                  try {
+                    final employee = TeamEmployee.fromNotification(senderRaw);
+
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => EmployeeAttendanceCalendarScreen(
+                          employee: employee,
+                        ),
+                      ),
+                    );
+
+                    return;
+                  } catch (e) {
+                    debugPrint("❌ Failed to parse employee: $e");
+                  }
+                }
               }
 
-              /// ignore if wrong type
-              if (senderRaw is! Map<String, dynamic>) {
-                print("Sender is not Map → ignoring");
-                print("Actual type: ${senderRaw.runtimeType}");
-                return;
+              /// =====================================================
+              /// EMPLOYEE FLOW
+              /// =====================================================
+
+              /// CASE 1: Leave Status Update → Open Leave Details
+              if (notificationType == "LEAVE_STATUS_UPDATE" &&
+                  data is Map<String, dynamic>) {
+                final leaveId = data["leaveRequestId"]?.toString();
+
+                if (leaveId != null && leaveId.isNotEmpty) {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          LeaveDetailsScreen(leaveRequestId: leaveId),
+                    ),
+                  );
+
+                  return;
+                }
               }
 
-              print("Sender ID: ${senderRaw["id"]}");
-              print("Sender Name: ${senderRaw["name"]}");
+              /// CASE 2: Leave Request Created → also open leave details
+              if (notificationType == "LEAVE_REQUEST" &&
+                  data is Map<String, dynamic>) {
+                final leaveId = data["leaveRequestId"]?.toString();
 
-              /// CREATE EMPLOYEE OBJECT
-              final employee = TeamEmployee.fromNotification(senderRaw);
+                if (leaveId != null && leaveId.isNotEmpty) {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          LeaveDetailsScreen(leaveRequestId: leaveId),
+                    ),
+                  );
 
-              print("Employee created:");
-              print("userId: ${employee.userId}");
-              print("name: ${employee.name}");
+                  return;
+                }
+              }
 
-              /// NAVIGATE
+              /// CASE 3: Leave Revocation Request
+              if (notificationType == "LEAVE_REVOCATION_REQUEST" &&
+                  data is Map<String, dynamic>) {
+                final leaveId = data["leaveRequestId"]?.toString();
+
+                if (leaveId != null && leaveId.isNotEmpty) {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          LeaveDetailsScreen(leaveRequestId: leaveId),
+                    ),
+                  );
+
+                  return;
+                }
+              }
+
+              /// =====================================================
+              /// DEFAULT FALLBACK → Open Generic Notification Details
+              /// =====================================================
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (_) =>
-                      EmployeeAttendanceCalendarScreen(employee: employee),
+                  builder: (_) => NotificationDetailsScreen(notification: n),
                 ),
               );
             },
