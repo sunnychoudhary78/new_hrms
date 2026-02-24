@@ -6,7 +6,8 @@ import '../providers/leave_status_provider.dart';
 import '../widgets/leave_status_list.dart';
 
 class LeaveStatusScreen extends ConsumerStatefulWidget {
-  const LeaveStatusScreen({super.key});
+  final String? expandLeaveId;
+  const LeaveStatusScreen({super.key, this.expandLeaveId});
 
   @override
   ConsumerState<LeaveStatusScreen> createState() => _LeaveStatusScreenState();
@@ -28,6 +29,9 @@ class _LeaveStatusScreenState extends ConsumerState<LeaveStatusScreen> {
         error: (e, _) => Center(child: Text(e.toString())),
         data: (leaves) => LeaveStatusList(
           leaves: leaves,
+
+          /// 👇 PASS expandLeaveId to list
+          expandLeaveId: widget.expandLeaveId,
           onRefresh: () => ref.read(leaveStatusProvider.notifier).refresh(),
           onRevoke: (id, dates) =>
               ref.read(leaveStatusProvider.notifier).revokeLeave(id, dates),

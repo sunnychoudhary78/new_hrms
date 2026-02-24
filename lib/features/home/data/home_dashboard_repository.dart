@@ -23,13 +23,11 @@ class HomeDashboardRepository {
     print("📦 RAW PROFILE JSON:");
     print(profileJson);
 
-    // ✅ SAFE USER NAME
     final String userName =
         profileJson['associates_name']?.toString() ??
         profileJson['name']?.toString() ??
         'User';
 
-    // ✅ SAFE DESIGNATION FIX (CRITICAL)
     String designation = 'Employee';
 
     final designationRaw = profileJson['designation'];
@@ -42,7 +40,6 @@ class HomeDashboardRepository {
       designation = profileJson['role']['name']?.toString() ?? designation;
     }
 
-    // ✅ SAFE PROFILE IMAGE
     String? profileImageUrl;
 
     final profilePictureRaw = profileJson['profile_picture'];
@@ -54,9 +51,7 @@ class HomeDashboardRepository {
 
     print("👤 FINAL PROFILE:");
     print("Name: $userName");
-    print("DesignationRaw: $designationRaw");
     print("DesignationFinal: $designation");
-    print("ProfilePictureRaw: $profilePictureRaw");
     print("ProfileImageUrl: $profileImageUrl");
 
     // 2️⃣ ATTENDANCE SUMMARY (MONTH)
@@ -72,7 +67,7 @@ class HomeDashboardRepository {
       'expectedHrs=${summary.expectedWorkingHours}',
     );
 
-    // 3️⃣ ATTENDANCE OVERVIEW (MONTHLY)
+    // 3️⃣ ATTENDANCE OVERVIEW
     final attendanceOverview = AttendanceOverview(
       workedMinutes: summary.totalMinutes,
       expectedMinutes: summary.expectedWorkingHours * 60,
@@ -97,10 +92,12 @@ class HomeDashboardRepository {
     // 6️⃣ TODAY STATUS
     final todayStatus = await _loadTodayAttendance();
 
-    // 7️⃣ LAST 5 WORKING DAYS
+    // 7️⃣ MONTH WORKING DAYS BARS
     const int expectedMinutesPerDay = 540;
 
-    print('📊 Loading last 5 days bars (expected=$expectedMinutesPerDay min)');
+    print(
+      '📊 Loading month working days bars (expected=$expectedMinutesPerDay min)',
+    );
 
     final lastFiveDays = await _loadLastFiveDaysBars(expectedMinutesPerDay);
 
@@ -130,11 +127,6 @@ class HomeDashboardRepository {
 
     final latest = sessions.last;
 
-    print(
-      '🕘 Latest → in=${latest.checkInTime} '
-      'out=${latest.checkOutTime}',
-    );
-
     return TodayAttendanceStatus(
       isCheckedIn: latest.checkOutTime == null,
       checkInTime: latest.checkInTime,
@@ -143,31 +135,35 @@ class HomeDashboardRepository {
   }
 
   // ─────────────────────────────────────────────
-  // LAST 5 WORKING DAYS (SKIP SUNDAY)
+  // ALL WORKING DAYS OF CURRENT MONTH (SKIP SUNDAY)
   // ─────────────────────────────────────────────
-  List<DateTime> _lastFiveWorkingDays() {
-    final today = DateTime.now();
+  List<DateTime> _allWorkingDaysOfMonth() {
+    final now = DateTime.now();
+
+    final firstDay = DateTime(now.year, now.month, 1);
+    final lastDay = DateTime(now.year, now.month + 1, 0);
+
     final days = <DateTime>[];
 
-    var cursor = today;
+    var cursor = firstDay;
 
-    while (days.length < 5) {
+    while (!cursor.isAfter(lastDay)) {
       if (cursor.weekday != DateTime.sunday) {
         days.add(DateTime(cursor.year, cursor.month, cursor.day));
       }
-      cursor = cursor.subtract(const Duration(days: 1));
+      cursor = cursor.add(const Duration(days: 1));
     }
 
     print(
-      '📅 Last 5 working days → '
-      '${days.reversed.map((d) => d.toIso8601String().split("T").first).join(", ")}',
+      '📅 All working days → '
+      '${days.map((d) => d.toIso8601String().split("T").first).join(", ")}',
     );
 
-    return days.reversed.toList();
+    return days;
   }
 
   // ─────────────────────────────────────────────
-  // BUILD WEEKLY BARS
+  // BUILD BARS FOR MONTH WORKING DAYS
   // ─────────────────────────────────────────────
   Future<List<WeeklyAttendanceBar>> _loadLastFiveDaysBars(
     int expectedMinutesPerDay,
@@ -199,14 +195,9 @@ class HomeDashboardRepository {
       }
 
       workedByDate[dayKey] = (workedByDate[dayKey] ?? 0) + minutes;
-
-      print(
-        '🧮 ${dayKey.toIso8601String().split("T").first} '
-        '+$minutes min',
-      );
     }
 
-    final workingDays = _lastFiveWorkingDays();
+    final workingDays = _allWorkingDaysOfMonth();
 
     final bars = workingDays.map((day) {
       final worked = workedByDate[day] ?? 0;
@@ -214,13 +205,6 @@ class HomeDashboardRepository {
       final cappedWorked = worked.clamp(0, maxAllowedMinutesPerDay);
 
       final isCapped = worked > maxAllowedMinutesPerDay;
-
-      print(
-        '📊 BAR ${day.toIso8601String().split("T").first} '
-        'raw=$worked capped=$cappedWorked '
-        'expected=$expectedMinutesPerDay '
-        'cappedFlag=$isCapped',
-      );
 
       return WeeklyAttendanceBar(
         date: day,
@@ -230,17 +214,7 @@ class HomeDashboardRepository {
       );
     }).toList();
 
-    print(
-      ' Final bars → ' +
-          bars
-              .map(
-                (b) =>
-                    '${b.date.toIso8601String().split("T").first}: '
-                    '${b.workedMinutes}/${b.expectedMinutes}'
-                    '${b.isCapped ? " (capped)" : ""}',
-              )
-              .join(' | '),
-    );
+    print(' Final bars count → ${bars.length}');
 
     return bars;
   }

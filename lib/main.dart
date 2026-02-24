@@ -6,6 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:lms/app/app_routes.dart';
 import 'package:lms/app/app_root.dart';
 import 'package:lms/core/providers/global_loading_provider.dart';
+import 'package:lms/core/services/location_tracking_service.dart';
 
 import 'package:lms/core/theme/app_theme_provider.dart';
 import 'package:lms/core/theme/theme_mode_provider.dart';
@@ -16,6 +17,8 @@ import 'package:lms/shared/widgets/global_sucess.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  await LocationTrackingService().initialize();
 
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
 

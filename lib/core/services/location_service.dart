@@ -27,8 +27,14 @@ class LocationService {
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
 
       if (!serviceEnabled) {
-        await Geolocator.openLocationSettings();
-        return false;
+        try {
+          // triggers native popup
+          await Geolocator.getCurrentPosition(
+            desiredAccuracy: LocationAccuracy.low,
+          );
+        } catch (_) {
+          return false;
+        }
       }
 
       // Try quick location fetch to trigger system resolution if needed

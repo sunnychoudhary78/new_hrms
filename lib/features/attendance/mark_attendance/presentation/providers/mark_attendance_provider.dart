@@ -101,7 +101,13 @@ class MarkAttendanceNotifier extends AsyncNotifier<List<AttendanceSession>> {
 
       // Block if mobile attendance disabled
       if (!config.allowMobileCheckin) {
-        throw Exception("Mobile attendance is disabled for your account");
+        loader.showError(
+          isCheckIn
+              ? "Mobile check-in is not allowed."
+              : "Mobile check-out is not allowed.",
+        );
+
+        return;
       }
 
       // Decide requirements dynamically

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lms/features/auth/presentation/providers/auth_provider.dart';
 import 'package:lms/features/dashboard/presentation/screens/employee_attendence_calender_screen.dart';
 import 'package:lms/features/leave/presentation/screens/leave_details_screen.dart';
+import 'package:lms/features/leave/presentation/screens/leave_status_screen.dart';
 import 'package:lms/features/notifications/presentation/providers/notifications_provider.dart';
 import 'package:lms/features/notifications/presentation/screens/notification_details_screen.dart';
 import 'package:lms/features/notifications/presentation/widgets/notification_tile.dart';
@@ -164,8 +165,7 @@ class NotificationList extends ConsumerWidget {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) =>
-                          LeaveDetailsScreen(leaveRequestId: leaveId),
+                      builder: (_) => LeaveStatusScreen(expandLeaveId: leaveId),
                     ),
                   );
 
@@ -182,8 +182,7 @@ class NotificationList extends ConsumerWidget {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) =>
-                          LeaveDetailsScreen(leaveRequestId: leaveId),
+                      builder: (_) => LeaveStatusScreen(expandLeaveId: leaveId),
                     ),
                   );
 
@@ -200,8 +199,7 @@ class NotificationList extends ConsumerWidget {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) =>
-                          LeaveDetailsScreen(leaveRequestId: leaveId),
+                      builder: (_) => LeaveStatusScreen(expandLeaveId: leaveId),
                     ),
                   );
 

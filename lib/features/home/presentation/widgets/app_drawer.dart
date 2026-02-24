@@ -23,6 +23,8 @@ class _AppDrawerState extends ConsumerState<AppDrawer>
     final authState = ref.watch(authProvider);
     final profile = authState.profile;
     final permissions = authState.permissions;
+    final companyLogo = authState.companyLogoUrl;
+    print("🏢 Company Logo URL: $companyLogo");
 
     final bool hasApprovePermission = permissions.contains(
       'leave.request.approve',
@@ -54,7 +56,7 @@ class _AppDrawerState extends ConsumerState<AppDrawer>
                 physics: const BouncingScrollPhysics(),
                 child: Column(
                   children: [
-                    _buildHeader(name, empId, profileImg),
+                    _buildHeader(name, empId, profileImg, companyLogo),
 
                     const SizedBox(height: 10),
 
@@ -183,18 +185,20 @@ class _AppDrawerState extends ConsumerState<AppDrawer>
     );
   }
 
-  Widget _buildHeader(String name, String empId, String img) {
+  Widget _buildHeader(
+    String name,
+    String empId,
+    String img,
+    String companyLogo,
+  ) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
 
-    // 👇 Use stronger contrast for dark theme
-    final Color startColor = isDark
-        ? const Color(0xFF1E1E2E) // deep charcoal
-        : scheme.primary;
+    final Color startColor = isDark ? const Color(0xFF1E1E2E) : scheme.primary;
 
     final Color endColor = isDark
-        ? const Color(0xFF2A2A40) // slightly tinted indigo-black
+        ? const Color(0xFF2A2A40)
         : scheme.primaryContainer;
 
     final textColor = isDark ? Colors.white : scheme.onPrimary;
@@ -217,38 +221,71 @@ class _AppDrawerState extends ConsumerState<AppDrawer>
               ]
             : null,
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          CircleAvatar(
-            radius: 32,
-            backgroundImage: img.isNotEmpty
-                ? NetworkImage(img)
-                : const AssetImage('assets/images/profile.jpg')
-                      as ImageProvider,
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  name,
-                  style: TextStyle(
-                    color: textColor,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                  ),
+          /// 🏢 COMPANY LOGO
+          if (companyLogo.isNotEmpty)
+            Center(
+              child: Container(
+                height: 50,
+                margin: const EdgeInsets.only(bottom: 14),
+                child: Image.network(
+                  companyLogo,
+                  fit: BoxFit.contain,
+
+                  /// prevents crash if logo missing
+                  errorBuilder: (_, __, ___) => const SizedBox(),
+
+                  /// loading indicator
+                  loadingBuilder: (_, child, progress) {
+                    if (progress == null) return child;
+                    return const SizedBox(
+                      height: 24,
+                      width: 24,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    );
+                  },
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  empId,
-                  style: TextStyle(
-                    color: textColor.withOpacity(.85),
-                    fontSize: 14,
-                  ),
-                ),
-              ],
+              ),
             ),
+
+          /// USER INFO ROW
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 32,
+                backgroundImage: img.isNotEmpty
+                    ? NetworkImage(img)
+                    : const AssetImage('assets/images/profile.jpg')
+                          as ImageProvider,
+              ),
+              const SizedBox(width: 16),
+
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      name,
+                      style: TextStyle(
+                        color: textColor,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      empId,
+                      style: TextStyle(
+                        color: textColor.withOpacity(.85),
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ],
       ),

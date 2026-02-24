@@ -6,6 +6,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 
 import 'package:lms/features/attendance/mark_attendance/presentation/providers/attendance_selectors.dart';
 import 'package:lms/features/attendance/mark_attendance/presentation/providers/mark_attendance_provider.dart';
+import 'package:lms/features/attendance/mark_attendance/presentation/providers/mobile_config_provider.dart';
 
 class HomeWelcomeAttendanceCard extends ConsumerStatefulWidget {
   final String name;
@@ -46,6 +47,21 @@ class _HomeWelcomeAttendanceCardState
     });
   }
 
+  Widget _buildDisabledButton(ColorScheme scheme, String text) {
+    return FilledButton.icon(
+      onPressed: null,
+
+      icon: const Icon(Icons.fingerprint),
+
+      label: Text(text),
+
+      style: FilledButton.styleFrom(
+        backgroundColor: scheme.outlineVariant,
+        foregroundColor: scheme.onSurfaceVariant,
+      ),
+    );
+  }
+
   @override
   void dispose() {
     _shineController.dispose();
@@ -55,13 +71,21 @@ class _HomeWelcomeAttendanceCardState
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+
     final attendanceAsync = ref.watch(markAttendanceProvider);
+
+    final mobileConfigAsync = ref.watch(mobileConfigProvider);
+
+    final canMobileCheckIn = ref.watch(canMobileCheckInProvider);
+
+    final canMobileCheckOut = ref.watch(canMobileCheckOutProvider);
+
     final greeting = _greeting();
 
     return AnimatedBuilder(
           animation: _shineController,
+
           builder: (context, child) {
-            /// Floating animation
             final floatOffset =
                 4 *
                 (0.5 -
@@ -71,28 +95,29 @@ class _HomeWelcomeAttendanceCardState
 
             return Transform.translate(
               offset: Offset(0, floatOffset),
+
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(24),
+
                 child: Stack(
                   children: [
                     /// GLASS BASE
                     BackdropFilter(
                       filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+
                       child: Container(
                         padding: const EdgeInsets.all(20),
+
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(24),
 
-                          /// Glass background
                           color: scheme.surface.withOpacity(0.55),
 
-                          /// Glass border
                           border: Border.all(
                             color: scheme.outline.withOpacity(0.2),
                             width: 1.2,
                           ),
 
-                          /// Premium shadow
                           boxShadow: [
                             BoxShadow(
                               color: scheme.shadow.withOpacity(0.15),
@@ -104,7 +129,9 @@ class _HomeWelcomeAttendanceCardState
 
                         child: attendanceAsync.when(
                           loading: () => const SizedBox(height: 130),
+
                           error: (_, __) => const SizedBox(height: 130),
+
                           data: (sessions) {
                             final activeSession = ref.watch(
                               activeSessionProvider(sessions),
@@ -114,6 +141,12 @@ class _HomeWelcomeAttendanceCardState
                                 activeSession != null &&
                                 activeSession.checkOutTime == null;
 
+                            /// Backend permission check
+                            final canPunchIn = !isCheckedIn && canMobileCheckIn;
+
+                            final canPunchOut =
+                                isCheckedIn && canMobileCheckOut;
+
                             final statusBg = isCheckedIn
                                 ? scheme.tertiaryContainer
                                 : scheme.secondaryContainer;
@@ -122,11 +155,33 @@ class _HomeWelcomeAttendanceCardState
                                 ? scheme.onTertiaryContainer
                                 : scheme.onSecondaryContainer;
 
-                            final buttonBg = scheme.error;
-                            final buttonFg = scheme.onError;
+                            final buttonBg =
+                                (isCheckedIn && canMobileCheckOut) ||
+                                    (!isCheckedIn && canMobileCheckIn)
+                                ? scheme.error
+                                : scheme.outlineVariant;
+
+                            final buttonFg =
+                                (isCheckedIn && canMobileCheckOut) ||
+                                    (!isCheckedIn && canMobileCheckIn)
+                                ? scheme.onError
+                                : scheme.onSurfaceVariant;
+
+                            final buttonText = isCheckedIn
+                                ? (canMobileCheckOut
+                                      ? "Punch Out"
+                                      : "Check-Out Disabled")
+                                : (canMobileCheckIn
+                                      ? "Punch In"
+                                      : "Check-In Disabled");
+
+                            final buttonEnabled = isCheckedIn
+                                ? canPunchOut
+                                : canPunchIn;
 
                             return Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
+
                               children: [
                                 /// HEADER
                                 Row(
@@ -144,17 +199,20 @@ class _HomeWelcomeAttendanceCardState
                                               fontWeight: FontWeight.w500,
                                             ),
                                           ),
+
                                           const SizedBox(height: 6),
+
                                           Text(
                                             widget.name,
                                             style: TextStyle(
                                               color: scheme.onSurface,
                                               fontSize: 22,
                                               fontWeight: FontWeight.w700,
-                                              letterSpacing: -.3,
                                             ),
                                           ),
+
                                           const SizedBox(height: 2),
+
                                           Text(
                                             widget.role,
                                             style: TextStyle(
@@ -165,6 +223,7 @@ class _HomeWelcomeAttendanceCardState
                                         ],
                                       ),
                                     ),
+
                                     _Avatar(
                                       name: widget.name,
                                       imageUrl: widget.imageUrl,
@@ -184,45 +243,64 @@ class _HomeWelcomeAttendanceCardState
                                       bg: statusBg,
                                       fg: statusFg,
                                     ),
+
                                     const Spacer(),
-                                    FilledButton.icon(
-                                      style: FilledButton.styleFrom(
-                                        backgroundColor: buttonBg,
-                                        foregroundColor: buttonFg,
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 18,
-                                          vertical: 10,
-                                        ),
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            30,
+
+                                    mobileConfigAsync.when(
+                                      loading: () => _buildDisabledButton(
+                                        scheme,
+                                        "Checking...",
+                                      ),
+
+                                      error: (_, __) => _buildDisabledButton(
+                                        scheme,
+                                        "Unavailable",
+                                      ),
+
+                                      data: (_) => FilledButton.icon(
+                                        style: FilledButton.styleFrom(
+                                          backgroundColor: buttonBg,
+                                          foregroundColor: buttonFg,
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 18,
+                                            vertical: 10,
+                                          ),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              30,
+                                            ),
                                           ),
                                         ),
+
+                                        icon: Icon(
+                                          isCheckedIn
+                                              ? Icons.logout_rounded
+                                              : Icons.fingerprint,
+                                          size: 18,
+                                        ),
+
+                                        label: Text(buttonText),
+
+                                        onPressed: buttonEnabled
+                                            ? () async {
+                                                if (isCheckedIn) {
+                                                  await ref
+                                                      .read(
+                                                        markAttendanceProvider
+                                                            .notifier,
+                                                      )
+                                                      .punchOut(context);
+                                                } else {
+                                                  await ref
+                                                      .read(
+                                                        markAttendanceProvider
+                                                            .notifier,
+                                                      )
+                                                      .punchIn(context);
+                                                }
+                                              }
+                                            : null,
                                       ),
-                                      icon: Icon(
-                                        isCheckedIn
-                                            ? Icons.logout_rounded
-                                            : Icons.fingerprint,
-                                        size: 18,
-                                      ),
-                                      label: Text(
-                                        isCheckedIn ? "Punch Out" : "Punch In",
-                                      ),
-                                      onPressed: () async {
-                                        if (isCheckedIn) {
-                                          await ref
-                                              .read(
-                                                markAttendanceProvider.notifier,
-                                              )
-                                              .punchOut(context);
-                                        } else {
-                                          await ref
-                                              .read(
-                                                markAttendanceProvider.notifier,
-                                              )
-                                              .punchIn(context);
-                                        }
-                                      },
                                     ),
                                   ],
                                 ),
@@ -245,7 +323,7 @@ class _HomeWelcomeAttendanceCardState
                       ),
                     ),
 
-                    /// ONE-TIME SHINE EFFECT
+                    /// SHINE EFFECT (unchanged)
                     Positioned.fill(
                       child: IgnorePointer(
                         child: AnimatedOpacity(
@@ -265,7 +343,6 @@ class _HomeWelcomeAttendanceCardState
                                     Colors.white.withOpacity(.25),
                                     Colors.transparent,
                                   ],
-                                  stops: const [0, .5, 1],
                                 ),
                               ),
                             ),
@@ -281,11 +358,7 @@ class _HomeWelcomeAttendanceCardState
         )
         .animate()
         .fadeIn(duration: 600.ms)
-        .scale(
-          begin: const Offset(.96, .96),
-          end: const Offset(1, 1),
-          curve: Curves.easeOutCubic,
-        );
+        .scale(begin: const Offset(.96, .96), end: const Offset(1, 1));
   }
 
   static String _fmt(DateTime t) => DateFormat('hh:mm a').format(t.toLocal());

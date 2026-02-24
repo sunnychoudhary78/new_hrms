@@ -5,7 +5,12 @@ class AuthState {
   final bool isLoading;
   final User? authUser;
   final Userdetails? profile;
+
   final String profileUrl;
+
+  /// 🏢 NEW — company logo url
+  final String companyLogoUrl;
+
   final List<String> permissions;
 
   const AuthState({
@@ -13,6 +18,7 @@ class AuthState {
     this.authUser,
     this.profile,
     this.profileUrl = '',
+    this.companyLogoUrl = '',
     this.permissions = const [],
   });
 
@@ -21,6 +27,7 @@ class AuthState {
     User? authUser,
     Userdetails? profile,
     String? profileUrl,
+    String? companyLogoUrl,
     List<String>? permissions,
   }) {
     return AuthState(
@@ -28,6 +35,7 @@ class AuthState {
       authUser: authUser ?? this.authUser,
       profile: profile ?? this.profile,
       profileUrl: profileUrl ?? this.profileUrl,
+      companyLogoUrl: companyLogoUrl ?? this.companyLogoUrl,
       permissions: permissions ?? this.permissions,
     );
   }

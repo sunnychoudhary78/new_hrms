@@ -3,16 +3,13 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
-
 import 'package:lms/core/providers/global_loading_provider.dart';
 import 'package:lms/core/services/selfie_service.dart';
-
 import 'package:lms/features/auth/presentation/providers/auth_provider.dart';
 import 'package:lms/features/home/presentation/widgets/app_drawer.dart';
-
+import 'package:lms/features/profile/presentation/screens/profile_id_card_screen.dart';
 import 'package:lms/features/profile/presentation/widgets/profile_header.dart';
 import 'package:lms/features/profile/presentation/widgets/floating_details_card.dart';
-
 import 'package:lms/shared/widgets/app_bar.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
@@ -217,7 +214,38 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               Transform.translate(
                 offset: const Offset(0, -100),
 
-                child: ProfileDetailsCard(details: details),
+                child: Column(
+                  children: [
+                    ProfileDetailsCard(details: details),
+
+                    const SizedBox(height: 20),
+
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: SizedBox(
+                        width: double.infinity,
+                        height: 52,
+                        child: ElevatedButton.icon(
+                          icon: const Icon(Icons.badge_outlined),
+                          label: const Text(
+                            "View as ID Card",
+                            style: TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const ProfileIdCardScreen(),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 40),
+                  ],
+                ),
               ),
             ],
           ),

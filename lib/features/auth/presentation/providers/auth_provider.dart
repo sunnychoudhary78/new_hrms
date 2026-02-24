@@ -39,14 +39,29 @@ class AuthNotifier extends Notifier<AuthState> {
 
       final profileJson = await _authApi.fetchProfile();
       final profile = Userdetails.fromJson(profileJson);
+
+      print("🏢 RAW company object: ${profileJson['company']}");
+      print("🏢 logo_filename raw: ${profile.companyLogoFilename}");
+
+      final companyLogoUrl = profile.companyLogoFilename != null
+          ? ApiConstants.companyLogoBaseUrl + profile.companyLogoFilename!
+          : '';
+
+      print("🏢 FINAL companyLogoUrl: $companyLogoUrl");
+
       final permissions = await _authApi.fetchPermissions();
 
       state = state.copyWith(
         isLoading: false,
         profile: profile,
         permissions: permissions,
+
         profileUrl: profile.profilePicture != null
             ? ApiConstants.imageBaseUrl + profile.profilePicture!
+            : '',
+
+        companyLogoUrl: profile.companyLogoFilename != null
+            ? ApiConstants.companyLogoBaseUrl + profile.companyLogoFilename!
             : '',
       );
 
@@ -75,6 +90,16 @@ class AuthNotifier extends Notifier<AuthState> {
 
       final profileJson = await _authApi.fetchProfile();
       final profile = Userdetails.fromJson(profileJson);
+
+      print("🏢 RAW company object: ${profileJson['company']}");
+      print("🏢 logo_filename raw: ${profile.companyLogoFilename}");
+
+      final companyLogoUrl = profile.companyLogoFilename != null
+          ? ApiConstants.companyLogoBaseUrl + profile.companyLogoFilename!
+          : '';
+
+      print("🏢 FINAL companyLogoUrl: $companyLogoUrl");
+
       final permissions = await _authApi.fetchPermissions();
 
       state = state.copyWith(
@@ -82,8 +107,13 @@ class AuthNotifier extends Notifier<AuthState> {
         authUser: userModel.user,
         profile: profile,
         permissions: permissions,
+
         profileUrl: profile.profilePicture != null
             ? ApiConstants.imageBaseUrl + profile.profilePicture!
+            : '',
+
+        companyLogoUrl: profile.companyLogoFilename != null
+            ? ApiConstants.companyLogoBaseUrl + profile.companyLogoFilename!
             : '',
       );
 
@@ -173,9 +203,15 @@ class AuthNotifier extends Notifier<AuthState> {
 
       state = state.copyWith(
         profile: profile,
+
         profileUrl: profile.profilePicture != null
             ? ApiConstants.imageBaseUrl + profile.profilePicture!
             : '',
+
+        companyLogoUrl: profile.companyLogoFilename != null
+            ? ApiConstants.companyLogoBaseUrl + profile.companyLogoFilename!
+            : '',
+
         isLoading: false,
       );
     } catch (e) {
