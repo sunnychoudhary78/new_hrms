@@ -1,14 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
+import 'package:lms/features/attendance/correction_attendance/presentation/screens/attendance_correction_screen.dart';
 import 'package:lms/features/auth/presentation/providers/auth_provider.dart';
 import 'package:lms/features/dashboard/presentation/screens/employee_attendence_calender_screen.dart';
-import 'package:lms/features/leave/presentation/screens/leave_details_screen.dart';
+import 'package:lms/features/leave/presentation/screens/leave_approve_screen.dart';
 import 'package:lms/features/leave/presentation/screens/leave_status_screen.dart';
 import 'package:lms/features/notifications/presentation/providers/notifications_provider.dart';
 import 'package:lms/features/notifications/presentation/screens/notification_details_screen.dart';
 import 'package:lms/features/notifications/presentation/widgets/notification_tile.dart';
-
 import 'package:lms/features/dashboard/data/models/team_dashboard_model.dart';
 
 class NotificationList extends ConsumerWidget {
@@ -129,23 +128,61 @@ class NotificationList extends ConsumerWidget {
               debugPrint("Data: $data");
 
               /// =====================================================
-              /// MANAGER FLOW → Open Employee Attendance Calendar
+              /// MANAGER FLOW → ROUTE BASED ON NOTIFICATION TYPE
               /// =====================================================
               if (canViewTeamAttendance) {
+                final senderRaw = n["sender"];
+
                 if (senderRaw is Map<String, dynamic>) {
                   try {
                     final employee = TeamEmployee.fromNotification(senderRaw);
 
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => EmployeeAttendanceCalendarScreen(
-                          employee: employee,
+                    /// ===============================
+                    /// ATTENDANCE → OPEN CALENDAR
+                    /// ===============================
+                    if (notificationType == "attendance_checkin" ||
+                        notificationType == "attendance_checkout" ||
+                        notificationType == "attendance_auto_closed" ||
+                        notificationType == "remote_work_requested") {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => EmployeeAttendanceCalendarScreen(
+                            employee: employee,
+                          ),
                         ),
-                      ),
-                    );
+                      );
 
-                    return;
+                      return;
+                    }
+
+                    /// ===============================
+                    /// CORRECTION → OPEN CORRECTION SCREEN
+                    /// ===============================
+                    if (notificationType == "attendance_correction_requested") {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const AttendanceCorrectionScreen(),
+                        ),
+                      );
+
+                      return;
+                    }
+
+                    /// ===============================
+                    /// LEAVE → OPEN LEAVE APPROVAL SCREEN
+                    /// ===============================
+                    if (notificationType == "LEAVE_REQUEST" ||
+                        notificationType == "LEAVE_STATUS_UPDATE" ||
+                        notificationType == "LEAVE_REVOCATION_REQUEST") {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => LeaveApproveScreen()),
+                      );
+
+                      return;
+                    }
                   } catch (e) {
                     debugPrint("❌ Failed to parse employee: $e");
                   }

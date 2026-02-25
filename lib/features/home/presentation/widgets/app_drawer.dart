@@ -56,7 +56,7 @@ class _AppDrawerState extends ConsumerState<AppDrawer>
                 physics: const BouncingScrollPhysics(),
                 child: Column(
                   children: [
-                    _buildHeader(name, empId, profileImg, companyLogo),
+                    _buildHeader(companyLogo),
 
                     const SizedBox(height: 10),
 
@@ -185,12 +185,7 @@ class _AppDrawerState extends ConsumerState<AppDrawer>
     );
   }
 
-  Widget _buildHeader(
-    String name,
-    String empId,
-    String img,
-    String companyLogo,
-  ) {
+  Widget _buildHeader(String companyLogo) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
@@ -201,10 +196,8 @@ class _AppDrawerState extends ConsumerState<AppDrawer>
         ? const Color(0xFF2A2A40)
         : scheme.primaryContainer;
 
-    final textColor = isDark ? Colors.white : scheme.onPrimary;
-
     return Container(
-      padding: const EdgeInsets.fromLTRB(18, 22, 18, 22),
+      padding: const EdgeInsets.fromLTRB(18, 28, 18, 28),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
@@ -221,73 +214,28 @@ class _AppDrawerState extends ConsumerState<AppDrawer>
               ]
             : null,
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          /// 🏢 COMPANY LOGO
-          if (companyLogo.isNotEmpty)
-            Center(
-              child: Container(
-                height: 50,
-                margin: const EdgeInsets.only(bottom: 14),
+      child: Center(
+        child: companyLogo.isNotEmpty
+            ? Container(
+                height: 64,
+                constraints: const BoxConstraints(maxWidth: 180),
                 child: Image.network(
                   companyLogo,
                   fit: BoxFit.contain,
 
-                  /// prevents crash if logo missing
                   errorBuilder: (_, __, ___) => const SizedBox(),
 
-                  /// loading indicator
                   loadingBuilder: (_, child, progress) {
                     if (progress == null) return child;
                     return const SizedBox(
-                      height: 24,
-                      width: 24,
+                      height: 28,
+                      width: 28,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     );
                   },
                 ),
-              ),
-            ),
-
-          /// USER INFO ROW
-          Row(
-            children: [
-              CircleAvatar(
-                radius: 32,
-                backgroundImage: img.isNotEmpty
-                    ? NetworkImage(img)
-                    : const AssetImage('assets/images/profile.jpg')
-                          as ImageProvider,
-              ),
-              const SizedBox(width: 16),
-
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      name,
-                      style: TextStyle(
-                        color: textColor,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      empId,
-                      style: TextStyle(
-                        color: textColor.withOpacity(.85),
-                        fontSize: 14,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ],
+              )
+            : const SizedBox(),
       ),
     ).animate().fade().slideY(begin: -.15);
   }

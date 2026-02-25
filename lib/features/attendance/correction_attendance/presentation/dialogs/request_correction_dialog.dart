@@ -38,39 +38,59 @@ class _RequestCorrectionDialogState
     targetDate = DateTime.now();
   }
 
+  DateTime _combine(DateTime date, TimeOfDay time) {
+    return DateTime(date.year, date.month, date.day, time.hour, time.minute);
+  }
+
+  void _showError(String msg) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(msg), backgroundColor: Colors.red));
+  }
+
+  void _showSuccess(String msg) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(msg), backgroundColor: Colors.green));
+  }
+
   Future<void> _submit() async {
-    if (proposedIn == null || reasonController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("Time & reason required")));
+    if (proposedIn == null) {
+      _showError("Please select check-in time");
+      return;
+    }
+
+    if (reasonController.text.trim().isEmpty) {
+      _showError("Please enter reason");
+      return;
+    }
+
+    final checkIn = _combine(targetDate, proposedIn!);
+    final checkOut = proposedOut != null
+        ? _combine(targetDate, proposedOut!)
+        : null;
+
+    /// 🚨 CRITICAL FIX
+    if (checkOut != null && checkOut.isBefore(checkIn)) {
+      _showError("Checkout must be after check-in");
       return;
     }
 
     setState(() => isSubmitting = true);
 
     try {
-      String toIso(TimeOfDay t) {
-        return DateTime(
-          targetDate.year,
-          targetDate.month,
-          targetDate.day,
-          t.hour,
-          t.minute,
-        ).toIso8601String();
-      }
-
       await ref.read(attendanceRepositoryProvider).requestCorrection({
         "targetDate": DateFormat('yyyy-MM-dd').format(targetDate),
-        "proposedCheckIn": toIso(proposedIn!),
-        if (proposedOut != null) "proposedCheckOut": toIso(proposedOut!),
+        "proposedCheckIn": checkIn.toIso8601String(),
+        if (checkOut != null) "proposedCheckOut": checkOut.toIso8601String(),
         "reason": reasonController.text.trim(),
       });
 
       if (mounted) Navigator.pop(context);
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Correction request submitted")),
-      );
+      _showSuccess("Correction request submitted");
+    } catch (e) {
+      _showError(e.toString());
     } finally {
       if (mounted) setState(() => isSubmitting = false);
     }

@@ -217,7 +217,21 @@ class AttendanceApiService {
   // ─────────────────────────────────────────────
 
   Future<void> requestCorrection(Map<String, dynamic> body) async {
-    await api.post(ApiEndpoints.attendanceCorrections, body);
+    try {
+      debugPrint("➡️ REQUEST CORRECTION START");
+      debugPrint("🌐 URL: ${ApiEndpoints.attendanceCorrections}");
+      debugPrint("📦 BODY: $body");
+
+      final res = await api.post(ApiEndpoints.attendanceCorrections, body);
+
+      debugPrint("✅ CORRECTION SUCCESS");
+      debugPrint("📨 RESPONSE: $res");
+    } catch (e, stack) {
+      debugPrint("❌ CORRECTION FAILED");
+      debugPrint("🔥 ERROR: $e");
+      debugPrint("📍 STACK: $stack");
+      rethrow;
+    }
   }
 
   Future<List<dynamic>> fetchAttendanceCorrectionsManaged({

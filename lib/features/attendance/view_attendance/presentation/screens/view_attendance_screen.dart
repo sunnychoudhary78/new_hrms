@@ -55,7 +55,7 @@ class _ViewAttendanceScreenState extends ConsumerState<ViewAttendanceScreen> {
 
       final totalMinutes = daySessions.fold<int>(
         0,
-        (sum, s) => sum + (s.durationMinutes ?? 0),
+        (sum, s) => sum + (s.durationMinutes),
       );
 
       map[key] = AttendanceDayData(
@@ -66,7 +66,7 @@ class _ViewAttendanceScreenState extends ConsumerState<ViewAttendanceScreen> {
           return AttendanceSessionData(
             checkIn: s.checkInTime,
             checkOut: s.checkOutTime,
-            durationMinutes: s.durationMinutes ?? 0,
+            durationMinutes: s.durationMinutes,
             source: s.source,
           );
         }).toList(),

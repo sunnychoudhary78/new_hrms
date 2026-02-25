@@ -71,10 +71,11 @@ class _ModernPunchButtonState extends State<ModernPunchButton> {
       },
       child: SizedBox(
         height: height + depth,
+        width: double.infinity,
         child: Stack(
           clipBehavior: Clip.none,
           children: [
-            /// 3D BASE (Directional – coming from RIGHT)
+            /// 3D BASE SHADOW
             if (!disabled)
               Positioned(
                 top: depth,
@@ -123,13 +124,13 @@ class _ModernPunchButtonState extends State<ModernPunchButton> {
                                   BoxShadow(
                                     color: widget.colors.first.withOpacity(.35),
                                     blurRadius: 18,
-                                    offset: const Offset(4, 10), // right biased
+                                    offset: const Offset(4, 10),
                                   ),
                                 ],
                         ),
                         child: Stack(
                           children: [
-                            /// Soft top highlight (no seam line)
+                            /// TOP HIGHLIGHT
                             Positioned.fill(
                               child: Align(
                                 alignment: Alignment.topCenter,
@@ -152,28 +153,56 @@ class _ModernPunchButtonState extends State<ModernPunchButton> {
                               ),
                             ),
 
-                            /// CONTENT
+                            /// CONTENT WITH AUTO-SCALING TEXT (NO ELLIPSIS)
                             Center(
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    widget.icon,
-                                    color: disabled
-                                        ? scheme.onSurfaceVariant
-                                        : scheme.onPrimary,
-                                  ),
-                                  const SizedBox(width: 10),
-                                  Text(
-                                    widget.text,
-                                    style: TextStyle(
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      widget.icon,
                                       color: disabled
                                           ? scheme.onSurfaceVariant
                                           : scheme.onPrimary,
-                                      fontWeight: FontWeight.w800,
                                     ),
-                                  ),
-                                ],
+
+                                    const SizedBox(width: 10),
+
+                                    /// AUTO SCALE TEXT
+                                    Expanded(
+                                      child: Center(
+                                        child: Text(
+                                          widget.text
+                                              .replaceAll(
+                                                'Check-in',
+                                                'Check\u2011in',
+                                              )
+                                              .replaceAll(
+                                                'Check-out',
+                                                'Check\u2011out',
+                                              ),
+                                          maxLines: 2,
+                                          overflow: TextOverflow.fade,
+                                          softWrap: true,
+                                          textAlign: TextAlign.center,
+                                          style: TextStyle(
+                                            color: disabled
+                                                ? scheme.onSurfaceVariant
+                                                : scheme.onPrimary,
+                                            fontWeight: FontWeight.w800,
+                                            fontSize: 15,
+                                            height: 1.15,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+
+                                    /// BALANCER FOR PERFECT CENTER ALIGNMENT
+                                    const SizedBox(width: 24),
+                                  ],
+                                ),
                               ),
                             ),
                           ],

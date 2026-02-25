@@ -138,7 +138,7 @@ class _ReviewDialogState extends ConsumerState<_ReviewDialog> {
                 children: [
                   Expanded(
                     child: OutlinedButton(
-                      onPressed: _submitting ? null : () => _update('REJECTED'),
+                      onPressed: _submitting ? null : () => _update('reject'),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: scheme.error,
                         side: BorderSide(color: scheme.error),
@@ -155,7 +155,7 @@ class _ReviewDialogState extends ConsumerState<_ReviewDialog> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: ElevatedButton(
-                      onPressed: _submitting ? null : () => _update('APPROVED'),
+                      onPressed: _submitting ? null : () => _update('approve'),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: scheme.primary,
                         foregroundColor: scheme.onPrimary,

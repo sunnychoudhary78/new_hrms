@@ -22,33 +22,42 @@ class LastFiveDaysAttendanceCard extends StatefulWidget {
 
 class _LastFiveDaysAttendanceCardState
     extends State<LastFiveDaysAttendanceCard> {
-  final ScrollController _scrollController = ScrollController();
-
   static const double chartHeight = 220;
-
   static const double barWidth = 12;
   static const double groupSpace = 28;
   static const double groupWidth = (barWidth * 2) + groupSpace;
 
   static const int visibleDays = 5;
 
+  late int startIndex;
+  late List<WeeklyAttendanceBar> visibleList;
   late double maxY;
 
   @override
   void initState() {
     super.initState();
 
-    maxY = _calculateMaxY();
+    startIndex = (widget.days.length - visibleDays).clamp(
+      0,
+      widget.days.length,
+    );
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _scrollToLastFiveDays();
-    });
+    _updateVisibleList();
+  }
+
+  void _updateVisibleList() {
+    visibleList = widget.days.sublist(
+      startIndex,
+      (startIndex + visibleDays).clamp(0, widget.days.length),
+    );
+
+    maxY = _calculateMaxY();
   }
 
   double _calculateMaxY() {
-    if (widget.days.isEmpty) return 8;
+    if (visibleList.isEmpty) return 8;
 
-    final maxMinutes = widget.days
+    final maxMinutes = visibleList
         .map(
           (e) => e.workedMinutes > e.expectedMinutes
               ? e.workedMinutes
@@ -59,25 +68,34 @@ class _LastFiveDaysAttendanceCardState
     return ((maxMinutes / 60) * 1.2).ceilToDouble();
   }
 
-  void _scrollToLastFiveDays() {
-    if (!_scrollController.hasClients) return;
+  void _goPrevious() {
+    if (startIndex == 0) return;
 
-    final total = widget.days.length;
+    setState(() {
+      startIndex = (startIndex - visibleDays).clamp(0, widget.days.length);
+      _updateVisibleList();
+    });
+  }
 
-    if (total <= visibleDays) return;
+  void _goNext() {
+    if (startIndex + visibleDays >= widget.days.length) return;
 
-    final offset = (total - visibleDays) * groupWidth;
+    setState(() {
+      startIndex = (startIndex + visibleDays).clamp(0, widget.days.length);
+      _updateVisibleList();
+    });
+  }
 
-    _scrollController.jumpTo(offset);
+  String get currentMonthText {
+    if (visibleList.isEmpty) return "";
+    return DateFormat('MMMM yyyy').format(visibleList.last.date);
   }
 
   @override
   Widget build(BuildContext context) {
-    if (widget.days.isEmpty) {
-      return const SizedBox();
-    }
+    if (widget.days.isEmpty) return const SizedBox();
 
-    final chartWidth = widget.days.length * groupWidth + 40;
+    final chartWidth = visibleList.length * groupWidth;
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -88,34 +106,78 @@ class _LastFiveDaysAttendanceCardState
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            "Attendance Overview",
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+          /// HEADER
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                "Attendance Overview",
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              ),
+
+              const SizedBox(height: 6),
+
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    currentMonthText,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.grey.shade600,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+
+                  Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.chevron_left),
+                        onPressed: startIndex == 0 ? null : _goPrevious,
+                        visualDensity: VisualDensity.compact,
+                      ),
+
+                      IconButton(
+                        icon: const Icon(Icons.chevron_right),
+                        onPressed:
+                            startIndex + visibleDays >= widget.days.length
+                            ? null
+                            : _goNext,
+                        visualDensity: VisualDensity.compact,
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ],
           ),
 
           const SizedBox(height: 16),
 
+          /// CHART
           SizedBox(
             height: chartHeight,
             child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                /// FIXED Y AXIS
+                /// Y AXIS ONLY (NO BARS)
                 SizedBox(
                   width: 44,
-                  child: BarChart(_chartData(showYAxis: true, showBars: false)),
+                  child: BarChart(
+                    _chartData(
+                      showYAxis: true,
+                      showBars: false, // IMPORTANT FIX
+                    ),
+                  ),
                 ),
 
-                /// SCROLLABLE BARS
-                Expanded(
-                  child: SingleChildScrollView(
-                    controller: _scrollController,
-                    scrollDirection: Axis.horizontal,
-                    physics: const BouncingScrollPhysics(),
-                    child: SizedBox(
-                      width: chartWidth,
-                      child: BarChart(
-                        _chartData(showYAxis: false, showBars: true),
-                      ),
+                /// MAIN CHART WITH BARS
+                SizedBox(
+                  width: chartWidth,
+                  child: BarChart(
+                    _chartData(
+                      showYAxis: false,
+                      showBars: true, // IMPORTANT FIX
                     ),
                   ),
                 ),
@@ -125,6 +187,7 @@ class _LastFiveDaysAttendanceCardState
 
           const SizedBox(height: 12),
 
+          /// LEGEND
           const Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -150,13 +213,13 @@ class _LastFiveDaysAttendanceCardState
 
       groupsSpace: groupSpace,
 
+      borderData: FlBorderData(show: false),
+
       gridData: FlGridData(
         show: showYAxis,
         horizontalInterval: 2,
         drawVerticalLine: false,
       ),
-
-      borderData: FlBorderData(show: false),
 
       titlesData: FlTitlesData(
         leftTitles: AxisTitles(
@@ -186,11 +249,11 @@ class _LastFiveDaysAttendanceCardState
             getTitlesWidget: (value, meta) {
               final index = value.toInt();
 
-              if (index < 0 || index >= widget.days.length) {
+              if (index < 0 || index >= visibleList.length) {
                 return const SizedBox();
               }
 
-              final date = widget.days[index].date;
+              final date = visibleList[index].date;
 
               return Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -202,6 +265,7 @@ class _LastFiveDaysAttendanceCardState
                       fontWeight: FontWeight.w600,
                     ),
                   ),
+
                   Text(
                     DateFormat('E').format(date),
                     style: const TextStyle(fontSize: 10),
@@ -213,9 +277,10 @@ class _LastFiveDaysAttendanceCardState
         ),
       ),
 
+      /// CRITICAL FIX — NO BARS FOR Y AXIS CHART
       barGroups: showBars
-          ? List.generate(widget.days.length, (index) {
-              final d = widget.days[index];
+          ? List.generate(visibleList.length, (index) {
+              final d = visibleList[index];
 
               final worked = d.workedMinutes / 60;
               final expected = d.expectedMinutes / 60;
@@ -228,7 +293,7 @@ class _LastFiveDaysAttendanceCardState
                 x: index,
                 barsSpace: 4,
                 barRods: [
-                  /// Expected bar
+                  /// EXPECTED
                   BarChartRodData(
                     toY: expected,
                     width: barWidth,
@@ -236,7 +301,7 @@ class _LastFiveDaysAttendanceCardState
                     borderRadius: BorderRadius.circular(3),
                   ),
 
-                  /// Worked stacked bar
+                  /// WORKED STACK
                   BarChartRodData(
                     toY: worked,
                     width: barWidth,
@@ -262,7 +327,7 @@ class _LastFiveDaysAttendanceCardState
                 ],
               );
             })
-          : [],
+          : [], // ← THIS REMOVES GHOST BAR
     );
   }
 }
@@ -282,7 +347,9 @@ class _Legend extends StatelessWidget {
           height: 10,
           decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
+
         const SizedBox(width: 6),
+
         Text(label, style: const TextStyle(fontSize: 12)),
       ],
     );

@@ -231,13 +231,6 @@ class _EmployeeHeader extends StatelessWidget {
                   color: scheme.onSurface,
                 ),
               ),
-
-              const SizedBox(height: 4),
-
-              Text(
-                employee.employeeId,
-                style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
-              ),
             ],
           ),
         ],

@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/cupertino.dart';
 import 'package:lms/features/attendance/correction_attendance/data/models/attendance_request_model.dart';
 import 'package:lms/features/attendance/mark_attendance/data/models/attendance_session_model.dart';
 import 'package:lms/features/attendance/shared/data/attendence_api_service.dart';
@@ -86,9 +87,14 @@ class AttendanceRepository {
   // ─────────────────────────────────────────────
   // CORRECTIONS
   // ─────────────────────────────────────────────
+  Future<void> requestCorrection(Map<String, dynamic> body) async {
+    debugPrint("📤 REPOSITORY REQUEST CORRECTION");
+    debugPrint("📦 BODY: $body");
 
-  Future<void> requestCorrection(Map<String, dynamic> body) =>
-      api.requestCorrection(body);
+    await api.requestCorrection(body);
+
+    debugPrint("✅ REPOSITORY CORRECTION DONE");
+  }
 
   Future<List<AttendanceRequest>> fetchAttendanceCorrections({
     required String status,
@@ -104,6 +110,6 @@ class AttendanceRepository {
     String? note,
   }) => api.updateCorrectionStatus(
     id: id,
-    body: {"status": status, if (note != null) "note": note},
+    body: {"action": status, if (note != null) "note": note},
   );
 }
