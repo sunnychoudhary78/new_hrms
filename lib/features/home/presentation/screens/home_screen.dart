@@ -32,43 +32,55 @@ class _NotificationIcon extends ConsumerWidget {
     final unreadCount = ref.watch(unreadCountProvider);
     final scheme = Theme.of(context).colorScheme;
 
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        IconButton(
-          icon: const Icon(Icons.notifications_outlined),
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const NotificationScreen()),
-            );
-          },
-        ),
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          /// MAIN ICON (Increase tap area)
+          IconButton(
+            iconSize: 26,
+            splashRadius: 26,
+            padding: const EdgeInsets.all(12),
+            icon: const Icon(Icons.notifications_outlined),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const NotificationScreen()),
+              );
+            },
+          ),
 
-        /// 🔴 Unread Badge
-        if (unreadCount > 0)
-          Positioned(
-            right: 6,
-            top: 6,
-            child: Container(
-              padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                color: scheme.error,
-                shape: BoxShape.circle,
-              ),
-              constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
-              child: Text(
-                unreadCount > 9 ? '9+' : unreadCount.toString(),
-                style: TextStyle(
-                  color: scheme.onError,
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
+          /// 🔴 Unread Badge (Does NOT block taps)
+          if (unreadCount > 0)
+            Positioned(
+              right: 6,
+              top: 6,
+              child: IgnorePointer(
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: scheme.error,
+                    shape: BoxShape.circle,
+                  ),
+                  constraints: const BoxConstraints(
+                    minWidth: 18,
+                    minHeight: 18,
+                  ),
+                  child: Text(
+                    unreadCount > 9 ? '9+' : unreadCount.toString(),
+                    style: TextStyle(
+                      color: scheme.onError,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
                 ),
-                textAlign: TextAlign.center,
               ),
             ),
-          ),
-      ],
+        ],
+      ),
     );
   }
 }

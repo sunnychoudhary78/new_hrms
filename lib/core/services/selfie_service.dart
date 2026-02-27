@@ -9,17 +9,29 @@ import 'package:lms/core/providers/global_loading_provider.dart';
 class SelfieService {
   /// Opens front camera safely
   Future<File?> captureSelfie(BuildContext context) async {
-    /// ✅ CRITICAL FIX — hide loader before opening camera
+    /// Hide loader before opening camera
     try {
       final container = ProviderScope.containerOf(context, listen: false);
       container.read(globalLoadingProvider.notifier).hide();
     } catch (_) {}
 
-    /// Open camera screen
-    return await Navigator.push<File?>(
+    /// Open camera
+    final file = await Navigator.push<File?>(
       context,
       MaterialPageRoute(builder: (_) => const _SelfieCameraScreen()),
     );
+
+    /// ✅ Show loader after photo selected
+    if (file != null && context.mounted) {
+      try {
+        final container = ProviderScope.containerOf(context, listen: false);
+        container
+            .read(globalLoadingProvider.notifier)
+            .showLoading("Uploading selfie...");
+      } catch (_) {}
+    }
+
+    return file;
   }
 
   /// Compress image
@@ -50,7 +62,6 @@ class _SelfieCameraScreenState extends State<_SelfieCameraScreen> {
   CameraController? controller;
 
   bool isReady = false;
-
   bool isCapturing = false;
 
   @override
@@ -89,11 +100,25 @@ class _SelfieCameraScreenState extends State<_SelfieCameraScreen> {
     try {
       final XFile file = await controller!.takePicture();
 
-      if (mounted) {
-        Navigator.pop(context, File(file.path));
+      if (!mounted) return;
+
+      final result = await Navigator.push<File?>(
+        context,
+        MaterialPageRoute(
+          builder: (_) => _SelfiePreviewScreen(imageFile: File(file.path)),
+        ),
+      );
+
+      /// ✅ ONLY CLOSE CAMERA IF USER CONFIRMED PHOTO
+      if (result != null && mounted) {
+        Navigator.pop(context, result);
       }
+
+      /// ✅ If null → user pressed Retake → stay on camera
     } catch (_) {
-      Navigator.pop(context, null);
+      if (mounted) Navigator.pop(context, null);
+    } finally {
+      isCapturing = false;
     }
   }
 
@@ -116,7 +141,7 @@ class _SelfieCameraScreenState extends State<_SelfieCameraScreen> {
       backgroundColor: Colors.black,
       body: Stack(
         children: [
-          /// NORMAL FRONT CAMERA PREVIEW (mirrored for natural selfie view)
+          /// Camera preview
           Positioned.fill(
             child: FittedBox(
               fit: BoxFit.cover,
@@ -128,7 +153,7 @@ class _SelfieCameraScreenState extends State<_SelfieCameraScreen> {
             ),
           ),
 
-          /// CAPTURE BUTTON (UI only improved, logic unchanged)
+          /// Capture button
           Positioned(
             bottom: 40,
             left: 0,
@@ -149,7 +174,7 @@ class _SelfieCameraScreenState extends State<_SelfieCameraScreen> {
             ),
           ),
 
-          /// CLOSE BUTTON (unchanged)
+          /// Close button
           Positioned(
             top: 50,
             left: 20,
@@ -159,6 +184,153 @@ class _SelfieCameraScreenState extends State<_SelfieCameraScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _SelfiePreviewScreen extends StatelessWidget {
+  final File imageFile;
+
+  const _SelfiePreviewScreen({required this.imageFile});
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: Stack(
+        children: [
+          /// Mirrored image (fix flip)
+          Positioned.fill(
+            child: Transform(
+              alignment: Alignment.center,
+              transform: Matrix4.identity()..scale(-1.0, 1.0),
+              child: Image.file(imageFile, fit: BoxFit.cover),
+            ),
+          ),
+
+          /// Top gradient
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: Container(
+              height: 140,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Colors.black.withOpacity(0.7), Colors.transparent],
+                ),
+              ),
+            ),
+          ),
+
+          /// Bottom gradient
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: Container(
+              height: 180,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.bottomCenter,
+                  end: Alignment.topCenter,
+                  colors: [Colors.black.withOpacity(0.8), Colors.transparent],
+                ),
+              ),
+            ),
+          ),
+
+          /// Close button
+          Positioned(
+            top: 50,
+            left: 16,
+            child: _CircleButton(
+              icon: Icons.close,
+              onTap: () => Navigator.pop(context, null),
+            ),
+          ),
+
+          /// Bottom buttons
+          Positioned(
+            bottom: 50,
+            left: 20,
+            right: 20,
+            child: Row(
+              children: [
+                /// Retake button
+                Expanded(
+                  child: OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.white,
+                      side: BorderSide(color: Colors.white.withOpacity(0.8)),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                    onPressed: () => Navigator.pop(context, null),
+                    icon: const Icon(Icons.refresh_rounded),
+                    label: const Text(
+                      "Retake",
+                      style: TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(width: 16),
+
+                /// Use photo button
+                Expanded(
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: scheme.primary,
+                      foregroundColor: scheme.onPrimary,
+                      elevation: 4,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                    onPressed: () => Navigator.pop(context, imageFile),
+                    icon: const Icon(Icons.check_circle_rounded),
+                    label: const Text(
+                      "Use Photo",
+                      style: TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CircleButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+
+  const _CircleButton({required this.icon, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 44,
+        height: 44,
+        decoration: BoxDecoration(
+          color: Colors.black.withOpacity(0.5),
+          shape: BoxShape.circle,
+        ),
+        child: Icon(icon, color: Colors.white),
       ),
     );
   }

@@ -104,6 +104,14 @@ class AttendanceRepository {
     return list.map((e) => AttendanceRequest.fromJson(e)).toList();
   }
 
+  Future<List<AttendanceRequest>> fetchMyAttendanceCorrections({
+    required String status,
+  }) async {
+    final list = await api.fetchAttendanceCorrectionsMy(status: status);
+
+    return list.map((e) => AttendanceRequest.fromJson(e)).toList();
+  }
+
   Future<void> updateCorrectionStatus({
     required String id,
     required String status,

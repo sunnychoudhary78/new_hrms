@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:lms/features/leave/data/models/leave_balance_model.dart';
+import 'package:lms/features/leave/presentation/screens/leave_apply_screen.dart';
 import '../utils/leave_color_mapper.dart';
 
 class LeaveBalanceTile extends StatelessWidget {
@@ -18,84 +19,113 @@ class LeaveBalanceTile extends StatelessWidget {
 
     final Color accentColor = LeaveColorMapper.colorFor(name);
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 14),
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: scheme.surface,
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: [
-          BoxShadow(
-            color: scheme.shadow.withOpacity(0.06),
-            blurRadius: 14,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Text(
-                  name,
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: scheme.onSurface,
+    return InkWell(
+      borderRadius: BorderRadius.circular(18),
+      onTap: () {
+        if (available <= 0) {
+          showDialog(
+            context: context,
+            builder: (_) => AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              title: const Text("Cannot Apply"),
+              content: Text("You don't have any $name leave available."),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text("OK"),
+                ),
+              ],
+            ),
+          );
+        } else {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => LeaveApplyScreen(initialLeave: balance),
+            ),
+          );
+        }
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 14),
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: scheme.surface,
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: [
+            BoxShadow(
+              color: scheme.shadow.withOpacity(0.06),
+              blurRadius: 14,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Text(
+                    name,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: scheme.onSurface,
+                    ),
                   ),
                 ),
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    formatDays(available),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      formatDays(available),
+                      style: TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                        color: accentColor,
+                      ),
+                    ),
+                    Text(
+                      'days available',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
 
-                    style: TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
+            if (carried > 0 || reserved > 0) ...[
+              const SizedBox(height: 14),
+              Divider(color: scheme.outlineVariant),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  if (carried > 0)
+                    _MetaText(
+                      label: 'Carried',
+                      value: carried,
                       color: accentColor,
                     ),
-                  ),
-                  Text(
-                    'days available',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: scheme.onSurfaceVariant,
+                  if (reserved > 0) ...[
+                    const SizedBox(width: 16),
+                    _MetaText(
+                      label: 'Reserved',
+                      value: reserved,
+                      color: Colors.orange,
                     ),
-                  ),
+                  ],
                 ],
               ),
             ],
-          ),
-
-          if (carried > 0 || reserved > 0) ...[
-            const SizedBox(height: 14),
-            Divider(color: scheme.outlineVariant),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                if (carried > 0)
-                  _MetaText(
-                    label: 'Carried',
-                    value: carried,
-                    color: accentColor,
-                  ),
-                if (reserved > 0) ...[
-                  const SizedBox(width: 16),
-                  _MetaText(
-                    label: 'Reserved',
-                    value: reserved,
-                    color: Colors.orange,
-                  ),
-                ],
-              ],
-            ),
           ],
-        ],
+        ),
       ),
     );
   }

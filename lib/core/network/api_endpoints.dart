@@ -6,7 +6,7 @@ class ApiEndpoints {
   static const String attendanceCorrections = '/attendance/corrections';
   static const String attendanceCorrectionsManaged =
       '/attendance/corrections/managed';
-
+  static const String attendanceCorrectionsMy = '/attendance/corrections/my';
   static const String companySettings = '/company-settings/my';
 
   static const String login = '/auth/login';

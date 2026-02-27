@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lms/features/attendance/correction_attendance/presentation/providers/my_corrections_provider.dart';
 import 'package:lms/features/attendance/correction_attendance/presentation/screens/attendance_correction_screen.dart';
+import 'package:lms/features/attendance/correction_attendance/presentation/screens/my_corrections_screen.dart';
 import 'package:lms/features/auth/presentation/providers/auth_provider.dart';
 import 'package:lms/features/dashboard/presentation/screens/employee_attendence_calender_screen.dart';
 import 'package:lms/features/leave/presentation/screens/leave_approve_screen.dart';
@@ -142,8 +144,7 @@ class NotificationList extends ConsumerWidget {
                     /// ===============================
                     if (notificationType == "attendance_checkin" ||
                         notificationType == "attendance_checkout" ||
-                        notificationType == "attendance_auto_closed" ||
-                        notificationType == "remote_work_requested") {
+                        notificationType == "attendance_auto_closed") {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
@@ -159,7 +160,8 @@ class NotificationList extends ConsumerWidget {
                     /// ===============================
                     /// CORRECTION → OPEN CORRECTION SCREEN
                     /// ===============================
-                    if (notificationType == "attendance_correction_requested") {
+                    if (notificationType == "attendance_correction_requested" ||
+                        notificationType == "remote_work_requested") {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
@@ -192,8 +194,45 @@ class NotificationList extends ConsumerWidget {
               /// =====================================================
               /// EMPLOYEE FLOW
               /// =====================================================
-
+              ///
               /// CASE 1: Leave Status Update → Open Leave Details
+              ///
+              /// /// =====================================================
+              /// EMPLOYEE → ATTENDANCE CORRECTION HISTORY
+              /// =====================================================
+
+              if ((notificationType == "correction_approved" ||
+                      notificationType == "correction_rejected" ||
+                      notificationType == "attendance_correction_requested" ||
+                      notificationType == "remote_work_requested") &&
+                  data is Map<String, dynamic>) {
+                final correctionId = data["correctionId"]?.toString();
+
+                if (correctionId != null && correctionId.isNotEmpty) {
+                  final notifier = ref.read(myCorrectionsProvider.notifier);
+
+                  /// ✅ Set correct tab first
+                  if (notificationType == "correction_approved") {
+                    notifier.changeStatus("APPROVED");
+                  } else if (notificationType == "correction_rejected") {
+                    notifier.changeStatus("REJECTED");
+                  } else {
+                    notifier.changeStatus("PENDING");
+                  }
+
+                  /// ✅ Set expand id
+                  notifier.expandRequest(correctionId);
+
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const MyCorrectionsScreen(),
+                    ),
+                  );
+
+                  return;
+                }
+              }
               if (notificationType == "LEAVE_STATUS_UPDATE" &&
                   data is Map<String, dynamic>) {
                 final leaveId = data["leaveRequestId"]?.toString();
@@ -260,20 +299,31 @@ class NotificationList extends ConsumerWidget {
     );
   }
 
-  /// ICON RESOLVER
   IconData _iconForType(String? type) {
     switch (type) {
-      case 'attendance_auto_closed':
-        return Icons.timer_off;
-
       case 'attendance_checkin':
         return Icons.login;
 
       case 'attendance_checkout':
         return Icons.logout;
 
+      case 'attendance_auto_closed':
+        return Icons.timer_off;
+
+      case 'attendance_correction_requested':
+        return Icons.edit_calendar;
+
       case 'LEAVE_REQUEST':
         return Icons.event_note;
+
+      case 'LEAVE_STATUS_UPDATE':
+        return Icons.check_circle;
+
+      case 'LEAVE_REVOCATION_REQUEST':
+        return Icons.warning;
+
+      case 'remote_work_requested':
+        return Icons.home_work;
 
       default:
         return Icons.notifications;

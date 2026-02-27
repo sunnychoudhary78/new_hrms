@@ -13,35 +13,42 @@ class LeaveTypeDropdown extends StatelessWidget {
     required this.onChanged,
   });
 
-  String formatLeave(double value) {
-    if (value == value.toInt()) {
-      return value.toInt().toString();
-    }
-    return value.toString();
-  }
-
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
 
     return DropdownButtonFormField<LeaveBalance>(
       value: selected,
+      isExpanded: true,
 
-      isExpanded: true, // important
-
-      decoration: const InputDecoration(
-        labelText: "Leave Type",
-        border: OutlineInputBorder(),
+      decoration: InputDecoration(
+        labelText: "Select Leave Type",
+        filled: true,
+        fillColor: scheme.surface,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
+        ),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: scheme.outlineVariant),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: scheme.primary, width: 1.5),
+        ),
       ),
 
       items: leaves.map((leave) {
         return DropdownMenuItem<LeaveBalance>(
           value: leave,
-
           child: Text(
-            "${leave.name} (${formatLeave(leave.available)} days)",
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(color: scheme.onSurface),
+            leave.name, // ✅ ONLY NAME
+            style: TextStyle(
+              fontWeight: FontWeight.w500,
+              color: scheme.onSurface,
+            ),
           ),
         );
       }).toList(),

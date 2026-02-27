@@ -136,6 +136,7 @@ class _AppDrawerState extends ConsumerState<AppDrawer>
                       subItems: [
                         _subItem("Mark Attendance", "/mark-attendance"),
                         _subItem("View Attendance", "/view-attendance"),
+                        _subItem("View Corrections", "/view-corrections"),
                         if (hasApprovePermission)
                           _subItem(
                             "Attendance Correction",

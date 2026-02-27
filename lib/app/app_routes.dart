@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lms/features/attendance/correction_attendance/presentation/screens/my_corrections_screen.dart';
 import 'package:lms/features/attendance/view_attendance/presentation/screens/view_attendance_screen.dart';
 import 'package:lms/features/auth/presentation/screens/change_password_screen.dart';
 import 'package:lms/features/auth/presentation/screens/forgot_passowrd_screen.dart';
@@ -31,6 +32,7 @@ class AppRoutes {
     '/leave-status': (_) => const LeaveStatusScreen(),
     '/mark-attendance': (_) => const MarkAttendanceScreen(),
     '/correct-attendance': (_) => const AttendanceCorrectionScreen(),
+    '/view-corrections': (_) => const MyCorrectionsScreen(),
     '/notifications': (_) => const NotificationScreen(),
     '/settings': (_) => const ThemeSettingsScreen(),
 
