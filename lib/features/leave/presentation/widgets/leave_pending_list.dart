@@ -30,15 +30,14 @@ class LeavePendingList extends StatelessWidget {
       onRefresh: onRefresh,
 
       child: ListView.builder(
-        padding: const EdgeInsets.all(16),
-
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
         itemCount: requests.length,
 
         itemBuilder: (_, index) {
           final request = requests[index];
 
           return Padding(
-            padding: const EdgeInsets.only(bottom: 14),
+            padding: const EdgeInsets.only(bottom: 12),
 
             child: LeaveApproveCard(
               request: request,

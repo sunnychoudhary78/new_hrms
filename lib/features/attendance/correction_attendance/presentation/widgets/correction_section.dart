@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lms/core/theme/app_design.dart';
 import '../../data/models/attendance_request_model.dart';
 import 'correction_mobile_card.dart';
 import 'correction_table.dart';
@@ -19,18 +20,21 @@ class CorrectionSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
     final items = requests.where((e) => e.type == type).toList();
     if (items.isEmpty) return const SizedBox.shrink();
 
     return Container(
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(20),
+        color: scheme.surface,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        border: Border.all(color: scheme.outline.withOpacity(.2)),
         boxShadow: [
           BoxShadow(
-            color: Theme.of(context).colorScheme.shadow.withOpacity(0.06),
-            blurRadius: 12,
-            offset: const Offset(0, 6),
+            color: scheme.shadow.withOpacity(.05),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
           ),
         ],
       ),

@@ -13,7 +13,7 @@ class LeaveBalanceTile extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
 
     final name = balance.name;
-    final available = balance.available;
+    final available = balance.available < 0 ? 0.0 : balance.available;
     final carried = balance.carried;
     final reserved = balance.pendingReserved;
 
@@ -22,7 +22,7 @@ class LeaveBalanceTile extends StatelessWidget {
     return InkWell(
       borderRadius: BorderRadius.circular(18),
       onTap: () {
-        if (available <= 0) {
+        if (available <= 0 && !balance.allowNegativeBalance) {
           showDialog(
             context: context,
             builder: (_) => AlertDialog(
@@ -166,8 +166,10 @@ class _MetaText extends StatelessWidget {
 }
 
 String formatDays(double value) {
-  if (value % 1 == 0) {
-    return value.toStringAsFixed(0); // whole number
+  final safeValue = value < 0 ? 0.0 : value;
+
+  if (safeValue % 1 == 0) {
+    return safeValue.toStringAsFixed(0);
   }
-  return value.toStringAsFixed(1); // decimal like 0.5
+  return safeValue.toStringAsFixed(1);
 }

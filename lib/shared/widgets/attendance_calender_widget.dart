@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
 
 typedef AttendanceStatusResolver = String? Function(DateTime day);
+typedef AttendanceBoolResolver = bool Function(DateTime day);
 
 class AttendanceCalendarWidget extends StatelessWidget {
   final DateTime focusedDay;
@@ -9,6 +10,8 @@ class AttendanceCalendarWidget extends StatelessWidget {
   final Function(DateTime selectedDay, DateTime focusedDay) onDaySelected;
   final Function(DateTime focusedDay)? onPageChanged;
   final AttendanceStatusResolver statusResolver;
+  final AttendanceBoolResolver? hasSelfie;
+  final AttendanceBoolResolver? hasLocation;
 
   const AttendanceCalendarWidget({
     super.key,
@@ -17,6 +20,8 @@ class AttendanceCalendarWidget extends StatelessWidget {
     required this.onDaySelected,
     required this.statusResolver,
     this.onPageChanged,
+    this.hasSelfie,
+    this.hasLocation,
   });
 
   /// Premium status colors
@@ -136,7 +141,13 @@ class AttendanceCalendarWidget extends StatelessWidget {
 
             final color = _statusColor(status, scheme);
 
-            return _DayCell(day: day, color: color, scheme: scheme);
+            return _DayCell(
+              day: day,
+              color: color,
+              scheme: scheme,
+              hasSelfie: hasSelfie?.call(day) ?? false,
+              hasLocation: hasLocation?.call(day) ?? false,
+            );
           },
 
           todayBuilder: (context, day, _) {
@@ -182,11 +193,15 @@ class _DayCell extends StatelessWidget {
   final DateTime day;
   final Color color;
   final ColorScheme scheme;
+  final bool hasSelfie;
+  final bool hasLocation;
 
   const _DayCell({
     required this.day,
     required this.color,
     required this.scheme,
+    required this.hasSelfie,
+    required this.hasLocation,
   });
 
   @override
@@ -204,9 +219,35 @@ class _DayCell extends StatelessWidget {
               color: color.withOpacity(.22),
             ),
           ),
-          Text(
-            "${day.day}",
-            style: TextStyle(fontWeight: FontWeight.w600, color: color),
+
+          Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                "${day.day}",
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: color,
+                  fontSize: 12,
+                ),
+              ),
+
+              if (hasSelfie || hasLocation) const SizedBox(height: 2),
+
+              if (hasSelfie || hasLocation)
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    if (hasSelfie)
+                      Icon(Icons.camera_alt, size: 8, color: color),
+
+                    if (hasSelfie && hasLocation) const SizedBox(width: 2),
+
+                    if (hasLocation)
+                      Icon(Icons.location_pin, size: 8, color: color),
+                  ],
+                ),
+            ],
           ),
         ],
       ),

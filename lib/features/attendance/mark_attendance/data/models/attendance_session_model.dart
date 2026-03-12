@@ -9,6 +9,11 @@ class AttendanceSession {
   final String source;
   final bool remoteRequested;
   final String? remoteReason;
+  final String? checkInSelfie;
+  final String? checkOutSelfie;
+
+  final double? lat;
+  final double? lng;
 
   AttendanceSession({
     required this.id,
@@ -19,6 +24,10 @@ class AttendanceSession {
     required this.source,
     required this.remoteRequested,
     this.remoteReason,
+    this.checkInSelfie,
+    this.checkOutSelfie,
+    this.lat,
+    this.lng,
   });
 
   static int _asInt(dynamic v) {
@@ -90,20 +99,17 @@ class AttendanceSession {
 
     return AttendanceSession(
       id: json['id']?.toString() ?? '',
-
       checkInTime: parseDate(json['checkInTime']),
-
       checkOutTime: parseNullableDate(json['checkOutTime']),
-
       date: _asString(json['date']),
-
       durationMinutes: _asInt(json['durationMinutes']),
-
       source: json['source']?.toString() ?? '',
-
       remoteRequested: json['remoteRequested'] == true,
-
       remoteReason: json['remoteReason']?.toString(),
+      checkInSelfie: json['checkInSelfie']?.toString(),
+      checkOutSelfie: json['checkOutSelfie']?.toString(),
+      lat: json['location']?['lat']?.toDouble(),
+      lng: json['location']?['lng']?.toDouble(),
     );
   }
 }

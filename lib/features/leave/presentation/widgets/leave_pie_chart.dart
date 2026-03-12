@@ -11,7 +11,25 @@ class LeavePieChart extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final totalAvailable = leaves.fold<double>(0, (s, l) => s + l.available);
+
+    // 🔥 Clamp negative values to 0 for display
+    final sanitizedLeaves = leaves
+        .map((l) => l.available < 0 ? 0.0 : l.available)
+        .toList();
+
+    final totalAvailable = sanitizedLeaves.fold<double>(0, (s, v) => s + v);
+
+    if (totalAvailable <= 0) {
+      return Card(
+        elevation: 6,
+        color: scheme.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        child: const SizedBox(
+          height: 280,
+          child: Center(child: Text("No leave balance available")),
+        ),
+      );
+    }
 
     return Card(
       elevation: 6,
@@ -29,24 +47,26 @@ class LeavePieChart extends StatelessWidget {
                   sectionsSpace: 4,
                   centerSpaceRadius: 90,
                   startDegreeOffset: -90,
-                  sections: leaves.map((l) {
-                    final percent = (l.available / totalAvailable) * 100;
+                  sections: List.generate(leaves.length, (index) {
+                    final leave = leaves[index];
+                    final value = leave.available < 0 ? 0.0 : leave.available;
+
+                    final percent = (value / totalAvailable) * 100;
 
                     return PieChartSectionData(
-                      value: l.available,
-                      color: LeaveColorMapper.colorFor(l.name),
+                      value: value,
+                      color: LeaveColorMapper.colorFor(leave.name),
                       radius: 40,
-                      title: '${percent.toStringAsFixed(0)}%',
+                      title: value == 0 ? "" : '${percent.toStringAsFixed(0)}%',
                       titleStyle: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
                         color: scheme.onPrimary,
                       ),
                     );
-                  }).toList(),
+                  }),
                 ),
               ),
-
               Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [

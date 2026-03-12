@@ -16,23 +16,8 @@ class ApiService {
       debugPrint("✅ POST success | status=${response.statusCode}");
       return _handle(response);
     } on DioException catch (e) {
-      debugPrint("❌ POST failed | endpoint=$endpoint");
-      debugPrint("❌ Status: ${e.response?.statusCode}");
-      debugPrint("❌ Response: ${e.response?.data}");
-
-      String message = "Something went wrong";
-
-      if (e.response?.data is Map) {
-        final data = e.response!.data as Map;
-
-        if (data['message'] != null) {
-          message = data['message'].toString();
-        } else if (data['error'] != null) {
-          message = data['error'].toString();
-        }
-      }
-
-      throw Exception(message);
+      _logError("POST", endpoint, e);
+      throw _extractException(e);
     }
   }
 
@@ -42,6 +27,7 @@ class ApiService {
     Map<String, dynamic>? queryParams,
   }) async {
     debugPrint("🌐 GET ${_dio.options.baseUrl}$endpoint");
+
     if (queryParams != null) {
       debugPrint("📦 QUERY: $queryParams");
     }
@@ -51,23 +37,8 @@ class ApiService {
       debugPrint("✅ GET success | status=${response.statusCode}");
       return _handle(response);
     } on DioException catch (e) {
-      debugPrint("❌ POST failed | endpoint=$endpoint");
-      debugPrint("❌ Status: ${e.response?.statusCode}");
-      debugPrint("❌ Response: ${e.response?.data}");
-
-      String message = "Something went wrong";
-
-      if (e.response?.data is Map) {
-        final data = e.response!.data as Map;
-
-        if (data['message'] != null) {
-          message = data['message'].toString();
-        } else if (data['error'] != null) {
-          message = data['error'].toString();
-        }
-      }
-
-      throw Exception(message);
+      _logError("GET", endpoint, e);
+      throw _extractException(e);
     }
   }
 
@@ -81,23 +52,8 @@ class ApiService {
       debugPrint("✅ PATCH success | status=${response.statusCode}");
       return _handle(response);
     } on DioException catch (e) {
-      debugPrint("❌ POST failed | endpoint=$endpoint");
-      debugPrint("❌ Status: ${e.response?.statusCode}");
-      debugPrint("❌ Response: ${e.response?.data}");
-
-      String message = "Something went wrong";
-
-      if (e.response?.data is Map) {
-        final data = e.response!.data as Map;
-
-        if (data['message'] != null) {
-          message = data['message'].toString();
-        } else if (data['error'] != null) {
-          message = data['error'].toString();
-        }
-      }
-
-      throw Exception(message);
+      _logError("PATCH", endpoint, e);
+      throw _extractException(e);
     }
   }
 
@@ -111,29 +67,34 @@ class ApiService {
         data: formData,
         options: Options(contentType: 'multipart/form-data'),
       );
+
       debugPrint("✅ MULTIPART success | status=${response.statusCode}");
+
       return _handle(response);
     } on DioException catch (e) {
-      debugPrint("❌ POST failed | endpoint=$endpoint");
-      debugPrint("❌ Status: ${e.response?.statusCode}");
-      debugPrint("❌ Response: ${e.response?.data}");
-
-      String message = "Something went wrong";
-
-      if (e.response?.data is Map) {
-        final data = e.response!.data as Map;
-
-        if (data['message'] != null) {
-          message = data['message'].toString();
-        } else if (data['error'] != null) {
-          message = data['error'].toString();
-        }
-      }
-
-      throw Exception(message);
+      _logError("POST MULTIPART", endpoint, e);
+      throw _extractException(e);
     }
   }
 
+  // ───────── DELETE ─────────
+  Future<dynamic> delete(String endpoint, Map<String, dynamic> data) async {
+    debugPrint("🌐 DELETE ${_dio.options.baseUrl}$endpoint");
+    debugPrint("📦 BODY: $data");
+
+    try {
+      final response = await _dio.delete(endpoint, data: data);
+
+      debugPrint("✅ DELETE success | status=${response.statusCode}");
+
+      return _handle(response);
+    } on DioException catch (e) {
+      _logError("DELETE", endpoint, e);
+      throw _extractException(e);
+    }
+  }
+
+  // ───────── RESPONSE HANDLER ─────────
   dynamic _handle(Response response) {
     final code = response.statusCode ?? 0;
 
@@ -149,34 +110,44 @@ class ApiService {
     );
   }
 
-  Future<dynamic> delete(String endpoint, Map<String, dynamic> data) async {
-    debugPrint("🌐 DELETE ${_dio.options.baseUrl}$endpoint");
-    debugPrint("📦 BODY: $data");
+  // ───────── ERROR LOGGER ─────────
+  void _logError(String method, String endpoint, DioException e) {
+    debugPrint("❌ $method failed | endpoint=$endpoint");
+    debugPrint("❌ Status: ${e.response?.statusCode}");
+    debugPrint("❌ Response: ${e.response?.data}");
+    debugPrint("❌ DioType: ${e.type}");
+  }
 
-    try {
-      final response = await _dio.delete(endpoint, data: data);
+  // ───────── ERROR PARSER ─────────
+  Exception _extractException(DioException e) {
+    if (e.response != null) {
+      final data = e.response!.data;
 
-      debugPrint("✅ DELETE success | status=${response.statusCode}");
-
-      return _handle(response);
-    } on DioException catch (e) {
-      debugPrint("❌ POST failed | endpoint=$endpoint");
-      debugPrint("❌ Status: ${e.response?.statusCode}");
-      debugPrint("❌ Response: ${e.response?.data}");
-
-      String message = "Something went wrong";
-
-      if (e.response?.data is Map) {
-        final data = e.response!.data as Map;
-
+      if (data is Map) {
         if (data['message'] != null) {
-          message = data['message'].toString();
-        } else if (data['error'] != null) {
-          message = data['error'].toString();
+          return Exception(data['message']);
+        }
+
+        if (data['error'] != null) {
+          return Exception(data['error']);
         }
       }
-
-      throw Exception(message);
     }
+
+    if (e.type == DioExceptionType.connectionTimeout ||
+        e.type == DioExceptionType.receiveTimeout) {
+      return Exception("Connection timeout");
+    }
+
+    if (e.type == DioExceptionType.connectionError) {
+      return Exception("No internet connection");
+    }
+
+    // 🔥 THIS IS IMPORTANT
+    if (e.response == null) {
+      return Exception("SESSION_OR_NETWORK_ERROR");
+    }
+
+    return Exception("Something went wrong");
   }
 }

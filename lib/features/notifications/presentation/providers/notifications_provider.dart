@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lms/core/providers/notification_api_providers.dart';
+import 'package:lms/features/auth/presentation/providers/auth_provider.dart';
 
 /// 🔔 Main Notification Provider
 final notificationProvider =
@@ -11,6 +12,13 @@ final notificationProvider =
 class NotificationNotifier extends AsyncNotifier<List<Map<String, dynamic>>> {
   @override
   Future<List<Map<String, dynamic>>> build() async {
+    final auth = ref.watch(authProvider);
+
+    /// ⛔ STOP provider until login finishes
+    if (auth.profile == null) {
+      throw Exception("User not logged in yet");
+    }
+
     final api = ref.read(notificationApiServiceProvider);
     return api.fetchMyNotifications();
   }

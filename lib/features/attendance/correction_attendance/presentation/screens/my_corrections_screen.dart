@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lms/core/theme/app_design.dart';
 import 'package:lms/features/attendance/correction_attendance/presentation/providers/my_corrections_provider.dart';
 import 'package:lms/features/attendance/correction_attendance/presentation/widgets/status_filter_pills.dart';
 import 'package:lms/features/home/presentation/widgets/app_drawer.dart';
@@ -33,7 +34,12 @@ class MyCorrectionsScreen extends ConsumerWidget {
               await ref.read(myCorrectionsProvider.notifier).fetchCorrections();
             },
             child: ListView(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.md,
+                AppSpacing.md,
+                AppSpacing.md,
+                AppSpacing.xl,
+              ),
               children: [
                 /// ALWAYS SHOW FILTER PILLS
                 StatusFilterPills(
@@ -45,7 +51,7 @@ class MyCorrectionsScreen extends ConsumerWidget {
                   },
                 ),
 
-                const SizedBox(height: 20),
+                const SizedBox(height: AppSpacing.lg),
 
                 /// EMPTY STATE
                 if (requests.isEmpty)

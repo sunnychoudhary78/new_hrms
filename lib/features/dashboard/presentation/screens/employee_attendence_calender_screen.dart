@@ -87,8 +87,8 @@ class _EmployeeAttendanceCalendarScreenState
     );
 
     return Scaffold(
+      appBar: AppAppBar(title: "View Attendance"),
       backgroundColor: scheme.surfaceContainerLowest,
-      appBar: AppAppBar(title: widget.employee.name),
 
       body: attendanceAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),

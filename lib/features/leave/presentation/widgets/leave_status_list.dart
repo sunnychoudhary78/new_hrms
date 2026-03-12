@@ -70,9 +70,10 @@ class _LeaveStatusListState extends State<LeaveStatusList> {
         itemBuilder: (context, index) {
           final leave = widget.leaves[index];
 
-          final dates = leave.approvedDates.isNotEmpty
-              ? leave.approvedDates
-              : leave.requestedDates;
+          final canRevoke =
+              leave.status == "Pending" ||
+              leave.status == "Approved" ||
+              leave.status == "PartiallyApproved";
 
           final shouldExpand = leave.id == widget.expandLeaveId;
 
@@ -81,9 +82,7 @@ class _LeaveStatusListState extends State<LeaveStatusList> {
             child: LeaveStatusCard(
               leave: leave,
               isInitiallyExpanded: shouldExpand,
-              onRevoke: dates.isEmpty
-                  ? null
-                  : () => widget.onRevoke(leave.id, dates),
+              onRevoke: canRevoke ? () => widget.onRevoke(leave.id, []) : null,
             ),
           );
         },

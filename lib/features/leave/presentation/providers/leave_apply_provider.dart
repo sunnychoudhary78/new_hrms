@@ -1,6 +1,6 @@
 import 'dart:io';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lms/core/providers/global_loading_provider.dart';
 import '../../../../core/providers/network_providers.dart';
 import '../../data/leave_apply_api_service.dart';
 
@@ -9,42 +9,50 @@ final leaveApplyApiProvider = Provider<LeaveApplyApiService>((ref) {
   return LeaveApplyApiService(api);
 });
 
-final leaveApplyProvider = AsyncNotifierProvider<LeaveApplyNotifier, void>(
-  LeaveApplyNotifier.new,
-);
+enum LeaveApplyStatus { idle, loading, success, error }
 
-class LeaveApplyNotifier extends AsyncNotifier<void> {
+final leaveApplyProvider =
+    NotifierProvider<LeaveApplyNotifier, LeaveApplyStatus>(
+      LeaveApplyNotifier.new,
+    );
+
+class LeaveApplyNotifier extends Notifier<LeaveApplyStatus> {
+  String? errorMessage;
+
   @override
-  Future<void> build() async {}
+  LeaveApplyStatus build() {
+    return LeaveApplyStatus.idle;
+  }
 
   Future<void> submitLeave({
     required Map<String, dynamic> data,
     File? document,
   }) async {
+    if (state == LeaveApplyStatus.loading) return;
+
     final api = ref.read(leaveApplyApiProvider);
+    final overlay = ref.read(globalLoadingProvider.notifier);
 
-    debugPrint("🚀 LeaveApplyNotifier.submitLeave called");
-    debugPrint("📦 Data: $data");
-    debugPrint("📄 Document: ${document?.path}");
+    state = LeaveApplyStatus.loading;
 
-    state = const AsyncLoading();
+    overlay.showLoading("Submitting leave request...");
 
     try {
-      final response = await api.sendLeaveRequestWithDocument(
-        data: data,
-        document: document,
-      );
+      await api.sendLeaveRequestWithDocument(data: data, document: document);
 
-      debugPrint("✅ Leave apply success");
-      debugPrint("📦 Response: $response");
+      state = LeaveApplyStatus.success;
 
-      state = const AsyncData(null);
-    } catch (e, st) {
-      debugPrint("❌ LeaveApplyNotifier error: $e");
+      overlay.showSuccess("Leave applied successfully 🎉");
 
-      state = AsyncError(e, st);
+      state = LeaveApplyStatus.idle;
+    } catch (e) {
+      errorMessage = e.toString();
 
-      throw Exception(e.toString().replaceAll("Exception: ", ""));
+      state = LeaveApplyStatus.error;
+
+      overlay.showError(errorMessage ?? "Failed to apply leave");
+
+      state = LeaveApplyStatus.idle;
     }
   }
 }

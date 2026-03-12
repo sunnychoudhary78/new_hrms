@@ -1,10 +1,13 @@
 import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lms/core/network/api_constants.dart';
+import 'package:lms/core/providers/global_actions_provider.dart';
 import 'package:lms/core/providers/network_providers.dart';
+import 'package:lms/features/home/presentation/providers/home_dashboard_proovider.dart';
 import 'package:lms/features/leave/presentation/providers/leave_approve_provider.dart';
 import 'package:lms/features/notifications/presentation/providers/notifications_provider.dart';
 import 'package:lms/main.dart';
+
 import '../../../../core/storage/token_storage.dart';
 import '../../data/auth_api_service.dart';
 import 'auth_state.dart';
@@ -26,80 +29,73 @@ class AuthNotifier extends Notifier<AuthState> {
     return const AuthState();
   }
 
-  // ─────────────────────────────────────────────
-  // 🔁 AUTO LOGIN
-  // ─────────────────────────────────────────────
+  // ───────────────── AUTO LOGIN ─────────────────
 
   Future<void> tryAutoLogin() async {
     final jwt = await _tokenStorage.getJwt();
-    if (jwt == null || jwt.isEmpty) return;
+
+    if (jwt == null || jwt.isEmpty) {
+      state = const AuthState(isLoading: false);
+      return;
+    }
 
     try {
-      state = state.copyWith(isLoading: true);
+      state = state.copyWith(isLoading: true, isSubscriptionExpired: false);
 
       final profileJson = await _authApi.fetchProfile();
+
+      if (_isSubscriptionExpired(profileJson)) {
+        forceSubscriptionExpired();
+        return;
+      }
+
       final profile = Userdetails.fromJson(profileJson);
-
-      print("🏢 RAW company object: ${profileJson['company']}");
-      print("🏢 logo_filename raw: ${profile.companyLogoFilename}");
-
-      final companyLogoUrl = profile.companyLogoFilename != null
-          ? ApiConstants.companyLogoBaseUrl + profile.companyLogoFilename!
-          : '';
-
-      print("🏢 FINAL companyLogoUrl: $companyLogoUrl");
-
       final permissions = await _authApi.fetchPermissions();
 
       state = state.copyWith(
         isLoading: false,
         profile: profile,
         permissions: permissions,
-
         profileUrl: profile.profilePicture != null
             ? ApiConstants.imageBaseUrl + profile.profilePicture!
             : '',
-
         companyLogoUrl: profile.companyLogoFilename != null
             ? ApiConstants.companyLogoBaseUrl + profile.companyLogoFilename!
             : '',
       );
 
-      // 🔔 REGISTER FCM TOKEN (AUTO LOGIN)
       await _registerFcmIfAvailable();
-    } catch (_) {
+    } catch (e) {
+      final message = e.toString().toLowerCase();
+
+      if (message.contains("expired") || message.contains("402")) {
+        forceSubscriptionExpired();
+        return;
+      }
+
       await _tokenStorage.clear();
-      state = const AuthState();
+      state = const AuthState(isLoading: false);
     }
   }
 
-  // ─────────────────────────────────────────────
-  // 🔐 LOGIN
-  // ─────────────────────────────────────────────
+  // ───────────────── LOGIN ─────────────────
 
   Future<void> login(String email, String password) async {
-    state = state.copyWith(isLoading: true);
+    state = state.copyWith(isLoading: true, isSubscriptionExpired: false);
 
     try {
       final userModel = await _authApi.login(email, password);
+
       await _tokenStorage.saveJwt(userModel.token);
 
-      ref.invalidate(notificationProvider);
-      ref.invalidate(unreadCountProvider);
-      ref.invalidate(leaveApproveProvider);
-
       final profileJson = await _authApi.fetchProfile();
+
+      if (_isSubscriptionExpired(profileJson)) {
+        forceSubscriptionExpired();
+        return;
+      }
+
       final profile = Userdetails.fromJson(profileJson);
-
-      print("🏢 RAW company object: ${profileJson['company']}");
-      print("🏢 logo_filename raw: ${profile.companyLogoFilename}");
-
-      final companyLogoUrl = profile.companyLogoFilename != null
-          ? ApiConstants.companyLogoBaseUrl + profile.companyLogoFilename!
-          : '';
-
-      print("🏢 FINAL companyLogoUrl: $companyLogoUrl");
-
       final permissions = await _authApi.fetchPermissions();
 
       state = state.copyWith(
@@ -107,35 +103,62 @@ class AuthNotifier extends Notifier<AuthState> {
         authUser: userModel.user,
         profile: profile,
         permissions: permissions,
-
         profileUrl: profile.profilePicture != null
             ? ApiConstants.imageBaseUrl + profile.profilePicture!
             : '',
-
         companyLogoUrl: profile.companyLogoFilename != null
             ? ApiConstants.companyLogoBaseUrl + profile.companyLogoFilename!
             : '',
       );
 
-      // 🔔 REGISTER FCM TOKEN (LOGIN)
       await _registerFcmIfAvailable();
-    } catch (_) {
+    } catch (e) {
       state = state.copyWith(isLoading: false);
-      rethrow;
+
+      final error = e.toString().toLowerCase();
+
+      if (error.contains("expired") || error.contains("402")) {
+        forceSubscriptionExpired();
+        return;
+      }
+
+      if (error.contains("invalid") || error.contains("password")) {
+        ref
+            .read(globalActionProvider.notifier)
+            .error("Invalid email or password");
+        return;
+      }
+
+      ref
+          .read(globalActionProvider.notifier)
+          .error("Unable to load account data");
     }
   }
 
-  // ─────────────────────────────────────────────
-  // 🔑 FORGOT PASSWORD (SEND OTP)
-  // ─────────────────────────────────────────────
+  // ───────────────── SUBSCRIPTION CHECK ─────────────────
+
+  bool _isSubscriptionExpired(Map<String, dynamic> profileJson) {
+    try {
+      final endDateStr = profileJson['company']?['subscription_end_date'];
+
+      if (endDateStr == null) return false;
+
+      final endDate = DateTime.parse(endDateStr).toLocal();
+      final now = DateTime.now();
+
+      return now.isAfter(endDate);
+    } catch (_) {
+      return false;
+    }
+  }
+
+  // ───────────────── FORGOT PASSWORD ─────────────────
 
   Future<void> forgotPassword(String email) async {
     state = state.copyWith(isLoading: true);
 
     try {
       await _authApi.forgotPassword(email);
-    } catch (_) {
-      rethrow;
     } finally {
       state = state.copyWith(isLoading: false);
     }
@@ -154,16 +177,12 @@ class AuthNotifier extends Notifier<AuthState> {
         otp: otp,
         newPassword: newPassword,
       );
-    } catch (_) {
-      rethrow;
     } finally {
       state = state.copyWith(isLoading: false);
     }
   }
 
-  // ─────────────────────────────────────────────
-  // 🔑 CHANGE PASSWORD
-  // ─────────────────────────────────────────────
+  // ───────────────── CHANGE PASSWORD ─────────────────
 
   Future<void> changePassword({
     required String currentPassword,
@@ -183,13 +202,7 @@ class AuthNotifier extends Notifier<AuthState> {
     }
   }
 
-  // ─────────────────────────────────────────────
-  // 🖼️ UPDATE PROFILE IMAGE
-  // ─────────────────────────────────────────────
-
-  // ─────────────────────────────────────────────
-  // 🖼️ Upload profile image
-  // ─────────────────────────────────────────────
+  // ───────────────── PROFILE IMAGE ─────────────────
 
   Future<void> uploadProfileImage(File file) async {
     try {
@@ -197,21 +210,17 @@ class AuthNotifier extends Notifier<AuthState> {
 
       await _authApi.uploadProfileImage(file);
 
-      // refresh profile
       final profileJson = await _authApi.fetchProfile();
       final profile = Userdetails.fromJson(profileJson);
 
       state = state.copyWith(
         profile: profile,
-
         profileUrl: profile.profilePicture != null
             ? ApiConstants.imageBaseUrl + profile.profilePicture!
             : '',
-
         companyLogoUrl: profile.companyLogoFilename != null
             ? ApiConstants.companyLogoBaseUrl + profile.companyLogoFilename!
             : '',
-
         isLoading: false,
       );
     } catch (e) {
@@ -220,14 +229,16 @@ class AuthNotifier extends Notifier<AuthState> {
     }
   }
 
-  // ─────────────────────────────────────────────
-  // 🚪 LOGOUT
-  // ─────────────────────────────────────────────
+  // ───────────────── LOGOUT ─────────────────
 
   Future<void> logout() async {
+    final jwt = await _tokenStorage.getJwt();
     final fcmToken = await _tokenStorage.getFcm();
 
-    if (fcmToken != null && fcmToken.isNotEmpty) {
+    if (jwt != null &&
+        jwt.isNotEmpty &&
+        fcmToken != null &&
+        fcmToken.isNotEmpty) {
       try {
         await _authApi.unregisterFcmToken(fcmToken: fcmToken);
       } catch (_) {}
@@ -241,29 +252,36 @@ class AuthNotifier extends Notifier<AuthState> {
 
     state = const AuthState();
 
-    /// 🔥 Proper full Riverpod reset
     Root.restartApp();
   }
 
-  // ─────────────────────────────────────────────
-  // 🔔 HELPERS
-  // ─────────────────────────────────────────────
+  // ───────────────── SUBSCRIPTION STATE ─────────────────
+
+  void forceSubscriptionExpired() {
+    ref.invalidate(notificationProvider);
+    ref.invalidate(homeDashboardProvider);
+    ref.invalidate(leaveApproveProvider);
+
+    state = const AuthState(isLoading: false, isSubscriptionExpired: true);
+  }
+
+  void resetSubscriptionExpired() {
+    state = const AuthState(isLoading: false);
+  }
+
+  // ───────────────── FCM HELPERS ─────────────────
 
   Future<void> _registerFcmIfAvailable() async {
     final fcmToken = await _tokenStorage.getFcm();
 
-    if (fcmToken == null || fcmToken.isEmpty) {
-      return;
-    }
+    if (fcmToken == null || fcmToken.isEmpty) return;
 
     try {
       await _authApi.registerFcmToken(
         fcmToken: fcmToken,
         platform: Platform.isIOS ? 'ios' : 'android',
       );
-    } catch (_) {
-      // backend failure should NOT break login
-    }
+    } catch (_) {}
   }
 
   Future<void> registerFcmTokenIfNeeded() async {

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:lms/core/providers/global_actions_provider.dart';
 import '../providers/auth_provider.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -40,6 +41,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final authState = ref.watch(authProvider);
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
+
+    ref.listen(globalActionProvider, (previous, next) {
+      if (next == null) return;
+
+      if (next.type == GlobalActionType.error) {
+        _showSnack(next.message);
+      }
+    });
 
     final size = MediaQuery.of(context).size;
     final bool isWide = size.width > 600;
@@ -247,14 +256,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       return;
     }
 
-    try {
-      await ref.read(authProvider.notifier).login(emailOrEmpId, password);
+    /// 🔴 VERY IMPORTANT
+    /// Reset expired state before attempting login again
+    ref.read(authProvider.notifier).resetSubscriptionExpired();
 
-      // ✅ Do not navigate manually
-      // AppRoot will rebuild and show HomeScreen automatically
-    } catch (_) {
-      _showSnack("Login failed. Check credentials");
-    }
+    await ref.read(authProvider.notifier).login(emailOrEmpId, password);
   }
 
   Widget _label(BuildContext context, String t) {

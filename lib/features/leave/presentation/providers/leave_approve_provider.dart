@@ -34,14 +34,12 @@ class LeaveApproveNotifier extends AsyncNotifier<List<ManagerLeaveRequest>> {
     state = AsyncData(await build());
   }
 
-  /// APPROVE
   Future<void> approve(
     String id,
     String? comment,
     List<Map<String, dynamic>> dates,
   ) async {
     final api = ref.read(leaveApproveApiProvider);
-
     final loader = ref.read(globalLoadingProvider.notifier);
 
     try {
@@ -57,10 +55,8 @@ class LeaveApproveNotifier extends AsyncNotifier<List<ManagerLeaveRequest>> {
     }
   }
 
-  /// REJECT
   Future<void> reject(String id, String? comment) async {
     final api = ref.read(leaveApproveApiProvider);
-
     final loader = ref.read(globalLoadingProvider.notifier);
 
     try {

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 class SubmitButton extends StatelessWidget {
   final bool isLoading;
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
 
   const SubmitButton({
     super.key,
@@ -28,8 +28,8 @@ class SubmitButton extends StatelessWidget {
         ),
         child: isLoading
             ? SizedBox(
-                height: 22,
-                width: 22,
+                height: 20,
+                width: 20,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
                   color: scheme.onPrimary,

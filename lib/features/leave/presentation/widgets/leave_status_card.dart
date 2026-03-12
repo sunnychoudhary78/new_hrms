@@ -1,14 +1,11 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-
 import 'package:lms/features/leave/data/models/leave_status_model.dart';
 import 'package:lms/features/leave/presentation/providers/leave_details_provider.dart';
 import 'package:lms/features/leave/presentation/widgets/leave_timeline_widget.dart';
-
 import 'package:lms/core/widgets/status_badge.dart';
+import 'package:lms/core/theme/app_design.dart';
 
 class LeaveStatusCard extends ConsumerStatefulWidget {
   final LeaveStatus leave;
@@ -41,7 +38,7 @@ class _LeaveStatusCardState extends ConsumerState<LeaveStatusCard>
 
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 400),
+      duration: const Duration(milliseconds: 300),
     );
 
     _expandAnim = CurvedAnimation(
@@ -49,9 +46,7 @@ class _LeaveStatusCardState extends ConsumerState<LeaveStatusCard>
       curve: Curves.easeOutCubic,
     );
 
-    if (expanded) {
-      _controller.forward();
-    }
+    if (expanded) _controller.forward();
   }
 
   @override
@@ -63,13 +58,13 @@ class _LeaveStatusCardState extends ConsumerState<LeaveStatusCard>
   Color _statusColor(String status, ColorScheme scheme) {
     switch (status.toLowerCase()) {
       case 'approved':
-        return const Color(0xFF22C55E);
+        return scheme.primary;
       case 'rejected':
-        return const Color(0xFFEF4444);
+        return scheme.error;
       case 'pending':
-        return const Color(0xFFF59E0B);
+        return scheme.tertiary;
       case 'revoked':
-        return const Color(0xFF64748B);
+        return scheme.outline;
       default:
         return scheme.primary;
     }
@@ -82,233 +77,209 @@ class _LeaveStatusCardState extends ConsumerState<LeaveStatusCard>
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-
     final leave = widget.leave;
-
     final statusColor = _statusColor(leave.status, scheme);
 
     return AnimatedContainer(
-      duration: const Duration(milliseconds: 350),
-
-      margin: const EdgeInsets.symmetric(vertical: 8),
-
+      duration: const Duration(milliseconds: 250),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
-
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            scheme.surface.withOpacity(0.9),
-            scheme.surfaceContainerHighest.withOpacity(0.4),
-          ],
+        color: scheme.surface,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        border: Border.all(
+          color: expanded
+              ? scheme.primary.withOpacity(0.4)
+              : scheme.outline.withOpacity(0.2),
         ),
-
         boxShadow: [
           BoxShadow(
-            color: statusColor.withOpacity(expanded ? 0.25 : 0.08),
-            blurRadius: expanded ? 30 : 12,
-            spreadRadius: expanded ? 1 : 0,
-            offset: const Offset(0, 10),
+            color: scheme.shadow.withOpacity(0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
           ),
         ],
-
-        border: Border.all(
-          color: statusColor.withOpacity(expanded ? 0.5 : 0.15),
-          width: expanded ? 1.5 : 1,
-        ),
       ),
-
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(24),
-
-        child: BackdropFilter(
-          filter: ImageFilter.blur(
-            sigmaX: expanded ? 6 : 2,
-            sigmaY: expanded ? 6 : 2,
-          ),
-
-          child: Theme(
-            data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-
-            child: ExpansionTile(
-              initiallyExpanded: expanded,
-
-              tilePadding: const EdgeInsets.all(20),
-
-              childrenPadding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-
-              onExpansionChanged: (v) {
-                setState(() => expanded = v);
-
-                if (v) {
-                  _controller.forward();
-                } else {
-                  _controller.reverse();
-                }
-              },
-
-              title: Row(
-                children: [
-                  /// STATUS INDICATOR
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 300),
-
-                    width: expanded ? 14 : 10,
-                    height: expanded ? 14 : 10,
-
-                    decoration: BoxDecoration(
-                      color: statusColor,
-                      shape: BoxShape.circle,
-
-                      boxShadow: [
-                        BoxShadow(
-                          color: statusColor.withOpacity(0.7),
-                          blurRadius: expanded ? 16 : 6,
-                          spreadRadius: expanded ? 2 : 0,
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(width: 14),
-
-                  /// TYPE
-                  Expanded(
-                    child: Text(
-                      leave.leaveType ?? "Leave",
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: scheme.onSurface,
-                        letterSpacing: 0.2,
-                      ),
-                    ),
-                  ),
-
-                  /// STATUS CHIP
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 300),
-
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 6,
-                    ),
-
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          statusColor.withOpacity(0.15),
-                          statusColor.withOpacity(0.05),
-                        ],
-                      ),
-
-                      borderRadius: BorderRadius.circular(30),
-
-                      border: Border.all(color: statusColor.withOpacity(0.4)),
-                    ),
-
-                    child: Text(
-                      leave.status.toUpperCase(),
-                      style: TextStyle(
-                        color: statusColor,
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        child: Theme(
+          data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+          child: ExpansionTile(
+            initiallyExpanded: expanded,
+            tilePadding: const EdgeInsets.all(AppSpacing.md),
+            childrenPadding: const EdgeInsets.fromLTRB(
+              AppSpacing.md,
+              0,
+              AppSpacing.md,
+              AppSpacing.md,
+            ),
+            onExpansionChanged: (v) {
+              setState(() => expanded = v);
+              v ? _controller.forward() : _controller.reverse();
+            },
+            title: Row(
               children: [
-                SizeTransition(
-                  sizeFactor: _expandAnim,
+                /// STATUS DOT
+                Container(
+                  width: 10,
+                  height: 10,
+                  decoration: BoxDecoration(
+                    color: statusColor,
+                    shape: BoxShape.circle,
+                  ),
+                ),
 
-                  child: Consumer(
-                    builder: (context, ref, _) {
-                      final detailsAsync = ref.watch(
-                        leaveDetailsProvider(widget.leave.id),
-                      );
+                const SizedBox(width: AppSpacing.sm),
 
-                      return detailsAsync.when(
-                        loading: () => const _PremiumShimmer(),
+                /// LEAVE TYPE
+                Expanded(
+                  child: Text(
+                    leave.leaveType ?? "Leave",
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
 
-                        error: (e, _) => Padding(
-                          padding: const EdgeInsets.all(20),
-                          child: Text(
-                            "Failed to load details",
-                            style: TextStyle(color: scheme.error),
-                          ),
-                        ),
-
-                        data: (details) {
-                          return Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-
-                            children: [
-                              const SizedBox(height: 12),
-
-                              StatusBadge(status: details.status),
-
-                              const SizedBox(height: 16),
-
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: _DateBox(
-                                      label: "FROM",
-                                      value: _fmt(details.startDate),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: _DateBox(
-                                      label: "TO",
-                                      value: _fmt(details.endDate),
-                                    ),
-                                  ),
-                                ],
-                              ),
-
-                              const SizedBox(height: 16),
-
-                              _InfoRow(label: "Days", value: "${details.days}"),
-
-                              _InfoRow(
-                                label: "Manager",
-                                value: details.managerName ?? "-",
-                              ),
-
-                              const SizedBox(height: 16),
-
-                              _InfoBlock(
-                                label: "Reason",
-                                value: details.reason ?? "-",
-                              ),
-
-                              const SizedBox(height: 20),
-
-                              LeaveTimelineWidget(histories: details.histories),
-
-                              if (widget.onRevoke != null) ...[
-                                const SizedBox(height: 20),
-
-                                FilledButton.icon(
-                                  onPressed: widget.onRevoke,
-                                  icon: const Icon(Icons.undo),
-                                  label: const Text("Revoke Leave"),
-                                ),
-                              ],
-                            ],
-                          );
-                        },
-                      );
-                    },
+                /// STATUS BADGE
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.sm + 2,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: statusColor.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(AppRadius.pill),
+                  ),
+                  child: Text(
+                    leave.status.toUpperCase(),
+                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                      color: statusColor,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ],
             ),
+            children: [
+              SizeTransition(
+                sizeFactor: _expandAnim,
+                child: Consumer(
+                  builder: (context, ref, _) {
+                    final detailsAsync = ref.watch(
+                      leaveDetailsProvider(widget.leave.id),
+                    );
+
+                    return detailsAsync.when(
+                      loading: () => const _PremiumShimmer(),
+                      error: (e, _) => Padding(
+                        padding: const EdgeInsets.all(AppSpacing.md),
+                        child: Text(
+                          "Failed to load details",
+                          style: TextStyle(color: scheme.error),
+                        ),
+                      ),
+                      data: (details) {
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const SizedBox(height: AppSpacing.sm),
+
+                            StatusBadge(status: details.status),
+
+                            const SizedBox(height: AppSpacing.md),
+
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: _DateBox(
+                                    label: "FROM",
+                                    value: _fmt(details.startDate),
+                                  ),
+                                ),
+                                const SizedBox(width: AppSpacing.sm),
+                                Expanded(
+                                  child: _DateBox(
+                                    label: "TO",
+                                    value: _fmt(details.endDate),
+                                  ),
+                                ),
+                              ],
+                            ),
+
+                            const SizedBox(height: AppSpacing.md),
+
+                            _InfoRow(label: "Days", value: "${details.days}"),
+                            _InfoRow(
+                              label: "Manager",
+                              value: details.managerName ?? "-",
+                            ),
+
+                            const SizedBox(height: AppSpacing.md),
+
+                            _InfoBlock(
+                              label: "Reason",
+                              value: details.reason ?? "-",
+                            ),
+
+                            const SizedBox(height: AppSpacing.lg),
+
+                            LeaveTimelineWidget(histories: details.histories),
+
+                            if (widget.onRevoke != null) ...[
+                              const SizedBox(height: AppSpacing.lg),
+                              FilledButton.icon(
+                                icon: const Icon(Icons.undo),
+                                label: const Text("Revoke Leave"),
+                                onPressed: () async {
+                                  final confirm = await showDialog<bool>(
+                                    context: context,
+                                    builder: (context) {
+                                      return AlertDialog(
+                                        title: const Text("Revoke Leave"),
+                                        content: const Text(
+                                          "Are you sure you want to revoke this leave request?",
+                                        ),
+                                        actions: [
+                                          TextButton(
+                                            onPressed: () =>
+                                                Navigator.pop(context, false),
+                                            child: const Text("Cancel"),
+                                          ),
+                                          FilledButton(
+                                            onPressed: () =>
+                                                Navigator.pop(context, true),
+                                            child: const Text("Revoke"),
+                                          ),
+                                        ],
+                                      );
+                                    },
+                                  );
+
+                                  if (confirm == true) {
+                                    widget.onRevoke!();
+
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        const SnackBar(
+                                          content: Text(
+                                            "Leave revocation requested",
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                  }
+                                },
+                              ),
+                            ],
+                          ],
+                        );
+                      },
+                    );
+                  },
+                ),
+              ),
+            ],
           ),
         ),
       ),

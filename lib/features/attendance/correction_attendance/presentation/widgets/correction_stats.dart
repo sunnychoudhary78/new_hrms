@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lms/core/theme/app_design.dart';
 import '../../data/models/attendance_request_model.dart';
 
 class CorrectionStats extends StatelessWidget {
@@ -25,7 +26,9 @@ class CorrectionStats extends StatelessWidget {
           value: pendingCorrections.toString(),
           color: scheme.tertiary,
         ),
-        const SizedBox(width: 12),
+
+        const SizedBox(width: AppSpacing.sm),
+
         _StatCard(
           label: "Pending Remote",
           value: pendingRemote.toString(),
@@ -49,29 +52,39 @@ class _StatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
     return Expanded(
       child: Container(
-        padding: const EdgeInsets.all(18),
+        padding: const EdgeInsets.all(AppSpacing.md),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.08),
-          borderRadius: BorderRadius.circular(18),
+          color: scheme.surface,
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+          border: Border.all(color: scheme.outline.withOpacity(.2)),
+          boxShadow: [
+            BoxShadow(
+              color: scheme.shadow.withOpacity(.05),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
+            ),
+          ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               label,
-              style: TextStyle(
-                fontSize: 12,
-                color: color.withOpacity(0.8),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: scheme.onSurfaceVariant,
                 fontWeight: FontWeight.w600,
               ),
             ),
-            const SizedBox(height: 8),
+
+            const SizedBox(height: AppSpacing.sm),
+
             Text(
               value,
-              style: TextStyle(
-                fontSize: 28,
+              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                 fontWeight: FontWeight.bold,
                 color: color,
               ),

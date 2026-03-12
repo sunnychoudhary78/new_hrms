@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:lms/core/providers/global_loading_provider.dart';
+import 'package:lms/core/providers/global_actions_provider.dart';
 import 'package:lms/core/providers/location_providers.dart';
 import 'package:lms/core/services/location_service.dart';
 import 'package:lms/core/services/selfie_service.dart';
@@ -45,7 +45,7 @@ class MarkAttendanceNotifier extends AsyncNotifier<List<AttendanceSession>> {
       final fresh = await _loadToday();
       state = AsyncData(fresh);
     } catch (_) {
-      // preserve current state, do nothing
+      // preserve current state
     }
   }
 
@@ -74,7 +74,7 @@ class MarkAttendanceNotifier extends AsyncNotifier<List<AttendanceSession>> {
   }
 
   // ─────────────────────────────────────────────
-  // CORE HANDLER (INDUSTRY STANDARD)
+  // CORE ATTENDANCE HANDLER
   // ─────────────────────────────────────────────
 
   Future<void> _handleAttendance({
@@ -83,10 +83,10 @@ class MarkAttendanceNotifier extends AsyncNotifier<List<AttendanceSession>> {
     required bool isRemote,
     String? remoteReason,
   }) async {
-    final loader = ref.read(globalLoadingProvider.notifier);
+    final action = ref.read(globalActionProvider.notifier);
 
     // Prevent duplicate taps
-    if (ref.read(globalLoadingProvider).isLoading) {
+    if (ref.read(globalActionProvider)?.type == GlobalActionType.loading) {
       return;
     }
 
@@ -95,22 +95,19 @@ class MarkAttendanceNotifier extends AsyncNotifier<List<AttendanceSession>> {
       // STEP 1: FETCH MOBILE CONFIG
       // ─────────────────────────────────────────────
 
-      loader.showLoading("Checking requirements...");
+      action.loading("Checking requirements...");
 
       final config = await _repo.fetchMobileConfig();
 
-      // Block if mobile attendance disabled
       if (!config.allowMobileCheckin) {
-        loader.showError(
+        action.error(
           isCheckIn
               ? "Mobile check-in is not allowed."
               : "Mobile check-out is not allowed.",
         );
-
         return;
       }
 
-      // Decide requirements dynamically
       final bool requireSelfie = isCheckIn
           ? config.requireMobileCheckinSelfie
           : config.requireMobileCheckoutSelfie;
@@ -121,11 +118,11 @@ class MarkAttendanceNotifier extends AsyncNotifier<List<AttendanceSession>> {
       Map<String, dynamic>? location;
 
       // ─────────────────────────────────────────────
-      // STEP 2: CAPTURE SELFIE IF REQUIRED
+      // STEP 2: SELFIE
       // ─────────────────────────────────────────────
 
       if (requireSelfie) {
-        loader.update(
+        action.loading(
           isCheckIn
               ? "Capturing check-in selfie..."
               : "Capturing check-out selfie...",
@@ -137,7 +134,7 @@ class MarkAttendanceNotifier extends AsyncNotifier<List<AttendanceSession>> {
           throw Exception("Selfie is required");
         }
 
-        loader.update("Compressing image...");
+        action.loading("Compressing image...");
 
         compressedFile = await _selfieService.compressImage(selfieFile);
 
@@ -149,22 +146,20 @@ class MarkAttendanceNotifier extends AsyncNotifier<List<AttendanceSession>> {
       }
 
       // ─────────────────────────────────────────────
-      // STEP 3: FETCH GPS IF REQUIRED
+      // STEP 3: LOCATION
       // ─────────────────────────────────────────────
 
       if (requireGPS) {
-        loader.update("Fetching location...");
+        action.loading("Fetching location...");
 
         location = await _getUserLocation();
       }
 
       // ─────────────────────────────────────────────
-      // STEP 4: BUILD REQUEST BODY
+      // STEP 4: REQUEST BODY
       // ─────────────────────────────────────────────
 
-      final body = <String, dynamic>{
-        "source": "mobile", // ALWAYS mobile per backend docs
-      };
+      final body = <String, dynamic>{"source": "mobile"};
 
       if (location != null) {
         body["location"] = location;
@@ -179,10 +174,12 @@ class MarkAttendanceNotifier extends AsyncNotifier<List<AttendanceSession>> {
       }
 
       // ─────────────────────────────────────────────
-      // STEP 5: SEND API REQUEST
+      // STEP 5: SEND REQUEST
       // ─────────────────────────────────────────────
 
-      loader.update(isCheckIn ? "Marking check-in..." : "Marking check-out...");
+      action.loading(
+        isCheckIn ? "Marking check-in..." : "Marking check-out...",
+      );
 
       if (isCheckIn) {
         await _repo.punchInMultipart(file: compressedFile, body: body);
@@ -191,23 +188,22 @@ class MarkAttendanceNotifier extends AsyncNotifier<List<AttendanceSession>> {
       }
 
       // ─────────────────────────────────────────────
-      // STEP 6: REFRESH STATE
+      // STEP 6: REFRESH
       // ─────────────────────────────────────────────
 
-      loader.update("Refreshing attendance...");
+      action.loading("Refreshing attendance...");
 
       await refresh();
 
-      loader.showSuccess(
+      action.success(
         isCheckIn
             ? (isRemote ? "Remote check-in successful" : "Check-in successful")
             : (isRemote
                   ? "Remote check-out successful"
                   : "Check-out successful"),
-        duration: const Duration(seconds: 3),
       );
     } catch (e) {
-      loader.showError(e.toString());
+      action.error(e.toString().replaceFirst("Exception: ", ""));
     }
   }
 
@@ -215,12 +211,10 @@ class MarkAttendanceNotifier extends AsyncNotifier<List<AttendanceSession>> {
   // PUBLIC METHODS
   // ─────────────────────────────────────────────
 
-  /// Mobile Check-In
   Future<void> punchIn(BuildContext context) async {
     await _handleAttendance(context: context, isCheckIn: true, isRemote: false);
   }
 
-  /// Mobile Check-Out
   Future<void> punchOut(BuildContext context) async {
     await _handleAttendance(
       context: context,
@@ -229,7 +223,6 @@ class MarkAttendanceNotifier extends AsyncNotifier<List<AttendanceSession>> {
     );
   }
 
-  /// Remote Check-In
   Future<void> punchInRemote(BuildContext context, String reason) async {
     await _handleAttendance(
       context: context,
@@ -239,7 +232,6 @@ class MarkAttendanceNotifier extends AsyncNotifier<List<AttendanceSession>> {
     );
   }
 
-  /// Remote Check-Out
   Future<void> punchOutRemote(BuildContext context, String reason) async {
     await _handleAttendance(
       context: context,

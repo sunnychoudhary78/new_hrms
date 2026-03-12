@@ -30,6 +30,5 @@ class TokenStorage {
   // ✅ Clear all
   Future<void> clear() async {
     await _storage.delete(key: _jwtKey);
-    await _storage.delete(key: _fcmKey);
   }
 }

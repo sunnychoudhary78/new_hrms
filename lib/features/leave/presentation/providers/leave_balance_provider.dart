@@ -1,4 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lms/features/leave/data/leave_type_api_service.dart';
+
 import '../../../../core/providers/network_providers.dart';
 import '../../data/leave_balance_api_service.dart';
 import '../../data/models/leave_balance_model.dart';
@@ -9,6 +11,11 @@ final leaveBalanceApiProvider = Provider<LeaveBalanceApiService>((ref) {
   return LeaveBalanceApiService(api);
 });
 
+final leaveTypeApiProvider = Provider<LeaveTypeApiService>((ref) {
+  final api = ref.read(apiServiceProvider);
+  return LeaveTypeApiService(api);
+});
+
 final leaveBalanceProvider =
     AsyncNotifierProvider.autoDispose<LeaveBalanceNotifier, List<LeaveBalance>>(
       LeaveBalanceNotifier.new,
@@ -17,14 +24,20 @@ final leaveBalanceProvider =
 class LeaveBalanceNotifier extends AsyncNotifier<List<LeaveBalance>> {
   @override
   Future<List<LeaveBalance>> build() async {
-    // 🔄 Rebuild whenever auth changes
     ref.watch(authProvider);
 
-    final api = ref.read(leaveBalanceApiProvider);
+    final balanceApi = ref.read(leaveBalanceApiProvider);
+    final typeApi = ref.read(leaveTypeApiProvider);
 
-    final res = await api.fetchLeaveBalance();
+    final balances = await balanceApi.fetchLeaveBalance();
+    final types = await typeApi.fetchLeaveTypes();
 
-    return res.map<LeaveBalance>((e) => LeaveBalance.fromJson(e)).toList();
+    final Map<String, dynamic> typeMap = {for (var t in types) t['id']: t};
+
+    return balances.map<LeaveBalance>((balance) {
+      final leaveType = typeMap[balance['leave_type_id']];
+      return LeaveBalance.fromJson(balance, leaveType);
+    }).toList();
   }
 
   Future<void> refresh() async {

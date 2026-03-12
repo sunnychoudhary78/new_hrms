@@ -94,22 +94,18 @@ class MyApp extends ConsumerWidget {
       routes: AppRoutes.routes,
 
       builder: (context, child) {
-        return Consumer(
-          builder: (context, ref, _) {
-            final overlay = ref.watch(globalLoadingProvider);
+        final overlay = ref.watch(globalLoadingProvider);
 
-            return Stack(
-              children: [
-                child!,
+        return Stack(
+          children: [
+            child!,
 
-                if (overlay.isLoading) GlobalLoader(message: overlay.message),
+            if (overlay.isLoading) GlobalLoader(message: overlay.message),
 
-                if (overlay.isSuccess) GlobalSuccess(message: overlay.message),
+            if (overlay.isSuccess) GlobalSuccess(message: overlay.message),
 
-                if (overlay.isError) GlobalError(message: overlay.message),
-              ],
-            );
-          },
+            if (overlay.isError) GlobalError(message: overlay.message),
+          ],
         );
       },
     );

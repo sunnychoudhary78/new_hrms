@@ -53,7 +53,6 @@ class MyCorrectionsNotifier extends AsyncNotifier<MyCorrectionsState> {
   @override
   Future<MyCorrectionsState> build() async {
     debugPrint("🧱 MyCorrectionsNotifier build()");
-
     final initial = MyCorrectionsState.initial();
 
     state = AsyncData(initial);

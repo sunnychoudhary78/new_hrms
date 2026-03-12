@@ -1,4 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lms/features/auth/presentation/providers/auth_provider.dart';
+import 'package:lms/features/auth/presentation/providers/auth_state.dart';
 
 import '../storage/token_storage.dart';
 import '../network/dio_client.dart';
@@ -9,10 +11,16 @@ final tokenStorageProvider = Provider<TokenStorage>((ref) {
   return TokenStorage();
 });
 
-// 🌐 Dio client provider
 final dioClientProvider = Provider<DioClient>((ref) {
   final tokenStorage = ref.read(tokenStorageProvider);
-  return DioClient(tokenStorage: tokenStorage);
+
+  return DioClient(
+    tokenStorage: tokenStorage,
+
+    onSubscriptionExpired: () {
+      ref.read(authProvider.notifier).forceSubscriptionExpired();
+    },
+  );
 });
 
 // 📡 Api service provider

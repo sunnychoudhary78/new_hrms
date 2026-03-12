@@ -1,13 +1,11 @@
 import 'dart:io';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import 'package:lms/core/providers/global_loading_provider.dart';
 import 'package:lms/features/home/presentation/widgets/app_drawer.dart';
 import 'package:lms/shared/widgets/app_bar.dart';
-import 'package:lms/shared/widgets/global_error.dart';
-import 'package:lms/shared/widgets/global_loader.dart';
-import 'package:lms/shared/widgets/global_sucess.dart';
-
 import '../providers/leave_apply_provider.dart';
 import '../providers/leave_balance_provider.dart';
 
@@ -24,6 +22,7 @@ enum HalfDayPart { am, pm }
 
 class LeaveApplyScreen extends ConsumerStatefulWidget {
   final LeaveBalance? initialLeave;
+
   const LeaveApplyScreen({super.key, this.initialLeave});
 
   @override
@@ -32,6 +31,7 @@ class LeaveApplyScreen extends ConsumerStatefulWidget {
 
 class _LeaveApplyScreenState extends ConsumerState<LeaveApplyScreen> {
   LeaveBalance? selectedLeave;
+
   DateTime? fromDate;
   DateTime? toDate;
 
@@ -41,19 +41,34 @@ class _LeaveApplyScreenState extends ConsumerState<LeaveApplyScreen> {
   String reason = '';
   File? document;
 
+  late final ProviderSubscription<LeaveApplyStatus> _leaveSub;
+
   @override
   void initState() {
     super.initState();
 
     selectedLeave = widget.initialLeave;
 
-    ref.listenManual<GlobalLoadingState>(globalLoadingProvider, (prev, next) {
-      if (next.isSuccess) {
+    _leaveSub = ref.listenManual<LeaveApplyStatus>(leaveApplyProvider, (
+      prev,
+      next,
+    ) {
+      if (next == LeaveApplyStatus.success && mounted) {
         Future.delayed(const Duration(seconds: 2), () {
           if (mounted) Navigator.pop(context);
         });
       }
     });
+  }
+
+  @override
+  void dispose() {
+    _leaveSub.close();
+    super.dispose();
+  }
+
+  void _showLocalError(String message) {
+    ref.read(globalLoadingProvider.notifier).showError(message);
   }
 
   String _formatDate(DateTime date) {
@@ -64,52 +79,81 @@ class _LeaveApplyScreenState extends ConsumerState<LeaveApplyScreen> {
 
   double _calculateLeaveDays() {
     if (fromDate == null || toDate == null) return 0;
+
     if (dayType == DayType.half) return 0.5;
+
     return (toDate!.difference(fromDate!).inDays + 1).toDouble();
   }
 
-  bool get isDocumentRequired {
-    if (selectedLeave == null) return false;
-    final name = selectedLeave!.name.toLowerCase();
-    return name.contains('maternity') || name.contains('paternity');
+  bool get isDocumentRequired => selectedLeave?.documentRequired ?? false;
+
+  Future<void> _pickDocument() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        allowMultiple: false,
+        type: FileType.custom,
+        allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png'],
+      );
+
+      if (result == null) return;
+
+      final path = result.files.single.path;
+
+      if (path == null) {
+        _showLocalError("Unable to read selected file");
+        return;
+      }
+
+      setState(() {
+        document = File(path);
+      });
+    } catch (e) {
+      _showLocalError("Failed to pick document");
+    }
   }
 
   Future<void> _submit() async {
-    if (selectedLeave == null ||
-        fromDate == null ||
-        toDate == null ||
-        reason.isEmpty) {
-      ref
-          .read(globalLoadingProvider.notifier)
-          .showError("Please fill all required fields");
+    final overlay = ref.read(globalLoadingProvider.notifier);
+
+    /// ---------- UI VALIDATIONS ----------
+
+    if (selectedLeave == null) {
+      overlay.showError("Please select leave type");
+      return;
+    }
+
+    if (fromDate == null || toDate == null) {
+      overlay.showError("Please select leave dates");
+      return;
+    }
+
+    if (reason.trim().isEmpty) {
+      overlay.showError("Please enter reason");
       return;
     }
 
     if (dayType == DayType.half && halfDayPart == null) {
-      ref
-          .read(globalLoadingProvider.notifier)
-          .showError("Please select AM or PM");
+      overlay.showError("Please select AM or PM");
       return;
     }
 
     if (isDocumentRequired && document == null) {
-      ref
-          .read(globalLoadingProvider.notifier)
-          .showError("Document required for this leave");
+      overlay.showError("Please upload required document");
       return;
     }
 
     final requestedDays = _calculateLeaveDays();
     final availableDays = selectedLeave!.available;
 
-    if (requestedDays > availableDays + 0.001) {
-      ref
-          .read(globalLoadingProvider.notifier)
-          .showError(
-            "You only have ${availableDays.toStringAsFixed(1)} ${selectedLeave!.name} remaining",
-          );
+    if (!selectedLeave!.allowNegativeBalance &&
+        requestedDays > availableDays + 0.001) {
+      overlay.showError(
+        "You only have ${availableDays.toStringAsFixed(1)} ${selectedLeave!.name} remaining",
+      );
       return;
     }
+
+    /// ---------- PREPARE DATA ----------
 
     final requestData = {
       "leaveTypeId": selectedLeave!.leaveTypeId,
@@ -123,217 +167,169 @@ class _LeaveApplyScreenState extends ConsumerState<LeaveApplyScreen> {
       requestData["halfDayPart"] = halfDayPart!.name.toUpperCase();
     }
 
-    try {
-      /// 🔥 SHOW LOADING OVERLAY
-      ref
-          .read(globalLoadingProvider.notifier)
-          .showLoading("Submitting leave request...");
+    /// ---------- CALL API ----------
 
-      await ref
-          .read(leaveApplyProvider.notifier)
-          .submitLeave(data: requestData, document: document);
-
-      /// 🔥 SHOW SUCCESS ANIMATION
-      ref
-          .read(globalLoadingProvider.notifier)
-          .showSuccess("Leave applied successfully 🎉");
-    } catch (e) {
-      ref
-          .read(globalLoadingProvider.notifier)
-          .showError(e.toString().replaceAll("Exception: ", ""));
-    }
+    await ref
+        .read(leaveApplyProvider.notifier)
+        .submitLeave(data: requestData, document: document);
   }
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-
     final balanceAsync = ref.watch(leaveBalanceProvider);
     final applyState = ref.watch(leaveApplyProvider);
 
-    return Stack(
-      children: [
-        Scaffold(
-          backgroundColor: scheme.surfaceContainerLowest,
-          appBar: const AppAppBar(title: "Apply Leave", showBack: false),
-          drawer: const AppDrawer(),
-          body: balanceAsync.when(
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (e, _) => Center(child: Text(e.toString())),
-            data: (leaves) => ListView(
-              padding: const EdgeInsets.all(16),
-              children: [
-                Card(
-                  elevation: 4,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const _SectionTitle("Leave Type"),
+    final scheme = Theme.of(context).colorScheme;
 
-                        LeaveTypeDropdown(
-                          leaves: leaves,
-                          selected: selectedLeave,
-                          onChanged: (leave) {
-                            setState(() {
-                              selectedLeave = leave;
-                              fromDate = null;
-                              toDate = null;
-                              dayType = DayType.full;
-                              halfDayPart = null;
-                            });
+    return Scaffold(
+      backgroundColor: scheme.surfaceContainerLowest,
+      appBar: const AppAppBar(title: "Apply Leave", showBack: false),
+      drawer: const AppDrawer(),
+      body: balanceAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, _) => Center(child: Text(e.toString())),
+        data: (leaves) => ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            Card(
+              elevation: 4,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const _SectionTitle("Leave Type"),
 
-                            if (leave != null && leave.available <= 0) {
-                              Future.microtask(() {
-                                showDialog(
-                                  context: context,
-                                  builder: (_) => AlertDialog(
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(16),
-                                    ),
-                                    title: const Text("No Leave Available"),
-                                    content: Text(
-                                      "You don't have any ${leave.name} remaining.",
-                                    ),
-                                    actions: [
-                                      TextButton(
-                                        onPressed: () => Navigator.pop(context),
-                                        child: const Text("OK"),
-                                      ),
-                                    ],
-                                  ),
-                                );
-                              });
-                            }
-                          },
-                        ),
-
-                        if (selectedLeave != null) ...[
-                          const SizedBox(height: 12),
-                          _BalanceCard(leave: selectedLeave!),
-                        ],
-
-                        const SizedBox(height: 24),
-                        const _SectionTitle("Duration"),
-                        const SizedBox(height: 8),
-
-                        _DayTypeSelector(
-                          value: dayType,
-                          onChanged: (v) {
-                            setState(() {
-                              dayType = v;
-                              halfDayPart = null;
-                              if (v == DayType.half && fromDate != null) {
-                                toDate = fromDate;
-                              }
-                            });
-                          },
-                        ),
-
-                        if (dayType == DayType.half) ...[
-                          const SizedBox(height: 12),
-                          _HalfDaySelector(
-                            value: halfDayPart,
-                            onChanged: (v) => setState(() => halfDayPart = v),
-                          ),
-                        ],
-
-                        const SizedBox(height: 16),
-
-                        if (selectedLeave == null ||
-                            selectedLeave!.available > 0)
-                          DateRangePicker(
-                            from: fromDate,
-                            to: toDate,
-                            maxLeaveDays: selectedLeave?.available ?? 0,
-                            isHalfDay: dayType == DayType.half,
-                            onFromPick: (d) {
-                              setState(() {
-                                fromDate = d;
-                                if (dayType == DayType.half) {
-                                  toDate = d;
-                                }
-                              });
-                            },
-                            onToPick: (d) {
-                              setState(() {
-                                toDate = d;
-                              });
-                            },
-                          )
-                        else
-                          Opacity(
-                            opacity: 0.4,
-                            child: IgnorePointer(
-                              child: DateRangePicker(
-                                from: fromDate,
-                                to: toDate,
-                                maxLeaveDays: 0,
-                                isHalfDay: dayType == DayType.half,
-                                onFromPick: (_) {},
-                                onToPick: (_) {},
-                              ),
-                            ),
-                          ),
-
-                        if (selectedLeave != null &&
-                            fromDate != null &&
-                            toDate != null) ...[
-                          const SizedBox(height: 16),
-                          _LeaveSummaryCard(
-                            available: selectedLeave!.available,
-                            requested: _calculateLeaveDays(),
-                          ),
-                        ],
-
-                        const SizedBox(height: 24),
-                        const _SectionTitle("Reason"),
-                        ReasonInput(onChanged: (v) => reason = v),
-
-                        const SizedBox(height: 28),
-
-                        SubmitButton(
-                          isLoading: false,
-                          onPressed:
-                              (selectedLeave != null &&
-                                  selectedLeave!.available > 0)
-                              ? _submit
-                              : () {},
-                        ),
-                      ],
+                    LeaveTypeDropdown(
+                      leaves: leaves,
+                      selected: selectedLeave,
+                      onChanged: (leave) {
+                        setState(() {
+                          selectedLeave = leave;
+                          fromDate = null;
+                          toDate = null;
+                          dayType = DayType.full;
+                          halfDayPart = null;
+                          document = null;
+                        });
+                      },
                     ),
-                  ),
+
+                    if (selectedLeave != null) ...[
+                      const SizedBox(height: 12),
+                      _BalanceCard(leave: selectedLeave!),
+                    ],
+
+                    const SizedBox(height: 24),
+                    const _SectionTitle("Duration"),
+
+                    const SizedBox(height: 8),
+
+                    _DayTypeSelector(
+                      value: dayType,
+                      allowHalfDay: selectedLeave?.allowHalfDay ?? false,
+                      onChanged: (v) {
+                        setState(() {
+                          dayType = v;
+                          halfDayPart = null;
+                        });
+                      },
+                    ),
+
+                    if (dayType == DayType.half) ...[
+                      const SizedBox(height: 12),
+                      _HalfDaySelector(
+                        value: halfDayPart,
+                        onChanged: (v) => setState(() => halfDayPart = v),
+                      ),
+                    ],
+
+                    const SizedBox(height: 16),
+
+                    DateRangePicker(
+                      from: fromDate,
+                      to: toDate,
+                      maxLeaveDays: selectedLeave == null
+                          ? 0
+                          : selectedLeave!.allowNegativeBalance
+                          ? -1
+                          : selectedLeave!.available,
+                      isHalfDay: dayType == DayType.half,
+                      onFromPick: (d) {
+                        setState(() {
+                          fromDate = d;
+                          if (dayType == DayType.half) toDate = d;
+                        });
+                      },
+                      onToPick: (d) {
+                        setState(() {
+                          toDate = d;
+                        });
+                      },
+                    ),
+
+                    const SizedBox(height: 24),
+                    const _SectionTitle("Reason"),
+
+                    ReasonInput(onChanged: (v) => reason = v),
+
+                    if (isDocumentRequired) ...[
+                      const SizedBox(height: 24),
+                      const _SectionTitle("Supporting Document"),
+
+                      InkWell(
+                        onTap: _pickDocument,
+                        borderRadius: BorderRadius.circular(14),
+                        child: Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: Colors.grey),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.upload_file),
+                              const SizedBox(width: 12),
+
+                              Expanded(
+                                child: Text(
+                                  document == null
+                                      ? "Tap to upload document"
+                                      : document!.path.split('/').last,
+                                ),
+                              ),
+
+                              if (document != null)
+                                IconButton(
+                                  icon: const Icon(Icons.close),
+                                  onPressed: () {
+                                    setState(() {
+                                      document = null;
+                                    });
+                                  },
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+
+                    const SizedBox(height: 28),
+
+                    SubmitButton(
+                      isLoading: applyState == LeaveApplyStatus.loading,
+                      onPressed: _submit,
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
-          ),
+          ],
         ),
-        Consumer(
-          builder: (context, ref, _) {
-            final overlay = ref.watch(globalLoadingProvider);
-
-            if (!overlay.isVisible) return const SizedBox.shrink();
-
-            if (overlay.isLoading) {
-              return GlobalLoader(message: overlay.message);
-            }
-
-            if (overlay.isSuccess) {
-              return GlobalSuccess(message: overlay.message);
-            }
-
-            if (overlay.isError) {
-              return GlobalError(message: overlay.message);
-            }
-
-            return const SizedBox.shrink();
-          },
-        ),
-      ],
+      ),
     );
   }
 }
@@ -361,9 +357,14 @@ class _SectionTitle extends StatelessWidget {
 
 class _DayTypeSelector extends StatelessWidget {
   final DayType value;
+  final bool allowHalfDay;
   final ValueChanged<DayType> onChanged;
 
-  const _DayTypeSelector({required this.value, required this.onChanged});
+  const _DayTypeSelector({
+    required this.value,
+    required this.allowHalfDay,
+    required this.onChanged,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -384,9 +385,10 @@ class _DayTypeSelector extends StatelessWidget {
           return scheme.onSurface;
         }),
       ),
-      segments: const [
-        ButtonSegment(value: DayType.full, label: Text("Full Day")),
-        ButtonSegment(value: DayType.half, label: Text("Half Day")),
+      segments: [
+        const ButtonSegment(value: DayType.full, label: Text("Full Day")),
+        if (allowHalfDay)
+          const ButtonSegment(value: DayType.half, label: Text("Half Day")),
       ],
       selected: {value},
       onSelectionChanged: (s) => onChanged(s.first),

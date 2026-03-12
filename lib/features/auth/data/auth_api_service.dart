@@ -1,5 +1,4 @@
 import 'dart:io';
-
 import 'package:dio/dio.dart';
 import 'package:lms/features/auth/data/models/user_model.dart';
 import '../../../../core/network/api_service.dart';
@@ -9,9 +8,7 @@ class AuthApiService {
 
   AuthApiService(this.api);
 
-  // ─────────────────────────────────────────────
-  // AUTH
-  // ─────────────────────────────────────────────
+  // ───────────────── AUTH ─────────────────
 
   Future<UserModel> login(String email, String password) async {
     final response = await api.post('/auth/login', {
@@ -33,6 +30,8 @@ class AuthApiService {
     return list.map((p) => p['name'] as String).toList();
   }
 
+  // ───────────────── PASSWORD ─────────────────
+
   Future<void> changePassword({
     required String currentPassword,
     required String newPassword,
@@ -45,17 +44,9 @@ class AuthApiService {
     });
   }
 
-  // ─────────────────────────────────────────────
-  // 🔑 FORGOT PASSWORD (SEND OTP)
-  // ─────────────────────────────────────────────
-
   Future<void> forgotPassword(String email) async {
     await api.post('/auth/forgot-password', {"email": email});
   }
-
-  // ─────────────────────────────────────────────
-  // 🔑 RESET PASSWORD (VERIFY OTP)
-  // ─────────────────────────────────────────────
 
   Future<void> resetPassword({
     required String email,
@@ -69,8 +60,7 @@ class AuthApiService {
     });
   }
 
-  // 🖼️ UPLOAD PROFILE IMAGE
-  // ─────────────────────────────────────────────
+  // ───────────────── PROFILE IMAGE ─────────────────
 
   Future<String> uploadProfileImage(File file) async {
     final formData = FormData.fromMap({
@@ -85,13 +75,11 @@ class AuthApiService {
     return response['filename'];
   }
 
-  // ─────────────────────────────────────────────
-  // 🔔 FCM TOKEN (NEW – REQUIRED FOR PUSH)
-  // ─────────────────────────────────────────────
+  // ───────────────── FCM ─────────────────
 
   Future<void> registerFcmToken({
     required String fcmToken,
-    required String platform, // "android" | "ios"
+    required String platform,
   }) async {
     await api.post('/auth/register-fcm-token', {
       "fcmToken": fcmToken,

@@ -85,7 +85,7 @@ class _LeaveApproveScreenState extends ConsumerState<LeaveApproveScreen>
 
                           const SizedBox(width: 6),
 
-                          _buildCountBadge(pending.length, Colors.orange),
+                          _buildCountBadge(pending.length, scheme),
                         ],
                       ),
                     ),
@@ -99,7 +99,7 @@ class _LeaveApproveScreenState extends ConsumerState<LeaveApproveScreen>
 
                           const SizedBox(width: 6),
 
-                          _buildCountBadge(approved.length, Colors.green),
+                          _buildCountBadge(approved.length, scheme),
                         ],
                       ),
                     ),
@@ -113,7 +113,7 @@ class _LeaveApproveScreenState extends ConsumerState<LeaveApproveScreen>
 
                           const SizedBox(width: 6),
 
-                          _buildCountBadge(closed.length, Colors.red),
+                          _buildCountBadge(closed.length, scheme),
                         ],
                       ),
                     ),
@@ -168,24 +168,19 @@ class _LeaveApproveScreenState extends ConsumerState<LeaveApproveScreen>
     );
   }
 
-  /// BADGE BUILDER
-  Widget _buildCountBadge(int count, Color color) {
+  Widget _buildCountBadge(int count, ColorScheme scheme) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
-
-        borderRadius: BorderRadius.circular(12),
+        color: scheme.primary.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(50),
       ),
-
       child: Text(
         count.toString(),
-
         style: TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.w600,
-          color: color,
+          color: scheme.primary,
         ),
       ),
     );

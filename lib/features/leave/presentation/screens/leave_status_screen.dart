@@ -15,6 +15,15 @@ class LeaveStatusScreen extends ConsumerStatefulWidget {
 
 class _LeaveStatusScreenState extends ConsumerState<LeaveStatusScreen> {
   @override
+  void initState() {
+    super.initState();
+
+    Future.microtask(() {
+      ref.invalidate(leaveStatusProvider);
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final leaveAsync = ref.watch(leaveStatusProvider);
@@ -30,11 +39,13 @@ class _LeaveStatusScreenState extends ConsumerState<LeaveStatusScreen> {
         data: (leaves) => LeaveStatusList(
           leaves: leaves,
 
-          /// 👇 PASS expandLeaveId to list
+          /// PASS expandLeaveId to list
           expandLeaveId: widget.expandLeaveId,
+
           onRefresh: () => ref.read(leaveStatusProvider.notifier).refresh(),
-          onRevoke: (id, dates) =>
-              ref.read(leaveStatusProvider.notifier).revokeLeave(id, dates),
+
+          onRevoke: (id, _) =>
+              ref.read(leaveStatusProvider.notifier).revokeLeave(id),
         ),
       ),
     );

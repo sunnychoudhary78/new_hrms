@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lms/core/providers/global_actions_provider.dart';
+import 'package:lms/core/screens/subscribtion_expired_screen.dart';
+import 'package:lms/features/notifications/presentation/providers/notifications_provider.dart';
 
 import '../core/notifications/notification_action.dart';
 import '../core/notifications/notification_router.dart';
 import '../core/notifications/notification_action_notifier.dart';
 import '../core/providers/notification_api_providers.dart';
+
+import '../core/providers/global_loading_provider.dart';
 
 import '../features/auth/presentation/providers/auth_provider.dart';
 import '../features/auth/presentation/screens/login_screen.dart';
@@ -19,18 +24,29 @@ class AppRoot extends ConsumerStatefulWidget {
 
 class _AppRootState extends ConsumerState<AppRoot> {
   bool _pushInitialized = false;
+  bool _autoLoginAttempted = false;
+
   late final ProviderSubscription<NotificationAction?> _notificationSub;
+  late final ProviderSubscription<GlobalAction?> _globalActionSub;
 
   @override
   void initState() {
     super.initState();
 
-    // 🔁 Auto-login AFTER widget is mounted
+    /// AUTO LOGIN
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(authProvider.notifier).tryAutoLogin();
+      if (_autoLoginAttempted) return;
+
+      _autoLoginAttempted = true;
+
+      final auth = ref.read(authProvider);
+
+      if (!auth.isSubscriptionExpired) {
+        ref.read(authProvider.notifier).tryAutoLogin();
+      }
     });
 
-    // 🔔 Notification action listener
+    /// 🔔 Notification action listener
     _notificationSub = ref.listenManual<NotificationAction?>(
       notificationActionProvider,
       (previous, next) {
@@ -40,11 +56,38 @@ class _AppRootState extends ConsumerState<AppRoot> {
         }
       },
     );
+
+    /// 🌍 GLOBAL ACTION LISTENER
+    _globalActionSub = ref.listenManual<GlobalAction?>(globalActionProvider, (
+      previous,
+      next,
+    ) {
+      if (next == null) return;
+
+      final overlay = ref.read(globalLoadingProvider.notifier);
+
+      switch (next.type) {
+        case GlobalActionType.loading:
+          overlay.showLoading(next.message);
+          break;
+
+        case GlobalActionType.success:
+          overlay.showSuccess(next.message);
+          break;
+
+        case GlobalActionType.error:
+          overlay.showError(next.message);
+          break;
+      }
+
+      ref.read(globalActionProvider.notifier).clear();
+    });
   }
 
   @override
   void dispose() {
     _notificationSub.close();
+    _globalActionSub.close();
     super.dispose();
   }
 
@@ -52,35 +95,33 @@ class _AppRootState extends ConsumerState<AppRoot> {
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
 
-    final isLoggedIn = authState.profile != null;
-
-    if (isLoggedIn) {
-      _initPushIfNeeded();
+    /// 🔄 Loading state
+    if (authState.isLoading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
-    return Stack(
-      children: [
-        /// Keep both screens alive
-        IndexedStack(
-          index: isLoggedIn ? 1 : 0,
-          children: const [LoginScreen(), HomeScreen()],
-        ),
+    /// 🔒 Global subscription lock
+    if (authState.isSubscriptionExpired) {
+      return const SubscriptionExpiredScreen();
+    }
 
-        /// Loading overlay (does NOT destroy LoginScreen)
-        if (authState.isLoading)
-          const Scaffold(
-            backgroundColor: Colors.black26,
-            body: Center(child: CircularProgressIndicator()),
-          ),
-      ],
-    );
+    /// 🔐 Not logged in
+    if (authState.profile == null) {
+      return const LoginScreen();
+    }
+
+    /// 🚀 Logged in
+    _initPushIfNeeded();
+
+    return const HomeScreen();
   }
 
-  // ─────────────────────────────────────────────
-  // 🔔 PUSH INIT
-  // ─────────────────────────────────────────────
+  /// ─────────────────────────────────────────────
+  /// 🔔 PUSH INIT (only after login)
+  /// ─────────────────────────────────────────────
   void _initPushIfNeeded() {
     if (_pushInitialized) return;
+
     _pushInitialized = true;
 
     final pushService = ref.read(pushNotificationServiceProvider);
@@ -94,6 +135,13 @@ class _AppRootState extends ConsumerState<AppRoot> {
 
         ref.read(notificationActionProvider.notifier).emit(action);
       },
+
+      /// Refresh notifications if received in foreground
+      onForegroundNotification: () {
+        ref.read(notificationProvider.notifier).refresh();
+      },
+
+      /// Register token if logged in
       onTokenAvailable: (token) {
         final authState = ref.read(authProvider);
 
@@ -104,9 +152,9 @@ class _AppRootState extends ConsumerState<AppRoot> {
     );
   }
 
-  // ─────────────────────────────────────────────
-  // 🧭 NAVIGATION
-  // ─────────────────────────────────────────────
+  /// ─────────────────────────────────────────────
+  /// 🧭 Notification navigation
+  /// ─────────────────────────────────────────────
   void _handleNotificationAction(NotificationAction action) {
     final nav = Navigator.of(context);
 

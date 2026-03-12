@@ -29,6 +29,7 @@ class ViewAttendanceNotifier extends AsyncNotifier<ViewAttendanceState> {
 
   @override
   Future<ViewAttendanceState> build() async {
+    /// 🔒 SUBSCRIPTION GUARD
     _repo = ref.read(attendanceRepositoryProvider);
     _currentMonth = DateTime.now();
     return _loadMonth(_currentMonth);
@@ -50,8 +51,10 @@ class ViewAttendanceNotifier extends AsyncNotifier<ViewAttendanceState> {
 
   Future<void> changeMonth(DateTime date) async {
     _currentMonth = date;
-    state = const AsyncLoading();
-    state = AsyncData(await _loadMonth(date));
+
+    final newState = await _loadMonth(date);
+
+    state = AsyncData(newState);
   }
 
   Future<void> requestAttendanceCorrection({

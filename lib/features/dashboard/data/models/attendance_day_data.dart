@@ -118,12 +118,20 @@ class AttendanceSessionData {
   final DateTime? checkOut;
   final int durationMinutes;
   final String source;
+  final String? checkInSelfie;
+  final String? checkOutSelfie;
+  final double? lat;
+  final double? lng;
 
   AttendanceSessionData({
     required this.checkIn,
     required this.checkOut,
     required this.durationMinutes,
     required this.source,
+    this.checkInSelfie,
+    this.checkOutSelfie,
+    this.lat,
+    this.lng,
   });
 
   ////////////////////////////////////////////////////////////
@@ -166,11 +174,19 @@ class AttendanceSessionData {
 
   factory AttendanceSessionData.fromJson(Map<String, dynamic> json) {
     try {
+      final location = json['location'] as Map<String, dynamic>?;
+
       return AttendanceSessionData(
         checkIn: _asDate(json['checkInTime']),
         checkOut: _asDate(json['checkOutTime']),
         durationMinutes: _asInt(json['durationMinutes']),
         source: json['source']?.toString() ?? '',
+
+        checkInSelfie: json['checkInSelfie']?.toString(),
+        checkOutSelfie: json['checkOutSelfie']?.toString(),
+
+        lat: (location?['lat'] as num?)?.toDouble(),
+        lng: (location?['lng'] as num?)?.toDouble(),
       );
     } catch (_) {
       return AttendanceSessionData(
@@ -178,6 +194,8 @@ class AttendanceSessionData {
         checkOut: null,
         durationMinutes: 0,
         source: '',
+        checkInSelfie: null,
+        checkOutSelfie: null,
       );
     }
   }

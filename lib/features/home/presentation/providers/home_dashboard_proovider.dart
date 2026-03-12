@@ -53,12 +53,10 @@ class HomeDashboardNotifier extends AsyncNotifier<HomeDashboardModel> {
       print("   profile type → ${auth.profile.runtimeType}");
       print("   profile value → ${auth.profile}");
 
-      /// Check login
       if (auth.profile == null) {
-        print("❌ AUTH PROFILE IS NULL");
-        throw Exception("User not logged in");
+        print("⏳ AUTH PROFILE NOT READY — stopping dashboard load");
+        throw Exception("USER_NOT_READY");
       }
-
       print("✅ USER IS LOGGED IN");
 
       /// STEP 2 — REPOSITORY
@@ -126,6 +124,11 @@ class HomeDashboardNotifier extends AsyncNotifier<HomeDashboardModel> {
 
       return dashboard;
     } catch (e, stack) {
+      if (e.toString().contains("SESSION_OR_NETWORK_ERROR")) {
+        ref.read(authProvider.notifier).forceSubscriptionExpired();
+        throw Exception("SUBSCRIPTION_EXPIRED");
+      }
+
       print("\n");
       print("══════════════════════════════════════");
       print("❌ HOME DASHBOARD CRASH DETECTED");

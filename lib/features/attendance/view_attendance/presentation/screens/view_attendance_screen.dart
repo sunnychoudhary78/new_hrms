@@ -68,8 +68,43 @@ class _ViewAttendanceScreenState extends ConsumerState<ViewAttendanceScreen> {
             checkOut: s.checkOutTime,
             durationMinutes: s.durationMinutes,
             source: s.source,
+            checkInSelfie: s.checkInSelfie,
+            checkOutSelfie: s.checkOutSelfie,
+            lat: s.lat,
+            lng: s.lng,
           );
         }).toList(),
+      );
+    }
+
+    ////////////////////////////////////////////////////////////
+    /// GENERATE ABSENT DAYS
+    ////////////////////////////////////////////////////////////
+
+    final startOfMonth = DateTime(focused.year, focused.month, 1);
+    final endOfMonth = DateTime(focused.year, focused.month + 1, 0);
+
+    for (
+      DateTime d = startOfMonth;
+      !d.isAfter(endOfMonth);
+      d = d.add(const Duration(days: 1))
+    ) {
+      final key = DateFormat('yyyy-MM-dd').format(d);
+
+      // already has data
+      if (map.containsKey(key)) continue;
+
+      // skip future days
+      if (d.isAfter(DateTime.now())) continue;
+
+      // skip weekends if your company treats them as holiday
+      if (d.weekday == DateTime.sunday) continue;
+
+      map[key] = AttendanceDayData(
+        date: key,
+        status: "Absent",
+        totalMinutes: 0,
+        sessions: [],
       );
     }
 
@@ -157,10 +192,32 @@ class _ViewAttendanceScreenState extends ConsumerState<ViewAttendanceScreen> {
                       ////////////////////////////////////////////////////
                       statusResolver: (day) {
                         final key = DateFormat('yyyy-MM-dd').format(day);
-
                         return attendanceMap[key]?.status;
                       },
 
+                      hasSelfie: (day) {
+                        final key = DateFormat('yyyy-MM-dd').format(day);
+                        final data = attendanceMap[key];
+
+                        if (data == null) return false;
+
+                        return data.sessions.any(
+                          (s) =>
+                              s.checkInSelfie != null ||
+                              s.checkOutSelfie != null,
+                        );
+                      },
+
+                      hasLocation: (day) {
+                        final key = DateFormat('yyyy-MM-dd').format(day);
+                        final data = attendanceMap[key];
+
+                        if (data == null) return false;
+
+                        return data.sessions.any(
+                          (s) => s.lat != null && s.lng != null,
+                        );
+                      },
                       ////////////////////////////////////////////////////
                       /// DAY SELECTED
                       ////////////////////////////////////////////////////

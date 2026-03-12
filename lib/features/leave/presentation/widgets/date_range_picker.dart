@@ -7,10 +7,10 @@ class DateRangePicker extends StatelessWidget {
   final ValueChanged<DateTime> onFromPick;
   final ValueChanged<DateTime> onToPick;
 
-  /// ✅ NEW: maximum leave days allowed
+  /// Maximum leave days allowed
   final double maxLeaveDays;
 
-  /// ✅ NEW: half day mode
+  /// Half day mode
   final bool isHalfDay;
 
   const DateRangePicker({
@@ -23,7 +23,10 @@ class DateRangePicker extends StatelessWidget {
     required this.isHalfDay,
   });
 
+  //////////////////////////////////////////////////////////////
   /// FROM PICKER
+  //////////////////////////////////////////////////////////////
+
   Future<void> _pickFrom(BuildContext context) async {
     debugPrint("📅 Opening FROM date picker");
     debugPrint("📅 Current FROM value: $from");
@@ -40,8 +43,14 @@ class DateRangePicker extends StatelessWidget {
 
       onFromPick(picked);
 
-      /// If half day → auto set TO date
+      /// Half-day → TO must be same
       if (isHalfDay) {
+        onToPick(picked);
+        return;
+      }
+
+      /// FIX: ensure TO date never becomes invalid
+      if (to != null && picked.isAfter(to!)) {
         onToPick(picked);
       }
     } else {
@@ -49,13 +58,11 @@ class DateRangePicker extends StatelessWidget {
     }
   }
 
+  //////////////////////////////////////////////////////////////
   /// TO PICKER WITH BALANCE LIMIT
-  Future<void> _pickTo(BuildContext context) async {
-    debugPrint("📅 Opening TO date picker");
-    debugPrint("📅 Current FROM value: $from");
-    debugPrint("📅 Current TO value: $to");
-    debugPrint("📅 Max leave days allowed: $maxLeaveDays");
+  //////////////////////////////////////////////////////////////
 
+  Future<void> _pickTo(BuildContext context) async {
     if (from == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Please select start date first")),
@@ -63,62 +70,62 @@ class DateRangePicker extends StatelessWidget {
       return;
     }
 
-    /// Half day → TO must equal FROM
+    /// Half-day → TO = FROM
     if (isHalfDay) {
-      debugPrint("Half day mode → forcing TO date = FROM date");
       onToPick(from!);
       return;
     }
 
-    /// Calculate maximum allowed end date
-    final maxEndDate = from!.add(Duration(days: maxLeaveDays.floor() - 1));
+    DateTime lastDate;
 
-    debugPrint("📅 Max allowed TO date: $maxEndDate");
+    if (maxLeaveDays < 0) {
+      /// Unlimited (LWP)
+      lastDate = DateTime(2030);
+    } else {
+      lastDate = from!.add(Duration(days: maxLeaveDays.floor() - 1));
+    }
 
     final picked = await showDatePicker(
       context: context,
       firstDate: from!,
-      lastDate: maxEndDate,
+      lastDate: lastDate,
       initialDate: to ?? from!,
     );
 
     if (picked != null) {
-      debugPrint("✅ TO date selected: $picked");
-
-      /// Validate not before FROM
+      /// Safety validation
       if (picked.isBefore(from!)) {
-        debugPrint("❌ INVALID: TO date before FROM date");
-
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("End date cannot be before start date")),
         );
         return;
       }
 
-      /// Validate against balance
-      final selectedDays = picked.difference(from!).inDays + 1;
+      /// Balance validation
+      if (maxLeaveDays >= 0) {
+        final selectedDays = picked.difference(from!).inDays + 1;
 
-      debugPrint("Selected days: $selectedDays");
+        if (selectedDays > maxLeaveDays + 0.001) {
+          final formatted = maxLeaveDays % 1 == 0
+              ? maxLeaveDays.toInt().toString()
+              : maxLeaveDays.toString();
 
-      if (selectedDays > maxLeaveDays + 0.001) {
-        final formatted = maxLeaveDays % 1 == 0
-            ? maxLeaveDays.toInt().toString()
-            : maxLeaveDays.toString();
-
-        debugPrint("❌ Exceeds balance");
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("You can only select up to $formatted days")),
-        );
-
-        return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text("You can only select up to $formatted days"),
+            ),
+          );
+          return;
+        }
       }
 
       onToPick(picked);
-    } else {
-      debugPrint("⚠️ TO date selection cancelled");
     }
   }
+
+  //////////////////////////////////////////////////////////////
+  /// UI
+  //////////////////////////////////////////////////////////////
 
   @override
   Widget build(BuildContext context) {
@@ -131,6 +138,10 @@ class DateRangePicker extends StatelessWidget {
     );
   }
 
+  //////////////////////////////////////////////////////////////
+  /// DATE BOX
+  //////////////////////////////////////////////////////////////
+
   Widget _box(
     BuildContext context,
     String label,
@@ -140,10 +151,9 @@ class DateRangePicker extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       child: InputDecorator(
-        decoration: InputDecoration(
-          labelText: label,
-          border: const OutlineInputBorder(),
-        ),
+        decoration: const InputDecoration(
+          border: OutlineInputBorder(),
+        ).copyWith(labelText: label),
         child: Text(
           date == null ? "Select" : DateFormat('dd MMM yyyy').format(date),
         ),

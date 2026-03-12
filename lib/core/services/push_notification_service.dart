@@ -38,6 +38,7 @@ class PushNotificationService {
 
   Future<void> init({
     required void Function(Map<String, dynamic> data) onNotificationTap,
+    required VoidCallback onForegroundNotification,
     void Function(String token)? onTokenAvailable,
   }) async {
     if (_initialized) return;
@@ -83,6 +84,8 @@ class PushNotificationService {
           payload: jsonEncode(message.data),
         );
       }
+      // 🔥 IMPORTANT: Trigger refresh
+      onForegroundNotification();
     });
 
     // 🔔 BACKGROUND → TAP

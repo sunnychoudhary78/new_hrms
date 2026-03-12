@@ -4,11 +4,25 @@ import 'package:lms/features/notifications/presentation/providers/notifications_
 import 'package:lms/features/notifications/presentation/widgets/notification_list.dart';
 import 'package:lms/shared/widgets/app_bar.dart';
 
-class NotificationScreen extends ConsumerWidget {
+class NotificationScreen extends ConsumerStatefulWidget {
   const NotificationScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<NotificationScreen> createState() => _NotificationScreenState();
+}
+
+class _NotificationScreenState extends ConsumerState<NotificationScreen> {
+  @override
+  void initState() {
+    super.initState();
+
+    Future.microtask(() {
+      ref.invalidate(notificationProvider);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final notificationsAsync = ref.watch(notificationProvider);
 

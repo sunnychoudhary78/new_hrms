@@ -1,31 +1,22 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
 import 'package:lms/features/leave/data/models/leave_status_model.dart';
-
 import '../../../../core/providers/network_providers.dart';
-
 import '../../data/leave_status_api_service.dart';
-
 import '../../../auth/presentation/providers/auth_provider.dart';
 
-/// API Provider
 final leaveStatusApiProvider = Provider<LeaveStatusApiService>((ref) {
   final api = ref.read(apiServiceProvider);
-
   return LeaveStatusApiService(api);
 });
 
-/// Leave Status Provider (USER-SCOPED)
 final leaveStatusProvider =
     AsyncNotifierProvider.autoDispose<LeaveStatusNotifier, List<LeaveStatus>>(
       LeaveStatusNotifier.new,
     );
 
-/// Notifier
 class LeaveStatusNotifier extends AsyncNotifier<List<LeaveStatus>> {
   @override
   Future<List<LeaveStatus>> build() async {
-    /// CRITICAL: rebuild when user changes
     ref.watch(authProvider);
 
     final api = ref.read(leaveStatusApiProvider);
@@ -35,7 +26,6 @@ class LeaveStatusNotifier extends AsyncNotifier<List<LeaveStatus>> {
     return list.map<LeaveStatus>((e) => LeaveStatus.fromJson(e)).toList();
   }
 
-  /// Manual Refresh
   Future<void> refresh() async {
     state = const AsyncLoading();
 
@@ -48,14 +38,12 @@ class LeaveStatusNotifier extends AsyncNotifier<List<LeaveStatus>> {
     }
   }
 
-  /// Revoke Leave
-  Future<void> revokeLeave(String id, List<String> dates) async {
+  Future<void> revokeLeave(String id) async {
     final api = ref.read(leaveStatusApiProvider);
 
     try {
-      await api.revokeLeave(requestId: id, dates: dates);
+      await api.revokeLeave(requestId: id);
 
-      /// Refresh after revoke
       await refresh();
     } catch (e) {
       rethrow;

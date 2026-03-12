@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lms/core/theme/app_design.dart';
 import 'package:lms/features/attendance/correction_attendance/presentation/providers/attendance_requests_provider.dart';
 import 'package:lms/features/attendance/correction_attendance/presentation/widgets/section_header.dart';
 import 'package:lms/features/home/presentation/widgets/app_drawer.dart';
@@ -19,7 +20,7 @@ class AttendanceCorrectionScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: scheme.surfaceContainerLowest,
       appBar: AppAppBar(title: "Correct Attendance"),
-      drawer: AppDrawer(),
+      drawer: const AppDrawer(),
       body: stateAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text(e.toString())),
@@ -32,20 +33,29 @@ class AttendanceCorrectionScreen extends ConsumerWidget {
             },
             child: SingleChildScrollView(
               physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.md,
+                AppSpacing.md,
+                AppSpacing.md,
+                AppSpacing.xl,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  /// STATS
                   CorrectionStats(requests: state.requests),
 
-                  const SizedBox(height: 20),
+                  const SizedBox(height: AppSpacing.lg),
 
+                  /// FILTER HEADER
                   const SectionHeader(
                     title: "Filter by status",
                     icon: Icons.filter_alt_rounded,
                   ),
-                  const SizedBox(height: 12),
 
+                  const SizedBox(height: AppSpacing.sm),
+
+                  /// FILTER PILLS
                   StatusFilterPills(
                     selected: state.statusFilter,
                     onChanged: (s) => ref
@@ -53,14 +63,17 @@ class AttendanceCorrectionScreen extends ConsumerWidget {
                         .changeStatus(s),
                   ),
 
-                  const SizedBox(height: 28),
+                  const SizedBox(height: AppSpacing.xl),
 
+                  /// CORRECTIONS HEADER
                   const SectionHeader(
                     title: "Attendance corrections",
                     icon: Icons.access_time_rounded,
                   ),
-                  const SizedBox(height: 12),
 
+                  const SizedBox(height: AppSpacing.sm),
+
+                  /// CORRECTION SECTION
                   CorrectionSection(
                     title: "Attendance Corrections",
                     subtitle: "Missed punches & edits",
@@ -68,14 +81,17 @@ class AttendanceCorrectionScreen extends ConsumerWidget {
                     requests: state.requests,
                   ),
 
-                  const SizedBox(height: 28),
+                  const SizedBox(height: AppSpacing.xl),
 
+                  /// REMOTE WORK HEADER
                   const SectionHeader(
                     title: "Remote work requests",
                     icon: Icons.home_work_rounded,
                   ),
-                  const SizedBox(height: 12),
 
+                  const SizedBox(height: AppSpacing.sm),
+
+                  /// REMOTE SECTION
                   CorrectionSection(
                     title: "Remote Work Requests",
                     subtitle: "WFH & remote approvals",

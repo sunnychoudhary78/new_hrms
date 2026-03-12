@@ -60,6 +60,10 @@ dependencies:
   glassmorphism: ^3.0.0
   flutter_background_service: ^5.1.0
   google_maps_flutter: ^2.14.2
+  file_picker: ^10.3.10
+  url_launcher: ^6.3.2
+  flutter_map: ^8.2.2
+  latlong2: ^0.9.1
 
 dev_dependencies:
   flutter_test:

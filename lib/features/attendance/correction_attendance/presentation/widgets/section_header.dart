@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lms/core/theme/app_design.dart';
 
 class SectionHeader extends StatelessWidget {
   final String title;
@@ -13,17 +14,20 @@ class SectionHeader extends StatelessWidget {
     return Row(
       children: [
         Icon(icon, size: 16, color: scheme.onSurfaceVariant),
-        const SizedBox(width: 6),
+
+        const SizedBox(width: AppSpacing.xs),
+
         Text(
           title.toUpperCase(),
-          style: TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.bold,
+          style: Theme.of(context).textTheme.labelMedium?.copyWith(
+            fontWeight: FontWeight.w700,
             letterSpacing: 1,
             color: scheme.onSurfaceVariant,
           ),
         ),
-        const SizedBox(width: 8),
+
+        const SizedBox(width: AppSpacing.sm),
+
         Expanded(child: Divider(color: scheme.outlineVariant, thickness: 1)),
       ],
     );

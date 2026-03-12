@@ -17,14 +17,9 @@ class LeaveStatusApiService {
     throw Exception("Unexpected leave status response");
   }
 
-  Future<void> revokeLeave({
-    required String requestId,
-    required List<String> dates,
-  }) async {
-    await api.post('leave/revoke', {
-      "requestId": requestId,
-      "revocationDates": dates,
-      "reason": "NA",
+  Future<void> revokeLeave({required String requestId}) async {
+    await api.patch('leave-requests/$requestId/withdraw', {
+      "reason": "Leave withdrawn by user",
     });
   }
 }

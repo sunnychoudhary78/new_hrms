@@ -1,10 +1,10 @@
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// 🔥 All overlay states
+/// Overlay states
 enum GlobalOverlayState { idle, loading, success, error }
 
-/// 🔥 Immutable State
+/// Immutable state
 class GlobalLoadingState {
   final GlobalOverlayState state;
   final String message;
@@ -31,7 +31,7 @@ class GlobalLoadingState {
   }
 }
 
-/// 🔥 Riverpod 3 Notifier
+/// Global Loader Notifier
 class GlobalLoadingNotifier extends Notifier<GlobalLoadingState> {
   Timer? _timer;
 
@@ -40,9 +40,9 @@ class GlobalLoadingNotifier extends Notifier<GlobalLoadingState> {
     return const GlobalLoadingState.idle();
   }
 
-  /// SHOW LOADING
+  /// Show loading
   void showLoading([String message = "Please wait..."]) {
-    _timer?.cancel();
+    _cancelTimer();
 
     state = GlobalLoadingState(
       state: GlobalOverlayState.loading,
@@ -50,51 +50,75 @@ class GlobalLoadingNotifier extends Notifier<GlobalLoadingState> {
     );
   }
 
-  /// SHOW SUCCESS
+  /// Show success
   void showSuccess(
     String message, {
     Duration duration = const Duration(seconds: 2),
   }) {
-    _timer?.cancel();
+    _cancelTimer();
 
     state = GlobalLoadingState(
       state: GlobalOverlayState.success,
       message: message,
     );
 
-    _timer = Timer(duration, hide);
+    _timer = Timer(duration, _hideInternal);
   }
 
-  /// SHOW ERROR
+  /// Show error
   void showError(
     String message, {
     Duration duration = const Duration(seconds: 3),
   }) {
-    _timer?.cancel();
+    _cancelTimer();
 
     state = GlobalLoadingState(
       state: GlobalOverlayState.error,
       message: message,
     );
 
-    _timer = Timer(duration, hide);
+    _timer = Timer(duration, _hideInternal);
   }
 
-  /// UPDATE MESSAGE (only for loading)
+  void showApiError(Object e) {
+    final msg = e
+        .toString()
+        .replaceFirst("Exception: ", "")
+        .replaceAll("\n", " ")
+        .trim();
+
+    showError(msg.isEmpty ? "Something went wrong" : msg);
+  }
+
+  void showApiSuccess(String message) {
+    showSuccess(message);
+  }
+
+  /// Update message during loading
   void update(String message) {
     if (state.state == GlobalOverlayState.loading) {
       state = state.copyWith(message: message);
     }
   }
 
-  /// HIDE
+  /// Hide overlay manually
   void hide() {
-    _timer?.cancel();
+    _cancelTimer();
+    _hideInternal();
+  }
+
+  /// Internal hide
+  void _hideInternal() {
     state = const GlobalLoadingState.idle();
+  }
+
+  void _cancelTimer() {
+    _timer?.cancel();
+    _timer = null;
   }
 }
 
-/// 🔥 Provider
+/// Provider
 final globalLoadingProvider =
     NotifierProvider<GlobalLoadingNotifier, GlobalLoadingState>(
       GlobalLoadingNotifier.new,
