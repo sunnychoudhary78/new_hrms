@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lms/features/auth/presentation/providers/auth_provider.dart';
 import 'package:lms/features/home/presentation/widgets/app_drawer.dart';
 import 'package:lms/features/leave/presentation/widgets/leave_balance_list.dart';
 import 'package:lms/shared/widgets/app_bar.dart';
@@ -12,6 +13,8 @@ class LeaveBalanceScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
+    ref.watch(authProvider); // 👈 important
+
     final leaveAsync = ref.watch(leaveBalanceProvider);
 
     return Scaffold(

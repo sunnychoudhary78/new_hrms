@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lms/core/network/session_guard.dart';
 import 'package:lms/features/auth/presentation/providers/auth_provider.dart';
 import 'package:lms/features/auth/presentation/providers/auth_state.dart';
 
@@ -26,5 +27,9 @@ final dioClientProvider = Provider<DioClient>((ref) {
 // 📡 Api service provider
 final apiServiceProvider = Provider<ApiService>((ref) {
   final dioClient = ref.read(dioClientProvider);
-  return ApiService(dioClient.dio);
+  return ApiService(dioClient.dio, ref);
+});
+
+final sessionGuardProvider = Provider<SessionGuard>((ref) {
+  return SessionGuard();
 });

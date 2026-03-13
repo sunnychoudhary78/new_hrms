@@ -258,11 +258,15 @@ class AuthNotifier extends Notifier<AuthState> {
   // ───────────────── SUBSCRIPTION STATE ─────────────────
 
   void forceSubscriptionExpired() {
-    ref.invalidate(notificationProvider);
-    ref.invalidate(homeDashboardProvider);
-    ref.invalidate(leaveApproveProvider);
-
     state = const AuthState(isLoading: false, isSubscriptionExpired: true);
+
+    // Reset navigation stack
+    Future.microtask(() {
+      navigatorKey.currentState?.pushNamedAndRemoveUntil(
+        '/subscription-expired',
+        (route) => false,
+      );
+    });
   }
 
   void resetSubscriptionExpired() {

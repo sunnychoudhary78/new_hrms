@@ -5,20 +5,32 @@ class SubscriptionInterceptor extends Interceptor {
 
   SubscriptionInterceptor({required this.onSubscriptionExpired});
 
-  @override
-  void onError(DioException err, ErrorInterceptorHandler handler) {
-    final response = err.response;
-    final path = err.requestOptions.path;
+  bool _isExpired(Response? response, DioException? err) {
+    if (response?.statusCode == 402) return true;
 
-    /// Ignore endpoints that should not trigger subscription lock
-    if (path.contains('/auth/logout') ||
-        path.contains('/auth/unregister-fcm-token')) {
-      handler.next(err);
-      return;
+    final data = response?.data;
+    if (data is Map && data['expired'] == true) return true;
+
+    if (err?.message != null &&
+        err!.message!.toLowerCase().contains("subscription")) {
+      return true;
     }
 
-    /// Subscription expired
-    if (response?.statusCode == 402) {
+    return false;
+  }
+
+  @override
+  void onResponse(Response response, ResponseInterceptorHandler handler) {
+    if (_isExpired(response, null)) {
+      onSubscriptionExpired();
+    }
+
+    handler.next(response);
+  }
+
+  @override
+  void onError(DioException err, ErrorInterceptorHandler handler) {
+    if (_isExpired(err.response, err)) {
       onSubscriptionExpired();
     }
 

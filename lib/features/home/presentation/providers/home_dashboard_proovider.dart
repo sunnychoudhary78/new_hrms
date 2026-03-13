@@ -53,6 +53,11 @@ class HomeDashboardNotifier extends AsyncNotifier<HomeDashboardModel> {
       print("   profile type → ${auth.profile.runtimeType}");
       print("   profile value → ${auth.profile}");
 
+      // Stop provider if subscription expired
+      if (auth.isSubscriptionExpired) {
+        throw Exception("SUBSCRIPTION_EXPIRED");
+      }
+
       if (auth.profile == null) {
         print("⏳ AUTH PROFILE NOT READY — stopping dashboard load");
         throw Exception("USER_NOT_READY");
@@ -124,8 +129,11 @@ class HomeDashboardNotifier extends AsyncNotifier<HomeDashboardModel> {
 
       return dashboard;
     } catch (e, stack) {
-      if (e.toString().contains("SESSION_OR_NETWORK_ERROR")) {
-        ref.read(authProvider.notifier).forceSubscriptionExpired();
+      if (e.toString().contains("SESSION_EXPIRED")) {
+        Future.microtask(() {
+          ref.read(authProvider.notifier).forceSubscriptionExpired();
+        });
+
         throw Exception("SUBSCRIPTION_EXPIRED");
       }
 

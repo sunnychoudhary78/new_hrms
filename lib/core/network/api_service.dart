@@ -1,13 +1,19 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lms/core/providers/network_providers.dart';
+import 'package:lms/features/auth/presentation/providers/auth_provider.dart';
 
 class ApiService {
   final Dio _dio;
+  final Ref ref;
 
-  ApiService(this._dio);
+  ApiService(this._dio, this.ref);
 
   // ───────── POST ─────────
   Future<dynamic> post(String endpoint, Map<String, dynamic> data) async {
+    _blockIfExpired();
+
     debugPrint("🌐 POST ${_dio.options.baseUrl}$endpoint");
     debugPrint("📦 BODY: $data");
 
@@ -26,6 +32,8 @@ class ApiService {
     String endpoint, {
     Map<String, dynamic>? queryParams,
   }) async {
+    _blockIfExpired();
+
     debugPrint("🌐 GET ${_dio.options.baseUrl}$endpoint");
 
     if (queryParams != null) {
@@ -44,6 +52,8 @@ class ApiService {
 
   // ───────── PATCH ─────────
   Future<dynamic> patch(String endpoint, Map<String, dynamic> data) async {
+    _blockIfExpired();
+
     debugPrint("🌐 PATCH ${_dio.options.baseUrl}$endpoint");
     debugPrint("📦 BODY: $data");
 
@@ -59,6 +69,8 @@ class ApiService {
 
   // ───────── MULTIPART ─────────
   Future<dynamic> postMultipart(String endpoint, FormData formData) async {
+    _blockIfExpired();
+
     debugPrint("🌐 POST MULTIPART ${_dio.options.baseUrl}$endpoint");
 
     try {
@@ -69,7 +81,6 @@ class ApiService {
       );
 
       debugPrint("✅ MULTIPART success | status=${response.statusCode}");
-
       return _handle(response);
     } on DioException catch (e) {
       _logError("POST MULTIPART", endpoint, e);
@@ -79,6 +90,8 @@ class ApiService {
 
   // ───────── DELETE ─────────
   Future<dynamic> delete(String endpoint, Map<String, dynamic> data) async {
+    _blockIfExpired();
+
     debugPrint("🌐 DELETE ${_dio.options.baseUrl}$endpoint");
     debugPrint("📦 BODY: $data");
 
@@ -86,11 +99,19 @@ class ApiService {
       final response = await _dio.delete(endpoint, data: data);
 
       debugPrint("✅ DELETE success | status=${response.statusCode}");
-
       return _handle(response);
     } on DioException catch (e) {
       _logError("DELETE", endpoint, e);
       throw _extractException(e);
+    }
+  }
+
+  // ───────── BLOCK API CALLS IF SUBSCRIPTION EXPIRED ─────────
+  void _blockIfExpired() {
+    final auth = ref.read(authProvider);
+
+    if (auth.isSubscriptionExpired) {
+      throw Exception("SUBSCRIPTION_EXPIRED");
     }
   }
 
@@ -120,6 +141,19 @@ class ApiService {
 
   // ───────── ERROR PARSER ─────────
   Exception _extractException(DioException e) {
+    final auth = ref.read(authProvider);
+
+    // 402 response from backend
+    if (e.response?.statusCode == 402 ||
+        (e.response?.data is Map && e.response?.data['expired'] == true)) {
+      ref.read(sessionGuardProvider).trigger(() {
+        ref.read(authProvider.notifier).forceSubscriptionExpired();
+      });
+
+      return Exception("SUBSCRIPTION_EXPIRED");
+    }
+
+    // Normal API error response
     if (e.response != null) {
       final data = e.response!.data;
 
@@ -134,18 +168,24 @@ class ApiService {
       }
     }
 
+    // Network timeout
     if (e.type == DioExceptionType.connectionTimeout ||
         e.type == DioExceptionType.receiveTimeout) {
       return Exception("Connection timeout");
     }
 
+    // No internet
     if (e.type == DioExceptionType.connectionError) {
       return Exception("No internet connection");
     }
 
-    // 🔥 THIS IS IMPORTANT
-    if (e.response == null) {
-      return Exception("SESSION_OR_NETWORK_ERROR");
+    // 🔥 IMPORTANT: backend sometimes closes connection when subscription expired
+    if (e.response == null && auth.profile != null) {
+      ref.read(sessionGuardProvider).trigger(() {
+        ref.read(authProvider.notifier).forceSubscriptionExpired();
+      });
+
+      return Exception("SESSION_EXPIRED");
     }
 
     return Exception("Something went wrong");

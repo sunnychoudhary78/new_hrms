@@ -15,6 +15,8 @@ import 'package:lms/shared/widgets/global_error.dart';
 import 'package:lms/shared/widgets/global_loader.dart';
 import 'package:lms/shared/widgets/global_sucess.dart';
 
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -68,6 +70,7 @@ class MyApp extends ConsumerWidget {
       debugShowCheckedModeBanner: false,
 
       themeMode: themeMode,
+      navigatorKey: navigatorKey,
 
       theme: ThemeData(
         useMaterial3: true,

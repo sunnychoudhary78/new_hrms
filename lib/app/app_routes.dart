@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lms/core/screens/subscribtion_expired_screen.dart';
 import 'package:lms/features/attendance/correction_attendance/presentation/screens/my_corrections_screen.dart';
 import 'package:lms/features/attendance/view_attendance/presentation/screens/view_attendance_screen.dart';
 import 'package:lms/features/auth/presentation/screens/change_password_screen.dart';
@@ -35,6 +36,7 @@ class AppRoutes {
     '/view-corrections': (_) => const MyCorrectionsScreen(),
     '/notifications': (_) => const NotificationScreen(),
     '/settings': (_) => const ThemeSettingsScreen(),
+    '/subscription-expired': (_) => const SubscriptionExpiredScreen(),
 
     // ✅ ADD THESE TWO
     '/forgot-password': (_) => const ForgotPasswordScreen(),

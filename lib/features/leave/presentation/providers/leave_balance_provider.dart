@@ -24,7 +24,15 @@ final leaveBalanceProvider =
 class LeaveBalanceNotifier extends AsyncNotifier<List<LeaveBalance>> {
   @override
   Future<List<LeaveBalance>> build() async {
-    ref.watch(authProvider);
+    final auth = ref.watch(authProvider);
+
+    if (auth.isSubscriptionExpired) {
+      throw Exception("SUBSCRIPTION_EXPIRED");
+    }
+
+    if (auth.profile == null) {
+      throw Exception("USER_NOT_READY");
+    }
 
     final balanceApi = ref.read(leaveBalanceApiProvider);
     final typeApi = ref.read(leaveTypeApiProvider);
