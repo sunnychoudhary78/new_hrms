@@ -1,8 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lms/core/network/session_guard.dart';
 import 'package:lms/features/auth/presentation/providers/auth_provider.dart';
-import 'package:lms/features/auth/presentation/providers/auth_state.dart';
-
 import '../storage/token_storage.dart';
 import '../network/dio_client.dart';
 import '../network/api_service.dart';

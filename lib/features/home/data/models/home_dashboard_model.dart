@@ -26,6 +26,32 @@ class HomeDashboardModel {
     required this.todayStatus,
     required this.lastFiveDays,
   });
+
+  factory HomeDashboardModel.empty() {
+    return HomeDashboardModel(
+      userName: '',
+      designation: '',
+      profileImageUrl: null,
+      attendance: const AttendanceOverview(
+        workedMinutes: 0,
+        expectedMinutes: 0,
+      ),
+      stats: const HomeStats(
+        payableDays: 0,
+        lateDays: 0,
+        absentDays: 0,
+        totalLeaves: 0,
+      ),
+      distribution: const AttendanceDistribution(
+        worked: 0,
+        leave: 0,
+        absent: 0,
+        late: 0,
+      ),
+      todayStatus: const TodayAttendanceStatus(isCheckedIn: false),
+      lastFiveDays: const [],
+    );
+  }
 }
 
 //

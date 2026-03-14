@@ -1,13 +1,10 @@
 import 'dart:io';
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lms/core/network/api_constants.dart';
-import 'package:lms/core/providers/global_actions_provider.dart';
+import 'package:lms/core/providers/global_loading_provider.dart';
 import 'package:lms/core/providers/network_providers.dart';
-import 'package:lms/features/home/presentation/providers/home_dashboard_proovider.dart';
-import 'package:lms/features/leave/presentation/providers/leave_approve_provider.dart';
-import 'package:lms/features/notifications/presentation/providers/notifications_provider.dart';
 import 'package:lms/main.dart';
-
 import '../../../../core/storage/token_storage.dart';
 import '../../data/auth_api_service.dart';
 import 'auth_state.dart';
@@ -34,17 +31,22 @@ class AuthNotifier extends Notifier<AuthState> {
   Future<void> tryAutoLogin() async {
     final jwt = await _tokenStorage.getJwt();
 
+    /// ❌ No token → go to login
     if (jwt == null || jwt.isEmpty) {
-      state = const AuthState(isLoading: false);
+      state = const AuthState(isLoading: false, isInitializing: false);
       return;
     }
 
     try {
+      /// Auto login loading
       state = state.copyWith(isLoading: true, isSubscriptionExpired: false);
 
       final profileJson = await _authApi.fetchProfile();
 
+      /// Subscription expired
       if (_isSubscriptionExpired(profileJson)) {
+        await _tokenStorage.clear();
+
         forceSubscriptionExpired();
         return;
       }
@@ -52,8 +54,10 @@ class AuthNotifier extends Notifier<AuthState> {
       final profile = Userdetails.fromJson(profileJson);
       final permissions = await _authApi.fetchPermissions();
 
+      /// ✅ Auto login success
       state = state.copyWith(
         isLoading: false,
+        isInitializing: false,
         profile: profile,
         permissions: permissions,
         profileUrl: profile.profilePicture != null
@@ -69,12 +73,20 @@ class AuthNotifier extends Notifier<AuthState> {
       final message = e.toString().toLowerCase();
 
       if (message.contains("expired") || message.contains("402")) {
+        state = const AuthState(
+          isLoading: false,
+          isInitializing: false,
+          isSubscriptionExpired: true,
+        );
+
         forceSubscriptionExpired();
         return;
       }
 
+      /// Token invalid → clear and go to login
       await _tokenStorage.clear();
-      state = const AuthState(isLoading: false);
+
+      state = const AuthState(isLoading: false, isInitializing: false);
     }
   }
 
@@ -85,6 +97,106 @@ class AuthNotifier extends Notifier<AuthState> {
 
     try {
       final userModel = await _authApi.login(email, password);
+
+      await _tokenStorage.saveJwt(userModel.token);
+
+      final profileJson = await _authApi.fetchProfile();
+
+      if (_isSubscriptionExpired(profileJson)) {
+        forceSubscriptionExpired();
+        return;
+      }
+
+      final profile = Userdetails.fromJson(profileJson);
+      final permissions = await _authApi.fetchPermissions();
+
+      state = state.copyWith(
+        isLoading: false,
+        isInitializing: false,
+        isSubscriptionExpired: false,
+        authUser: userModel.user,
+        profile: profile,
+        permissions: permissions,
+        profileUrl: profile.profilePicture != null
+            ? ApiConstants.imageBaseUrl + profile.profilePicture!
+            : '',
+        companyLogoUrl: profile.companyLogoFilename != null
+            ? ApiConstants.companyLogoBaseUrl + profile.companyLogoFilename!
+            : '',
+      );
+
+      await _registerFcmIfAvailable();
+
+      Future.microtask(() {
+        navigatorKey.currentState?.pushNamedAndRemoveUntil(
+          '/',
+          (route) => false,
+        );
+      });
+    } catch (e, stack) {
+      print("🧨 LOGIN CATCH TRIGGERED");
+      print("🧨 ERROR TYPE: ${e.runtimeType}");
+      print("🧨 ERROR VALUE: $e");
+
+      state = state.copyWith(isLoading: false, isInitializing: false);
+
+      if (e is DioException) {
+        final status = e.response?.statusCode;
+        final body = e.response?.data;
+
+        print("🧨 DIO STATUS: $status");
+        print("🧨 DIO BODY: $body");
+
+        /// Invalid credentials
+        if (status == 401) {
+          ref
+              .read(globalLoadingProvider.notifier)
+              .showError("Invalid email or password");
+          return;
+        }
+
+        /// Subscription expired
+        if (status == 402) {
+          forceSubscriptionExpired();
+          return;
+        }
+      }
+
+      /// Fallback error
+      ref
+          .read(globalLoadingProvider.notifier)
+          .showError("Unable to login. Please try again.");
+    }
+  }
+
+  Future<void> sendOtp(String phone) async {
+    state = state.copyWith(isLoading: true);
+
+    final overlay = ref.read(globalLoadingProvider.notifier);
+
+    try {
+      await _authApi.sendOtp(phone);
+
+      state = state.copyWith(isLoading: false);
+
+      overlay.showSuccess("OTP sent successfully");
+    } catch (e) {
+      state = state.copyWith(isLoading: false);
+
+      if (e is DioException) {
+        final msg = e.response?.data?["message"] ?? "Failed to send OTP";
+        overlay.showError(msg);
+      } else {
+        overlay.showError("Failed to send OTP");
+      }
+    }
+  }
+
+  Future<void> verifyOtp({required String phone, required String otp}) async {
+    state = state.copyWith(isLoading: true, isSubscriptionExpired: false);
+
+    try {
+      final userModel = await _authApi.verifyOtp(phone: phone, otp: otp);
 
       await _tokenStorage.saveJwt(userModel.token);
 
@@ -115,23 +227,14 @@ class AuthNotifier extends Notifier<AuthState> {
     } catch (e) {
       state = state.copyWith(isLoading: false);
 
-      final error = e.toString().toLowerCase();
+      final overlay = ref.read(globalLoadingProvider.notifier);
 
-      if (error.contains("expired") || error.contains("402")) {
-        forceSubscriptionExpired();
-        return;
+      if (e is DioException) {
+        final msg = e.response?.data?["message"] ?? "OTP verification failed";
+        overlay.showError(msg);
+      } else {
+        overlay.showError("OTP verification failed");
       }
-
-      if (error.contains("invalid") || error.contains("password")) {
-        ref
-            .read(globalActionProvider.notifier)
-            .error("Invalid email or password");
-        return;
-      }
-
-      ref
-          .read(globalActionProvider.notifier)
-          .error("Unable to load account data");
     }
   }
 
@@ -246,21 +349,19 @@ class AuthNotifier extends Notifier<AuthState> {
 
     await _tokenStorage.clear();
 
-    ref.invalidate(notificationProvider);
-    ref.invalidate(unreadCountProvider);
-    ref.invalidate(leaveApproveProvider);
-
     state = const AuthState();
 
     Root.restartApp();
   }
 
   // ───────────────── SUBSCRIPTION STATE ─────────────────
-
   void forceSubscriptionExpired() {
-    state = const AuthState(isLoading: false, isSubscriptionExpired: true);
+    state = state.copyWith(
+      isInitializing: false,
+      isSubscriptionExpired: true,
+      isLoading: false,
+    );
 
-    // Reset navigation stack
     Future.microtask(() {
       navigatorKey.currentState?.pushNamedAndRemoveUntil(
         '/subscription-expired',
@@ -270,7 +371,14 @@ class AuthNotifier extends Notifier<AuthState> {
   }
 
   void resetSubscriptionExpired() {
-    state = const AuthState(isLoading: false);
+    state = state.copyWith(isSubscriptionExpired: false, isInitializing: false);
+
+    Future.microtask(() {
+      navigatorKey.currentState?.pushNamedAndRemoveUntil(
+        '/login',
+        (route) => false,
+      );
+    });
   }
 
   // ───────────────── FCM HELPERS ─────────────────

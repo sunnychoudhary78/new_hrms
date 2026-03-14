@@ -3,20 +3,21 @@ import '../../../profile/data/models/user_details_model.dart';
 
 class AuthState {
   final bool isLoading;
+  final bool isInitializing; // NEW
+
   final User? authUser;
   final Userdetails? profile;
 
   final String profileUrl;
-
-  /// 🏢 NEW — company logo url
   final String companyLogoUrl;
 
-  final bool isSubscriptionExpired; // NEW
+  final bool isSubscriptionExpired;
 
   final List<String> permissions;
 
   const AuthState({
-    this.isLoading = true,
+    this.isLoading = false,
+    this.isInitializing = true, // start in initializing state
     this.authUser,
     this.profile,
     this.profileUrl = '',
@@ -27,23 +28,24 @@ class AuthState {
 
   AuthState copyWith({
     bool? isLoading,
+    bool? isInitializing,
     User? authUser,
     Userdetails? profile,
     String? profileUrl,
     String? companyLogoUrl,
     bool? isSubscriptionExpired,
-
     List<String>? permissions,
   }) {
     return AuthState(
       isLoading: isLoading ?? this.isLoading,
+      isInitializing: isInitializing ?? this.isInitializing,
       authUser: authUser ?? this.authUser,
-      isSubscriptionExpired:
-          isSubscriptionExpired ?? this.isSubscriptionExpired,
       profile: profile ?? this.profile,
       profileUrl: profileUrl ?? this.profileUrl,
       companyLogoUrl: companyLogoUrl ?? this.companyLogoUrl,
       permissions: permissions ?? this.permissions,
+      isSubscriptionExpired:
+          isSubscriptionExpired ?? this.isSubscriptionExpired,
     );
   }
 }

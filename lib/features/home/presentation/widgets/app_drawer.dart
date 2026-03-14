@@ -4,6 +4,8 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:lms/app/app_root.dart';
 import 'package:lms/features/auth/presentation/providers/auth_provider.dart';
 import 'package:lms/features/home/presentation/widgets/drawer_item_tile.dart';
+import 'package:lms/features/leave/presentation/providers/leave_approve_provider.dart';
+import 'package:lms/features/notifications/presentation/providers/notifications_provider.dart';
 
 class AppDrawer extends ConsumerStatefulWidget {
   const AppDrawer({super.key});
@@ -173,6 +175,9 @@ class _AppDrawerState extends ConsumerState<AppDrawer>
                 title: "Logout",
                 onTap: () async {
                   await ref.read(authProvider.notifier).logout();
+                  ref.invalidate(notificationProvider);
+                  ref.invalidate(unreadCountProvider);
+                  ref.invalidate(leaveApproveProvider);
                   Navigator.of(context).pushAndRemoveUntil(
                     MaterialPageRoute(builder: (_) => const AppRoot()),
                     (_) => false,

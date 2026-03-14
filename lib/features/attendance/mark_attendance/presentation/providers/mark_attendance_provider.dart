@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:lms/core/providers/global_actions_provider.dart';
+import 'package:lms/core/providers/global_loading_provider.dart';
 import 'package:lms/core/providers/location_providers.dart';
 import 'package:lms/core/services/location_service.dart';
 import 'package:lms/core/services/selfie_service.dart';
@@ -83,10 +83,11 @@ class MarkAttendanceNotifier extends AsyncNotifier<List<AttendanceSession>> {
     required bool isRemote,
     String? remoteReason,
   }) async {
-    final action = ref.read(globalActionProvider.notifier);
+    final overlay = ref.read(globalLoadingProvider.notifier);
+    final overlayState = ref.read(globalLoadingProvider);
 
     // Prevent duplicate taps
-    if (ref.read(globalActionProvider)?.type == GlobalActionType.loading) {
+    if (overlayState.isLoading) {
       return;
     }
 
@@ -95,12 +96,12 @@ class MarkAttendanceNotifier extends AsyncNotifier<List<AttendanceSession>> {
       // STEP 1: FETCH MOBILE CONFIG
       // ─────────────────────────────────────────────
 
-      action.loading("Checking requirements...");
+      overlay.showLoading("Checking requirements...");
 
       final config = await _repo.fetchMobileConfig();
 
       if (!config.allowMobileCheckin) {
-        action.error(
+        overlay.showError(
           isCheckIn
               ? "Mobile check-in is not allowed."
               : "Mobile check-out is not allowed.",
@@ -122,7 +123,7 @@ class MarkAttendanceNotifier extends AsyncNotifier<List<AttendanceSession>> {
       // ─────────────────────────────────────────────
 
       if (requireSelfie) {
-        action.loading(
+        overlay.showLoading(
           isCheckIn
               ? "Capturing check-in selfie..."
               : "Capturing check-out selfie...",
@@ -134,7 +135,7 @@ class MarkAttendanceNotifier extends AsyncNotifier<List<AttendanceSession>> {
           throw Exception("Selfie is required");
         }
 
-        action.loading("Compressing image...");
+        overlay.showLoading("Compressing image...");
 
         compressedFile = await _selfieService.compressImage(selfieFile);
 
@@ -150,7 +151,7 @@ class MarkAttendanceNotifier extends AsyncNotifier<List<AttendanceSession>> {
       // ─────────────────────────────────────────────
 
       if (requireGPS) {
-        action.loading("Fetching location...");
+        overlay.showLoading("Fetching location...");
 
         location = await _getUserLocation();
       }
@@ -177,7 +178,7 @@ class MarkAttendanceNotifier extends AsyncNotifier<List<AttendanceSession>> {
       // STEP 5: SEND REQUEST
       // ─────────────────────────────────────────────
 
-      action.loading(
+      overlay.showLoading(
         isCheckIn ? "Marking check-in..." : "Marking check-out...",
       );
 
@@ -191,11 +192,11 @@ class MarkAttendanceNotifier extends AsyncNotifier<List<AttendanceSession>> {
       // STEP 6: REFRESH
       // ─────────────────────────────────────────────
 
-      action.loading("Refreshing attendance...");
+      overlay.showLoading("Refreshing attendance...");
 
       await refresh();
 
-      action.success(
+      overlay.showSuccess(
         isCheckIn
             ? (isRemote ? "Remote check-in successful" : "Check-in successful")
             : (isRemote
@@ -203,7 +204,7 @@ class MarkAttendanceNotifier extends AsyncNotifier<List<AttendanceSession>> {
                   : "Check-out successful"),
       );
     } catch (e) {
-      action.error(e.toString().replaceFirst("Exception: ", ""));
+      overlay.showError(e.toString().replaceFirst("Exception: ", ""));
     }
   }
 

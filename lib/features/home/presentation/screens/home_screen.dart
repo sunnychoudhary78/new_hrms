@@ -1,16 +1,42 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lms/core/providers/global_loading_provider.dart';
+import 'package:lms/features/auth/presentation/providers/auth_provider.dart';
 import 'package:lms/features/home/presentation/widgets/app_drawer.dart';
 import 'package:lms/features/home/presentation/widgets/home_dashboard_view.dart';
 import 'package:lms/features/notifications/presentation/providers/notifications_provider.dart';
 import 'package:lms/features/notifications/presentation/screens/notifications_screen.dart';
 import 'package:lms/shared/widgets/app_bar.dart';
 
-class HomeScreen extends ConsumerWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen> {
+  bool _shown = false;
+
+  @override
+  void initState() {
+    super.initState();
+
+    Future.microtask(() {
+      if (_shown) return;
+      _shown = true;
+
+      final auth = ref.read(authProvider);
+      final name = auth.profile?.associatesName?.split(' ').first ?? '';
+
+      ref
+          .read(globalLoadingProvider.notifier)
+          .showMessage("Welcome back, $name 👋");
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppAppBar(
         title: "Home",
@@ -18,7 +44,6 @@ class HomeScreen extends ConsumerWidget {
         actions: const [_NotificationIcon()],
       ),
       drawer: const AppDrawer(),
-
       body: const HomeDashboardView(),
     );
   }

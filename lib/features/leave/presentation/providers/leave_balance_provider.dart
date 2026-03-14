@@ -24,12 +24,14 @@ final leaveBalanceProvider =
 class LeaveBalanceNotifier extends AsyncNotifier<List<LeaveBalance>> {
   @override
   Future<List<LeaveBalance>> build() async {
+    // 👇 react to auth changes
+    ref.listen(authProvider, (previous, next) {
+      if (next.isSubscriptionExpired) {
+        ref.invalidateSelf();
+      }
+    });
+
     final auth = ref.watch(authProvider);
-
-    if (auth.isSubscriptionExpired) {
-      throw Exception("SUBSCRIPTION_EXPIRED");
-    }
-
     if (auth.profile == null) {
       throw Exception("USER_NOT_READY");
     }
@@ -39,6 +41,12 @@ class LeaveBalanceNotifier extends AsyncNotifier<List<LeaveBalance>> {
 
     final balances = await balanceApi.fetchLeaveBalance();
     final types = await typeApi.fetchLeaveTypes();
+
+    // 👇 check again after API calls
+    final latestAuth = ref.read(authProvider);
+    if (latestAuth.isSubscriptionExpired) {
+      return [];
+    }
 
     final Map<String, dynamic> typeMap = {for (var t in types) t['id']: t};
 

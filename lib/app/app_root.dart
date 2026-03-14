@@ -1,16 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:lms/core/providers/global_actions_provider.dart';
+import 'package:lms/core/screens/splash_loading_screen.dart';
 import 'package:lms/core/screens/subscribtion_expired_screen.dart';
 import 'package:lms/features/notifications/presentation/providers/notifications_provider.dart';
-
 import '../core/notifications/notification_action.dart';
 import '../core/notifications/notification_router.dart';
 import '../core/notifications/notification_action_notifier.dart';
 import '../core/providers/notification_api_providers.dart';
-
-import '../core/providers/global_loading_provider.dart';
-
 import '../features/auth/presentation/providers/auth_provider.dart';
 import '../features/auth/presentation/screens/login_screen.dart';
 import '../features/home/presentation/screens/home_screen.dart';
@@ -27,7 +23,6 @@ class _AppRootState extends ConsumerState<AppRoot> {
   bool _autoLoginAttempted = false;
 
   late final ProviderSubscription<NotificationAction?> _notificationSub;
-  late final ProviderSubscription<GlobalAction?> _globalActionSub;
 
   @override
   void initState() {
@@ -41,7 +36,7 @@ class _AppRootState extends ConsumerState<AppRoot> {
 
       final auth = ref.read(authProvider);
 
-      if (!auth.isSubscriptionExpired) {
+      if (auth.isInitializing && !auth.isSubscriptionExpired) {
         ref.read(authProvider.notifier).tryAutoLogin();
       }
     });
@@ -56,38 +51,11 @@ class _AppRootState extends ConsumerState<AppRoot> {
         }
       },
     );
-
-    /// 🌍 GLOBAL ACTION LISTENER
-    _globalActionSub = ref.listenManual<GlobalAction?>(globalActionProvider, (
-      previous,
-      next,
-    ) {
-      if (next == null) return;
-
-      final overlay = ref.read(globalLoadingProvider.notifier);
-
-      switch (next.type) {
-        case GlobalActionType.loading:
-          overlay.showLoading(next.message);
-          break;
-
-        case GlobalActionType.success:
-          overlay.showSuccess(next.message);
-          break;
-
-        case GlobalActionType.error:
-          overlay.showError(next.message);
-          break;
-      }
-
-      ref.read(globalActionProvider.notifier).clear();
-    });
   }
 
   @override
   void dispose() {
     _notificationSub.close();
-    _globalActionSub.close();
     super.dispose();
   }
 
@@ -95,12 +63,12 @@ class _AppRootState extends ConsumerState<AppRoot> {
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
 
-    /// 🔄 Loading state
-    if (authState.isLoading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    /// 🟡 App initialization
+    if (authState.isInitializing) {
+      return const SplashLoadingScreen();
     }
 
-    /// 🔒 Global subscription lock
+    /// 🔒 Subscription expired
     if (authState.isSubscriptionExpired) {
       return const SubscriptionExpiredScreen();
     }
@@ -112,7 +80,6 @@ class _AppRootState extends ConsumerState<AppRoot> {
 
     /// 🚀 Logged in
     _initPushIfNeeded();
-
     return const HomeScreen();
   }
 

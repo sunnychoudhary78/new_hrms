@@ -13,6 +13,7 @@ import 'package:lms/core/theme/theme_mode_provider.dart';
 
 import 'package:lms/shared/widgets/global_error.dart';
 import 'package:lms/shared/widgets/global_loader.dart';
+import 'package:lms/shared/widgets/global_message.dart';
 import 'package:lms/shared/widgets/global_sucess.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -108,6 +109,8 @@ class MyApp extends ConsumerWidget {
             if (overlay.isSuccess) GlobalSuccess(message: overlay.message),
 
             if (overlay.isError) GlobalError(message: overlay.message),
+
+            if (overlay.isMessage) GlobalMessage(message: overlay.message),
           ],
         );
       },

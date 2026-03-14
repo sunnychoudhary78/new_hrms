@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:dio/dio.dart';
+import 'package:lms/core/network/api_endpoints.dart';
 import 'package:lms/features/auth/data/models/user_model.dart';
 import '../../../../core/network/api_service.dart';
 
@@ -11,7 +12,7 @@ class AuthApiService {
   // ───────────────── AUTH ─────────────────
 
   Future<UserModel> login(String email, String password) async {
-    final response = await api.post('/auth/login', {
+    final response = await api.post(ApiEndpoints.login, {
       'email': email,
       'password': password,
     });
@@ -19,12 +20,28 @@ class AuthApiService {
     return UserModel.fromJson(response);
   }
 
+  Future<void> sendOtp(String phone) async {
+    await api.post(ApiEndpoints.sendOtp, {"phone": phone});
+  }
+
+  Future<UserModel> verifyOtp({
+    required String phone,
+    required String otp,
+  }) async {
+    final response = await api.post(ApiEndpoints.verifyOtp, {
+      "phone": phone,
+      "otp": otp,
+    });
+
+    return UserModel.fromJson(response);
+  }
+
   Future<Map<String, dynamic>> fetchProfile() async {
-    return await api.get('/employees/single');
+    return await api.get(ApiEndpoints.userDetails);
   }
 
   Future<List<String>> fetchPermissions() async {
-    final response = await api.get('/auth/permissions');
+    final response = await api.get(ApiEndpoints.permissions);
 
     final List list = response['permissions'];
     return list.map((p) => p['name'] as String).toList();
@@ -37,7 +54,7 @@ class AuthApiService {
     required String newPassword,
     required String confirmPassword,
   }) async {
-    await api.post('/auth/change-password', {
+    await api.post(ApiEndpoints.changePassword, {
       "currentPassword": currentPassword,
       "newPassword": newPassword,
       "confirmPassword": confirmPassword,
@@ -45,7 +62,7 @@ class AuthApiService {
   }
 
   Future<void> forgotPassword(String email) async {
-    await api.post('/auth/forgot-password', {"email": email});
+    await api.post(ApiEndpoints.forgotPassword, {"email": email});
   }
 
   Future<void> resetPassword({
@@ -53,7 +70,7 @@ class AuthApiService {
     required String otp,
     required String newPassword,
   }) async {
-    await api.post('/auth/reset-password', {
+    await api.post(ApiEndpoints.resetPassword, {
       "email": email,
       "otp": otp,
       "newPassword": newPassword,
@@ -70,7 +87,10 @@ class AuthApiService {
       ),
     });
 
-    final response = await api.postMultipart('/employee-photo/photo', formData);
+    final response = await api.postMultipart(
+      ApiEndpoints.profileImage,
+      formData,
+    );
 
     return response['filename'];
   }
@@ -81,13 +101,13 @@ class AuthApiService {
     required String fcmToken,
     required String platform,
   }) async {
-    await api.post('/auth/register-fcm-token', {
+    await api.post(ApiEndpoints.registerFcmToken, {
       "fcmToken": fcmToken,
       "platform": platform,
     });
   }
 
   Future<void> unregisterFcmToken({required String fcmToken}) async {
-    await api.post('/auth/unregister-fcm-token', {"fcmToken": fcmToken});
+    await api.post(ApiEndpoints.unregisterFcmToken, {"fcmToken": fcmToken});
   }
 }

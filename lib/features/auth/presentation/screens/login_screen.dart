@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:lms/core/providers/global_actions_provider.dart';
 import '../providers/auth_provider.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -31,24 +30,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   bool _obscurePassword = true;
 
-  void _showSnack(String msg) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
-  }
-
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-
-    ref.listen(globalActionProvider, (previous, next) {
-      if (next == null) return;
-
-      if (next.type == GlobalActionType.error) {
-        _showSnack(next.message);
-      }
-    });
 
     final size = MediaQuery.of(context).size;
     final bool isWide = size.width > 600;
@@ -214,7 +200,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               end: const Offset(1, 1),
                               curve: Curves.easeOutBack,
                             ),
-                        const SizedBox(height: 32),
+                        const SizedBox(height: 20),
+                        TextButton(
+                          onPressed: () {
+                            Navigator.pushNamed(context, '/login-otp');
+                          },
+                          child: Text(
+                            "Login with OTP",
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              color: scheme.primary,
+                            ),
+                          ),
+                        ),
+                        SizedBox(height: 20),
 
                         /// Forgot Password
                         Align(
@@ -250,15 +249,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   void _handleLogin() async {
     final emailOrEmpId = _emailController.text.trim();
     final password = _passwordController.text.trim();
-
-    if (emailOrEmpId.isEmpty || password.isEmpty) {
-      _showSnack("Please fill in both fields");
-      return;
-    }
-
-    /// 🔴 VERY IMPORTANT
-    /// Reset expired state before attempting login again
-    ref.read(authProvider.notifier).resetSubscriptionExpired();
 
     await ref.read(authProvider.notifier).login(emailOrEmpId, password);
   }

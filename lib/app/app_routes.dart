@@ -4,6 +4,7 @@ import 'package:lms/features/attendance/correction_attendance/presentation/scree
 import 'package:lms/features/attendance/view_attendance/presentation/screens/view_attendance_screen.dart';
 import 'package:lms/features/auth/presentation/screens/change_password_screen.dart';
 import 'package:lms/features/auth/presentation/screens/forgot_passowrd_screen.dart';
+import 'package:lms/features/auth/presentation/screens/otp_login_screen.dart';
 import 'package:lms/features/auth/presentation/screens/reset_password_screen.dart';
 import 'package:lms/features/dashboard/presentation/screens/team_dashboard_screeen.dart';
 import 'package:lms/features/leave/presentation/screens/leave_apply_screen.dart';
@@ -23,6 +24,7 @@ class AppRoutes {
   static Map<String, WidgetBuilder> routes = {
     '/home': (_) => const HomeScreen(),
     '/login': (_) => const LoginScreen(),
+    '/login-otp': (context) => const OtpLoginScreen(),
     '/profile': (_) => const ProfileScreen(),
     '/team-dashboard': (_) => const TeamDashboardScreen(),
     '/leave-balance': (_) => const LeaveBalanceScreen(),

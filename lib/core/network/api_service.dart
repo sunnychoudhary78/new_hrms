@@ -12,14 +12,19 @@ class ApiService {
 
   // ───────── POST ─────────
   Future<dynamic> post(String endpoint, Map<String, dynamic> data) async {
-    _blockIfExpired();
-
-    debugPrint("🌐 POST ${_dio.options.baseUrl}$endpoint");
+    debugPrint("🌐 POST BASE: ${_dio.options.baseUrl}");
+    debugPrint("🌐 POST ENDPOINT: $endpoint");
     debugPrint("📦 BODY: $data");
 
     try {
-      final response = await _dio.post(endpoint, data: data);
+      final response = await _dio.post(
+        endpoint.startsWith("/") ? endpoint.substring(1) : endpoint,
+        data: data,
+      );
+
       debugPrint("✅ POST success | status=${response.statusCode}");
+      debugPrint("📥 RESPONSE: ${response.data}");
+
       return _handle(response);
     } on DioException catch (e) {
       _logError("POST", endpoint, e);
@@ -32,8 +37,6 @@ class ApiService {
     String endpoint, {
     Map<String, dynamic>? queryParams,
   }) async {
-    _blockIfExpired();
-
     debugPrint("🌐 GET ${_dio.options.baseUrl}$endpoint");
 
     if (queryParams != null) {
@@ -52,8 +55,6 @@ class ApiService {
 
   // ───────── PATCH ─────────
   Future<dynamic> patch(String endpoint, Map<String, dynamic> data) async {
-    _blockIfExpired();
-
     debugPrint("🌐 PATCH ${_dio.options.baseUrl}$endpoint");
     debugPrint("📦 BODY: $data");
 
@@ -69,8 +70,6 @@ class ApiService {
 
   // ───────── MULTIPART ─────────
   Future<dynamic> postMultipart(String endpoint, FormData formData) async {
-    _blockIfExpired();
-
     debugPrint("🌐 POST MULTIPART ${_dio.options.baseUrl}$endpoint");
 
     try {
@@ -90,8 +89,6 @@ class ApiService {
 
   // ───────── DELETE ─────────
   Future<dynamic> delete(String endpoint, Map<String, dynamic> data) async {
-    _blockIfExpired();
-
     debugPrint("🌐 DELETE ${_dio.options.baseUrl}$endpoint");
     debugPrint("📦 BODY: $data");
 
@@ -103,15 +100,6 @@ class ApiService {
     } on DioException catch (e) {
       _logError("DELETE", endpoint, e);
       throw _extractException(e);
-    }
-  }
-
-  // ───────── BLOCK API CALLS IF SUBSCRIPTION EXPIRED ─────────
-  void _blockIfExpired() {
-    final auth = ref.read(authProvider);
-
-    if (auth.isSubscriptionExpired) {
-      throw Exception("SUBSCRIPTION_EXPIRED");
     }
   }
 

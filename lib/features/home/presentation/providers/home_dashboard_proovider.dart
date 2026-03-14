@@ -53,14 +53,9 @@ class HomeDashboardNotifier extends AsyncNotifier<HomeDashboardModel> {
       print("   profile type → ${auth.profile.runtimeType}");
       print("   profile value → ${auth.profile}");
 
-      // Stop provider if subscription expired
-      if (auth.isSubscriptionExpired) {
-        throw Exception("SUBSCRIPTION_EXPIRED");
-      }
-
       if (auth.profile == null) {
         print("⏳ AUTH PROFILE NOT READY — stopping dashboard load");
-        throw Exception("USER_NOT_READY");
+        return Future.value(HomeDashboardModel.empty());
       }
       print("✅ USER IS LOGGED IN");
 

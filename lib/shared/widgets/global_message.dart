@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
-class GlobalError extends StatelessWidget {
+class GlobalMessage extends StatelessWidget {
   final String message;
 
-  const GlobalError({super.key, required this.message});
+  const GlobalMessage({super.key, required this.message});
 
   @override
   Widget build(BuildContext context) {
@@ -21,7 +21,7 @@ class GlobalError extends StatelessWidget {
                     child: Material(
                       elevation: 8,
                       borderRadius: BorderRadius.circular(14),
-                      color: scheme.error,
+                      color: Colors.green.shade600, // ✅ green background
                       child: Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 16,
@@ -31,13 +31,16 @@ class GlobalError extends StatelessWidget {
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.error_outline, color: scheme.onError),
+                            const Icon(
+                              Icons.check_circle_outline,
+                              color: Colors.white,
+                            ),
                             const SizedBox(width: 10),
                             Expanded(
                               child: Text(
                                 message,
-                                style: TextStyle(
-                                  color: scheme.onError,
+                                style: const TextStyle(
+                                  color: Colors.white,
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),
