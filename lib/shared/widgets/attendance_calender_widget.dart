@@ -61,8 +61,8 @@ class AttendanceCalendarWidget extends StatelessWidget {
       ),
       child: TableCalendar(
         firstDay: DateTime(2020),
-        lastDay: DateTime(2035),
-        focusedDay: focusedDay,
+        lastDay: DateTime.now(), // prevents future navigation
+        focusedDay: DateTime(focusedDay.year, focusedDay.month, 1),
         selectedDayPredicate: (day) => isSameDay(day, selectedDay),
 
         onDaySelected: onDaySelected,

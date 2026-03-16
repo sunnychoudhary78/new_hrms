@@ -2,6 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lms/core/screens/splash_loading_screen.dart';
 import 'package:lms/core/screens/subscribtion_expired_screen.dart';
+import 'package:lms/features/attendance/correction_attendance/presentation/providers/attendance_requests_provider.dart';
+import 'package:lms/features/attendance/correction_attendance/presentation/providers/my_corrections_provider.dart';
+import 'package:lms/features/attendance/view_attendance/presentation/providers/view_attendance_provider.dart';
+import 'package:lms/features/leave/presentation/providers/leave_apply_provider.dart';
+import 'package:lms/features/leave/presentation/providers/leave_approve_provider.dart';
+import 'package:lms/features/leave/presentation/providers/leave_balance_provider.dart';
+import 'package:lms/features/leave/presentation/providers/leave_details_provider.dart';
 import 'package:lms/features/notifications/presentation/providers/notifications_provider.dart';
 import '../core/notifications/notification_action.dart';
 import '../core/notifications/notification_router.dart';
@@ -21,6 +28,8 @@ class AppRoot extends ConsumerStatefulWidget {
 class _AppRootState extends ConsumerState<AppRoot> {
   bool _pushInitialized = false;
   bool _autoLoginAttempted = false;
+
+  String? _lastUserId;
 
   late final ProviderSubscription<NotificationAction?> _notificationSub;
 
@@ -62,6 +71,22 @@ class _AppRootState extends ConsumerState<AppRoot> {
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
+
+    final currentUserId = authState.profile?.userId;
+
+    if (currentUserId != null && _lastUserId != currentUserId) {
+      _lastUserId = currentUserId;
+
+      /// 🔥 Reset user-scoped providers
+      ref.invalidate(myCorrectionsProvider);
+      ref.invalidate(attendanceRequestsProvider);
+      ref.invalidate(viewAttendanceProvider);
+      ref.invalidate(notificationProvider);
+      ref.invalidate(leaveApplyProvider);
+      ref.invalidate(leaveBalanceProvider);
+      ref.invalidate(leaveApproveProvider);
+      ref.invalidate(leaveDetailsProvider);
+    }
 
     /// 🟡 App initialization
     if (authState.isInitializing) {

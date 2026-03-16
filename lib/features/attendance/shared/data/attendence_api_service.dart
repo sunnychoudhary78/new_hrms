@@ -242,7 +242,7 @@ class AttendanceApiService {
       queryParams: {"status": status},
     );
 
-    return res;
+    return res["data"] ?? [];
   }
 
   Future<List<dynamic>> fetchAttendanceCorrectionsMy({
@@ -253,7 +253,7 @@ class AttendanceApiService {
       queryParams: {"status": status},
     );
 
-    return res;
+    return res; // API already returns List
   }
 
   Future<void> updateCorrectionStatus({

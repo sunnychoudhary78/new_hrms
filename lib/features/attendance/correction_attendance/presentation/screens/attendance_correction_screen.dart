@@ -6,14 +6,29 @@ import 'package:lms/features/attendance/correction_attendance/presentation/widge
 import 'package:lms/features/home/presentation/widgets/app_drawer.dart';
 import 'package:lms/shared/widgets/app_bar.dart';
 import '../widgets/correction_stats.dart';
-import '../widgets/status_filter_pills.dart';
 import '../widgets/correction_section.dart';
 
-class AttendanceCorrectionScreen extends ConsumerWidget {
+class AttendanceCorrectionScreen extends ConsumerStatefulWidget {
   const AttendanceCorrectionScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<AttendanceCorrectionScreen> createState() =>
+      _AttendanceCorrectionScreenState();
+}
+
+class _AttendanceCorrectionScreenState
+    extends ConsumerState<AttendanceCorrectionScreen> {
+  @override
+  void initState() {
+    super.initState();
+
+    Future.microtask(() {
+      ref.read(attendanceRequestsProvider.notifier).fetchRequests();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final stateAsync = ref.watch(attendanceRequestsProvider);
 
@@ -31,7 +46,7 @@ class AttendanceCorrectionScreen extends ConsumerWidget {
                   .read(attendanceRequestsProvider.notifier)
                   .fetchRequests();
             },
-            child: SingleChildScrollView(
+            child: ListView(
               physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.fromLTRB(
                 AppSpacing.md,
@@ -39,67 +54,109 @@ class AttendanceCorrectionScreen extends ConsumerWidget {
                 AppSpacing.md,
                 AppSpacing.xl,
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  /// STATS
-                  CorrectionStats(requests: state.requests),
+              children: [
+                /// STATS
+                CorrectionStats(requests: state.requests),
 
-                  const SizedBox(height: AppSpacing.lg),
+                const SizedBox(height: AppSpacing.lg),
 
-                  /// FILTER HEADER
-                  const SectionHeader(
-                    title: "Filter by status",
-                    icon: Icons.filter_alt_rounded,
-                  ),
+                /// FILTER HEADER + MENU
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    /// HEADER
+                    const Expanded(
+                      child: SectionHeader(
+                        title: "Filter by status",
+                        icon: Icons.filter_alt_rounded,
+                      ),
+                    ),
 
-                  const SizedBox(height: AppSpacing.sm),
+                    /// FILTER BUTTON
+                    PopupMenuButton<String>(
+                      tooltip: "Filter: ${state.statusFilter}",
+                      onSelected: (value) {
+                        ref
+                            .read(attendanceRequestsProvider.notifier)
+                            .changeStatus(value);
+                      },
+                      itemBuilder: (context) => const [
+                        PopupMenuItem(value: "PENDING", child: Text("Pending")),
+                        PopupMenuItem(
+                          value: "APPROVED",
+                          child: Text("Approved"),
+                        ),
+                        PopupMenuItem(
+                          value: "REJECTED",
+                          child: Text("Rejected"),
+                        ),
+                        PopupMenuItem(value: "ALL", child: Text("All")),
+                      ],
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: scheme.surfaceContainerHighest,
+                          borderRadius: BorderRadius.circular(AppRadius.pill),
+                          border: Border.all(color: scheme.outlineVariant),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.filter_list_rounded, size: 18),
+                            const SizedBox(width: 6),
+                            Text(
+                              state.statusFilter,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
 
-                  /// FILTER PILLS
-                  StatusFilterPills(
-                    selected: state.statusFilter,
-                    onChanged: (s) => ref
-                        .read(attendanceRequestsProvider.notifier)
-                        .changeStatus(s),
-                  ),
+                const SizedBox(height: AppSpacing.xl),
 
-                  const SizedBox(height: AppSpacing.xl),
+                /// CORRECTIONS HEADER
+                const SectionHeader(
+                  title: "Attendance corrections",
+                  icon: Icons.access_time_rounded,
+                ),
 
-                  /// CORRECTIONS HEADER
-                  const SectionHeader(
-                    title: "Attendance corrections",
-                    icon: Icons.access_time_rounded,
-                  ),
+                const SizedBox(height: AppSpacing.sm),
 
-                  const SizedBox(height: AppSpacing.sm),
+                /// CORRECTION SECTION
+                CorrectionSection(
+                  title: "Attendance Corrections",
+                  subtitle: "Missed punches & edits",
+                  type: "CORRECTION",
+                  requests: state.requests,
+                ),
 
-                  /// CORRECTION SECTION
-                  CorrectionSection(
-                    title: "Attendance Corrections",
-                    subtitle: "Missed punches & edits",
-                    type: "CORRECTION",
-                    requests: state.requests,
-                  ),
+                const SizedBox(height: AppSpacing.xl),
 
-                  const SizedBox(height: AppSpacing.xl),
+                /// REMOTE WORK HEADER
+                const SectionHeader(
+                  title: "Remote work requests",
+                  icon: Icons.home_work_rounded,
+                ),
 
-                  /// REMOTE WORK HEADER
-                  const SectionHeader(
-                    title: "Remote work requests",
-                    icon: Icons.home_work_rounded,
-                  ),
+                const SizedBox(height: AppSpacing.sm),
 
-                  const SizedBox(height: AppSpacing.sm),
-
-                  /// REMOTE SECTION
-                  CorrectionSection(
-                    title: "Remote Work Requests",
-                    subtitle: "WFH & remote approvals",
-                    type: "REMOTE",
-                    requests: state.requests,
-                  ),
-                ],
-              ),
+                /// REMOTE SECTION
+                CorrectionSection(
+                  title: "Remote Work Requests",
+                  subtitle: "WFH & remote approvals",
+                  type: "REMOTE",
+                  requests: state.requests,
+                ),
+              ],
             ),
           );
         },

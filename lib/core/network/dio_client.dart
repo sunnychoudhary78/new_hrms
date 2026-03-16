@@ -13,8 +13,8 @@ class DioClient {
   }) : dio = Dio(
          BaseOptions(
            baseUrl: '${ApiConstants.baseUrl}/',
-           connectTimeout: const Duration(seconds: 15),
-           receiveTimeout: const Duration(seconds: 15),
+           connectTimeout: const Duration(seconds: 25),
+           receiveTimeout: const Duration(seconds: 25),
            contentType: 'application/json',
          ),
        ) {

@@ -19,8 +19,8 @@ class GlobalError extends StatelessWidget {
               Padding(
                     padding: const EdgeInsets.all(16),
                     child: Material(
-                      elevation: 8,
-                      borderRadius: BorderRadius.circular(14),
+                      elevation: 6,
+                      borderRadius: BorderRadius.circular(16),
                       color: scheme.error,
                       child: Container(
                         padding: const EdgeInsets.symmetric(
@@ -29,16 +29,32 @@ class GlobalError extends StatelessWidget {
                         ),
                         constraints: const BoxConstraints(maxWidth: 420),
                         child: Row(
-                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.error_outline, color: scheme.onError),
-                            const SizedBox(width: 10),
+                            /// Icon Badge
+                            Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: scheme.onError.withOpacity(0.15),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                Icons.warning_amber_rounded,
+                                color: scheme.onError,
+                                size: 20,
+                              ),
+                            ),
+
+                            const SizedBox(width: 12),
+
+                            /// Message
                             Expanded(
                               child: Text(
                                 message,
                                 style: TextStyle(
                                   color: scheme.onError,
                                   fontWeight: FontWeight.w500,
+                                  fontSize: 14,
+                                  height: 1.3,
                                 ),
                               ),
                             ),

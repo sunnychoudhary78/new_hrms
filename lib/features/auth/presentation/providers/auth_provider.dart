@@ -132,6 +132,11 @@ class AuthNotifier extends Notifier<AuthState> {
           '/',
           (route) => false,
         );
+        final name = profile.associatesName?.split(' ').first ?? '';
+
+        ref
+            .read(globalLoadingProvider.notifier)
+            .showMessage("Welcome back, $name 👋");
       });
     } catch (e, stack) {
       print("🧨 LOGIN CATCH TRIGGERED");

@@ -78,12 +78,16 @@ class GlobalLoadingNotifier extends Notifier<GlobalLoadingState> {
   }) {
     _cancelTimer();
 
-    print("🔴 GLOBAL ERROR: $message");
+    /// Clean exception text
+    var msg = message
+        .replaceFirst("Exception:", "")
+        .replaceFirst("Exception: ", "")
+        .replaceFirst("Error:", "")
+        .trim();
 
-    state = GlobalLoadingState(
-      state: GlobalOverlayState.error,
-      message: message,
-    );
+    print("🔴 GLOBAL ERROR: $msg");
+
+    state = GlobalLoadingState(state: GlobalOverlayState.error, message: msg);
 
     _timer = Timer(duration, _hideInternal);
   }

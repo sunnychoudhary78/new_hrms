@@ -150,6 +150,7 @@ class NotificationList extends ConsumerWidget {
                         MaterialPageRoute(
                           builder: (_) => EmployeeAttendanceCalendarScreen(
                             employee: employee,
+                            highlightDate: createdAt,
                           ),
                         ),
                       );

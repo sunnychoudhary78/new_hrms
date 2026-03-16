@@ -2,30 +2,43 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lms/core/theme/app_design.dart';
 import 'package:lms/features/attendance/correction_attendance/presentation/providers/my_corrections_provider.dart';
-import 'package:lms/features/attendance/correction_attendance/presentation/widgets/status_filter_pills.dart';
 import 'package:lms/features/home/presentation/widgets/app_drawer.dart';
 import 'package:lms/shared/widgets/app_bar.dart';
 
 import '../widgets/my_correction_card.dart';
+import '../widgets/section_header.dart';
 
-class MyCorrectionsScreen extends ConsumerWidget {
+class MyCorrectionsScreen extends ConsumerStatefulWidget {
   const MyCorrectionsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final scheme = Theme.of(context).colorScheme;
+  ConsumerState<MyCorrectionsScreen> createState() =>
+      _MyCorrectionsScreenState();
+}
 
+class _MyCorrectionsScreenState extends ConsumerState<MyCorrectionsScreen> {
+  @override
+  void initState() {
+    super.initState();
+
+    /// Always fetch latest corrections when screen opens
+    Future.microtask(() {
+      ref.read(myCorrectionsProvider.notifier).fetchCorrections();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     final stateAsync = ref.watch(myCorrectionsProvider);
 
     return Scaffold(
       backgroundColor: scheme.surfaceContainerLowest,
       appBar: AppAppBar(title: "My Correction Requests"),
-      drawer: AppDrawer(),
+      drawer: const AppDrawer(),
       body: stateAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-
         error: (e, _) => Center(child: Text(e.toString())),
-
         data: (state) {
           final requests = state.requests;
 
@@ -34,6 +47,7 @@ class MyCorrectionsScreen extends ConsumerWidget {
               await ref.read(myCorrectionsProvider.notifier).fetchCorrections();
             },
             child: ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.fromLTRB(
                 AppSpacing.md,
                 AppSpacing.md,
@@ -41,14 +55,63 @@ class MyCorrectionsScreen extends ConsumerWidget {
                 AppSpacing.xl,
               ),
               children: [
-                /// ALWAYS SHOW FILTER PILLS
-                StatusFilterPills(
-                  selected: state.statusFilter,
-                  onChanged: (status) {
-                    ref
-                        .read(myCorrectionsProvider.notifier)
-                        .changeStatus(status);
-                  },
+                /// FILTER HEADER + MENU
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    const Expanded(
+                      child: SectionHeader(
+                        title: "Filter by status",
+                        icon: Icons.filter_alt_rounded,
+                      ),
+                    ),
+
+                    PopupMenuButton<String>(
+                      tooltip: "Filter: ${state.statusFilter}",
+                      onSelected: (value) {
+                        ref
+                            .read(myCorrectionsProvider.notifier)
+                            .changeStatus(value);
+                      },
+                      itemBuilder: (context) => const [
+                        PopupMenuItem(value: "PENDING", child: Text("Pending")),
+                        PopupMenuItem(
+                          value: "APPROVED",
+                          child: Text("Approved"),
+                        ),
+                        PopupMenuItem(
+                          value: "REJECTED",
+                          child: Text("Rejected"),
+                        ),
+                        PopupMenuItem(value: "ALL", child: Text("All")),
+                      ],
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: scheme.surfaceContainerHighest,
+                          borderRadius: BorderRadius.circular(AppRadius.pill),
+                          border: Border.all(color: scheme.outlineVariant),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.filter_list_rounded, size: 18),
+                            const SizedBox(width: 6),
+                            Text(
+                              state.statusFilter,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
 
                 const SizedBox(height: AppSpacing.lg),

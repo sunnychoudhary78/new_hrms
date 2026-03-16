@@ -29,6 +29,15 @@ class _ViewAttendanceScreenState extends ConsumerState<ViewAttendanceScreen> {
   DateTime focused = DateTime.now();
   DateTime? selectedDay;
 
+  @override
+  void initState() {
+    super.initState();
+
+    Future.microtask(() {
+      ref.invalidate(viewAttendanceProvider);
+    });
+  }
+
   ////////////////////////////////////////////////////////////////
   /// BUILD ATTENDANCE MAP FROM AGGREGATES + SESSIONS
   ////////////////////////////////////////////////////////////////

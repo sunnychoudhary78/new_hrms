@@ -201,35 +201,39 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               curve: Curves.easeOutBack,
                             ),
                         const SizedBox(height: 20),
-                        TextButton(
-                          onPressed: () {
-                            Navigator.pushNamed(context, '/login-otp');
-                          },
-                          child: Text(
-                            "Login with OTP",
-                            style: TextStyle(
-                              fontWeight: FontWeight.w600,
-                              color: scheme.primary,
-                            ),
-                          ),
-                        ),
-                        SizedBox(height: 20),
-
-                        /// Forgot Password
-                        Align(
-                          alignment: Alignment.center,
-                          child: TextButton(
-                            onPressed: () {
-                              Navigator.pushNamed(context, "/forgot-password");
-                            },
-                            child: Text(
-                              "Forgot Password?",
-                              style: TextStyle(
-                                fontWeight: FontWeight.w600,
-                                color: scheme.primary,
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            TextButton(
+                              onPressed: () {
+                                Navigator.pushNamed(context, '/login-otp');
+                              },
+                              child: Text(
+                                "Login with OTP",
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  color: scheme.primary,
+                                ),
                               ),
                             ),
-                          ),
+
+                            /// Forgot Password
+                            TextButton(
+                              onPressed: () {
+                                Navigator.pushNamed(
+                                  context,
+                                  "/forgot-password",
+                                );
+                              },
+                              child: Text(
+                                "Forgot Password?",
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  color: scheme.primary,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),

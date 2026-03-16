@@ -46,7 +46,13 @@ class LeaveApplyNotifier extends Notifier<LeaveApplyStatus> {
 
       state = LeaveApplyStatus.idle;
     } catch (e) {
-      errorMessage = e.toString();
+      var msg = e.toString();
+
+      if (msg.startsWith("Exception:")) {
+        msg = msg.replaceFirst("Exception:", "").trim();
+      }
+
+      errorMessage = msg;
 
       state = LeaveApplyStatus.error;
 

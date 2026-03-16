@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:lms/core/providers/global_loading_provider.dart';
-import 'package:lms/features/auth/presentation/providers/auth_provider.dart';
 import 'package:lms/features/home/presentation/widgets/app_drawer.dart';
 import 'package:lms/features/home/presentation/widgets/home_dashboard_view.dart';
 import 'package:lms/features/notifications/presentation/providers/notifications_provider.dart';
@@ -16,25 +14,6 @@ class HomeScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
-  bool _shown = false;
-
-  @override
-  void initState() {
-    super.initState();
-
-    Future.microtask(() {
-      if (_shown) return;
-      _shown = true;
-
-      final auth = ref.read(authProvider);
-      final name = auth.profile?.associatesName?.split(' ').first ?? '';
-
-      ref
-          .read(globalLoadingProvider.notifier)
-          .showMessage("Welcome back, $name 👋");
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(

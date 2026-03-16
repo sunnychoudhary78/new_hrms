@@ -4,13 +4,19 @@ import 'package:intl/intl.dart';
 import 'package:lms/shared/widgets/app_bar.dart';
 import 'package:lms/shared/widgets/attendance_calender_widget.dart';
 import 'package:lms/shared/widgets/attendance_day_detail_bottom_sheet.dart';
+import 'package:lms/shared/widgets/attendance_month_summary.dart';
 import '../../data/models/team_dashboard_model.dart';
 import '../providers/team_attendance_provider.dart';
 
 class EmployeeAttendanceCalendarScreen extends ConsumerStatefulWidget {
   final TeamEmployee employee;
+  final DateTime? highlightDate;
 
-  const EmployeeAttendanceCalendarScreen({super.key, required this.employee});
+  const EmployeeAttendanceCalendarScreen({
+    super.key,
+    required this.employee,
+    this.highlightDate,
+  });
 
   @override
   ConsumerState<EmployeeAttendanceCalendarScreen> createState() =>
@@ -19,8 +25,20 @@ class EmployeeAttendanceCalendarScreen extends ConsumerStatefulWidget {
 
 class _EmployeeAttendanceCalendarScreenState
     extends ConsumerState<EmployeeAttendanceCalendarScreen> {
-  DateTime _focusedDay = DateTime.now();
+  late DateTime _focusedDay;
   DateTime? _selectedDay;
+
+  @override
+  void initState() {
+    super.initState();
+    Future.microtask(() {
+      ref.invalidate(employeeAttendanceProvider);
+    });
+
+    _selectedDay = widget.highlightDate;
+    final initial = widget.highlightDate ?? DateTime.now();
+    _focusedDay = DateTime(initial.year, initial.month);
+  }
 
   ////////////////////////////////////////////////////////////////
   /// LEGEND ITEM
@@ -74,17 +92,24 @@ class _EmployeeAttendanceCalendarScreenState
     }
   }
 
+  bool _isFutureMonth(DateTime day) {
+    final now = DateTime.now();
+    return day.year > now.year ||
+        (day.year == now.year && day.month > now.month);
+  }
+
   ////////////////////////////////////////////////////////////////
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
 
-    final attendanceAsync = ref.watch(
-      employeeAttendanceProvider(
-        AttendanceParams(userId: widget.employee.userId, month: _focusedDay),
-      ),
+    final params = AttendanceParams(
+      userId: widget.employee.userId,
+      month: DateTime(_focusedDay.year, _focusedDay.month),
     );
+
+    final attendanceAsync = ref.watch(employeeAttendanceProvider(params));
 
     return Scaffold(
       appBar: AppAppBar(title: "View Attendance"),
@@ -103,6 +128,11 @@ class _EmployeeAttendanceCalendarScreenState
             return attendanceMap[key]?.status;
           }
 
+          final counts = <String, int>{};
+
+          for (final day in attendanceMap.values) {
+            counts[day.status] = (counts[day.status] ?? 0) + 1;
+          }
           ////////////////////////////////////////////////////////////
 
           return SingleChildScrollView(
@@ -111,6 +141,10 @@ class _EmployeeAttendanceCalendarScreenState
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _EmployeeHeader(employee: widget.employee),
+
+                const SizedBox(height: 24),
+
+                AttendanceMonthSummary(counts: counts),
 
                 const SizedBox(height: 24),
 
@@ -141,8 +175,24 @@ class _EmployeeAttendanceCalendarScreenState
                   },
 
                   onPageChanged: (focusedDay) {
+                    final normalized = DateTime(
+                      focusedDay.year,
+                      focusedDay.month,
+                    );
+
+                    /// prevent going to future months
+                    if (_isFutureMonth(normalized)) {
+                      return;
+                    }
+
+                    /// prevent duplicate rebuild
+                    if (_focusedDay.year == normalized.year &&
+                        _focusedDay.month == normalized.month) {
+                      return;
+                    }
+
                     setState(() {
-                      _focusedDay = focusedDay;
+                      _focusedDay = normalized;
                     });
                   },
                 ),
@@ -167,15 +217,35 @@ class _EmployeeAttendanceCalendarScreenState
                   spacing: 10,
                   runSpacing: 10,
                   children: [
-                    _legendItem("On-Time", _statusColor("On-Time"), scheme),
+                    _legendItem(
+                      "On-Time (${counts["On-Time"] ?? 0})",
+                      _statusColor("On-Time"),
+                      scheme,
+                    ),
 
-                    _legendItem("Late", _statusColor("Late"), scheme),
+                    _legendItem(
+                      "Late (${counts["Late"] ?? 0})",
+                      _statusColor("Late"),
+                      scheme,
+                    ),
 
-                    _legendItem("Absent", _statusColor("Absent"), scheme),
+                    _legendItem(
+                      "Absent (${counts["Absent"] ?? 0})",
+                      _statusColor("Absent"),
+                      scheme,
+                    ),
 
-                    _legendItem("Holiday", _statusColor("Holiday"), scheme),
+                    _legendItem(
+                      "Holiday (${counts["Holiday"] ?? 0})",
+                      _statusColor("Holiday"),
+                      scheme,
+                    ),
 
-                    _legendItem("On-Leave", _statusColor("On-Leave"), scheme),
+                    _legendItem(
+                      "On-Leave (${counts["On-Leave"] ?? 0})",
+                      _statusColor("On-Leave"),
+                      scheme,
+                    ),
                   ],
                 ),
               ],
