@@ -8,9 +8,13 @@ class AttendanceRequest {
   final String userName;
   final String? userImage;
 
-  // correction-only
+  // correction-only (proposed)
   final String? proposedCheckIn;
   final String? proposedCheckOut;
+
+  // 🔥 NEW: original times
+  final String? originalCheckIn;
+  final String? originalCheckOut;
 
   final String? requestedAt;
 
@@ -24,6 +28,8 @@ class AttendanceRequest {
     this.userImage,
     this.proposedCheckIn,
     this.proposedCheckOut,
+    this.originalCheckIn,
+    this.originalCheckOut,
     this.requestedAt,
   });
 
@@ -38,8 +44,14 @@ class AttendanceRequest {
       reason: json['reason'] as String?,
       targetDate: json['targetDate'] as String,
 
+      // proposed
       proposedCheckIn: json['proposedCheckIn'] as String?,
       proposedCheckOut: json['proposedCheckOut'] as String?,
+
+      // 🔥 original (NEW)
+      originalCheckIn: json['originalCheckIn'] as String?,
+      originalCheckOut: json['originalCheckOut'] as String?,
+
       requestedAt: json['createdAt'] as String?,
 
       userName: user?['name'] ?? '',
@@ -53,4 +65,6 @@ class AttendanceRequest {
   bool get isCorrection => type == 'CORRECTION';
   bool get isRemote => type == 'REMOTE';
   bool get isPending => status == 'PENDING';
+  bool get isApproved => status == 'APPROVED';
+  bool get isRejected => status == 'REJECTED';
 }

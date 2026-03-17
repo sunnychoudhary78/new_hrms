@@ -5,50 +5,34 @@ import 'correction_mobile_card.dart';
 import 'correction_table.dart';
 
 class CorrectionSection extends StatelessWidget {
-  final String title;
-  final String subtitle;
-  final String type;
   final List<AttendanceRequest> requests;
 
-  const CorrectionSection({
-    super.key,
-    required this.title,
-    required this.subtitle,
-    required this.type,
-    required this.requests,
-  });
+  const CorrectionSection({super.key, required this.requests});
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
+    if (requests.isEmpty) {
+      return const SizedBox.shrink();
+    }
 
-    final items = requests.where((e) => e.type == type).toList();
-    if (items.isEmpty) return const SizedBox.shrink();
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        /// 📱 MOBILE VIEW
+        if (constraints.maxWidth < 800) {
+          return Column(
+            children: [
+              for (int i = 0; i < requests.length; i++) ...[
+                RequestCard(item: requests[i]),
+                if (i != requests.length - 1)
+                  const SizedBox(height: AppSpacing.md),
+              ],
+            ],
+          );
+        }
 
-    return Container(
-      decoration: BoxDecoration(
-        color: scheme.surface,
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: scheme.outline.withOpacity(.2)),
-        boxShadow: [
-          BoxShadow(
-            color: scheme.shadow.withOpacity(.05),
-            blurRadius: 8,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          return constraints.maxWidth < 800
-              ? Column(
-                  children: items
-                      .map((e) => CorrectionMobileCard(item: e))
-                      .toList(),
-                )
-              : CorrectionTable(items: items);
-        },
-      ),
+        /// 💻 TABLE VIEW
+        return CorrectionTable(items: requests);
+      },
     );
   }
 }

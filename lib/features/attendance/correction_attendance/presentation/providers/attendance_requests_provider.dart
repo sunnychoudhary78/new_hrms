@@ -31,16 +31,14 @@ class AttendanceRequestsNotifier
 
   Future<void> fetchRequests() async {
     final current = state.value!;
-    debugPrint("📥 Fetch attendance requests | status=${current.statusFilter}");
+    debugPrint("📥 Fetch ALL attendance requests");
 
     state = AsyncData(current.copyWith(isLoading: true));
 
     try {
-      final status = current.statusFilter == 'ALL'
-          ? 'PENDING,APPROVED,REJECTED'
-          : current.statusFilter;
-
-      final list = await _repo.fetchAttendanceCorrections(status: status);
+      final list = await _repo.fetchAttendanceCorrections(
+        status: 'PENDING,APPROVED,REJECTED',
+      );
 
       debugPrint("✅ Requests fetched: ${list.length}");
 
@@ -50,7 +48,6 @@ class AttendanceRequestsNotifier
       debugPrintStack(stackTrace: st);
 
       state = AsyncData(current.copyWith(isLoading: false));
-      // ❌ DO NOT rethrow
     }
   }
 
@@ -61,10 +58,7 @@ class AttendanceRequestsNotifier
 
     final current = state.value!;
     state = AsyncData(current.copyWith(statusFilter: status));
-
-    await fetchRequests();
   }
-
   // ───────────────── APPROVE / REJECT ─────────────────
 
   Future<void> updateStatus({

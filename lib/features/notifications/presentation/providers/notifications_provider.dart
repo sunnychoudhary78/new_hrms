@@ -4,10 +4,9 @@ import 'package:lms/features/auth/presentation/providers/auth_provider.dart';
 
 /// 🔔 Main Notification Provider
 final notificationProvider =
-    AsyncNotifierProvider.autoDispose<
-      NotificationNotifier,
-      List<Map<String, dynamic>>
-    >(NotificationNotifier.new);
+    AsyncNotifierProvider<NotificationNotifier, List<Map<String, dynamic>>>(
+      NotificationNotifier.new,
+    );
 
 class NotificationNotifier extends AsyncNotifier<List<Map<String, dynamic>>> {
   @override

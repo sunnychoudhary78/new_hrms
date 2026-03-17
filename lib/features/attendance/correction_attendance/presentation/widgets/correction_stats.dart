@@ -21,18 +21,24 @@ class CorrectionStats extends StatelessWidget {
 
     return Row(
       children: [
-        _StatCard(
-          label: "Pending Corrections",
-          value: pendingCorrections.toString(),
-          color: scheme.tertiary,
+        Expanded(
+          child: _StatCard(
+            label: "Corrections",
+            value: pendingCorrections.toString(),
+            icon: Icons.access_time_rounded,
+            baseColor: Colors.amber,
+            bgColor: scheme.tertiaryContainer,
+          ),
         ),
-
         const SizedBox(width: AppSpacing.sm),
-
-        _StatCard(
-          label: "Pending Remote",
-          value: pendingRemote.toString(),
-          color: scheme.primary,
+        Expanded(
+          child: _StatCard(
+            label: "Remote",
+            value: pendingRemote.toString(),
+            icon: Icons.home_work_rounded,
+            baseColor: Colors.blue,
+            bgColor: scheme.primaryContainer,
+          ),
         ),
       ],
     );
@@ -42,55 +48,66 @@ class CorrectionStats extends StatelessWidget {
 class _StatCard extends StatelessWidget {
   final String label;
   final String value;
-  final Color color;
+  final IconData icon;
+  final Color baseColor;
+  final Color bgColor;
 
   const _StatCard({
     required this.label,
     required this.value,
-    required this.color,
+    required this.icon,
+    required this.baseColor,
+    required this.bgColor,
   });
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
 
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        decoration: BoxDecoration(
-          color: scheme.surface,
-          borderRadius: BorderRadius.circular(AppRadius.lg),
-          border: Border.all(color: scheme.outline.withOpacity(.2)),
-          boxShadow: [
-            BoxShadow(
-              color: scheme.shadow.withOpacity(.05),
-              blurRadius: 8,
-              offset: const Offset(0, 3),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              label,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: scheme.onSurfaceVariant,
-                fontWeight: FontWeight.w600,
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: scheme.outline.withOpacity(.15)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          /// TOP ROW (ICON + LABEL)
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: baseColor.withOpacity(.15),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, size: 16, color: baseColor),
               ),
-            ),
-
-            const SizedBox(height: AppSpacing.sm),
-
-            Text(
-              value,
-              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: color,
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
+            ],
+          ),
+
+          const SizedBox(height: AppSpacing.md),
+
+          /// VALUE
+          Text(
+            value,
+            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+              fontWeight: FontWeight.w800,
+              color: baseColor,
+              letterSpacing: 0.5,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
