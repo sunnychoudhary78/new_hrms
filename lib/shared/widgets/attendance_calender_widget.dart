@@ -26,16 +26,25 @@ class AttendanceCalendarWidget extends StatelessWidget {
 
   /// Premium status colors
   Color _statusColor(String status, ColorScheme scheme) {
-    switch (status) {
-      case "On-Time":
+    final normalized = status.trim().toLowerCase();
+
+    switch (normalized) {
+      case "on-time":
+      case "ontime":
+      case "present":
         return const Color(0xFF22C55E); // emerald
-      case "Late":
+      case "late":
         return const Color(0xFFF59E0B); // amber
-      case "Absent":
+      case "absent":
         return const Color(0xFFEF4444); // red
-      case "Holiday":
+      case "holiday":
+      case "weekoff":
+      case "week-off":
+      case "week off":
         return const Color(0xFF3B82F6); // blue
-      case "On-Leave":
+      case "on-leave":
+      case "on leave":
+      case "leave":
         return const Color(0xFFA855F7); // purple
       default:
         return scheme.outlineVariant;

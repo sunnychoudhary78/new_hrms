@@ -31,8 +31,10 @@ class _EmployeeAttendanceCalendarScreenState
   @override
   void initState() {
     super.initState();
+
     Future.microtask(() {
       ref.invalidate(employeeAttendanceProvider);
+      ref.invalidate(employeeAttendanceSummaryProvider); // ✅ NEW
     });
 
     _selectedDay = widget.highlightDate;
@@ -40,8 +42,6 @@ class _EmployeeAttendanceCalendarScreenState
     _focusedDay = DateTime(initial.year, initial.month);
   }
 
-  ////////////////////////////////////////////////////////////////
-  /// LEGEND ITEM
   ////////////////////////////////////////////////////////////////
 
   Widget _legendItem(String label, Color color, ColorScheme scheme) {
@@ -110,6 +110,9 @@ class _EmployeeAttendanceCalendarScreenState
     );
 
     final attendanceAsync = ref.watch(employeeAttendanceProvider(params));
+    final summaryAsync = ref.watch(
+      employeeAttendanceSummaryProvider(params),
+    ); // ✅ NEW
 
     return Scaffold(
       appBar: AppAppBar(title: "View Attendance"),
@@ -117,7 +120,6 @@ class _EmployeeAttendanceCalendarScreenState
 
       body: attendanceAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-
         error: (error, stack) => Center(child: Text(error.toString())),
 
         data: (attendanceMap) {
@@ -128,11 +130,20 @@ class _EmployeeAttendanceCalendarScreenState
             return attendanceMap[key]?.status;
           }
 
-          final counts = <String, int>{};
+          ////////////////////////////////////////////////////////////
+          // ✅ USE BACKEND SUMMARY (FIX)
+          ////////////////////////////////////////////////////////////
 
-          for (final day in attendanceMap.values) {
-            counts[day.status] = (counts[day.status] ?? 0) + 1;
-          }
+          final summary = summaryAsync.value ?? {};
+
+          final counts = <String, int>{
+            "On-Time": (summary["workingDays"] as num?)?.toInt() ?? 0,
+            "Late": (summary["lateDays"] as num?)?.toInt() ?? 0,
+            "Absent": (summary["absentDays"] as num?)?.toInt() ?? 0,
+            "Holiday": (summary["totalHolidays"] as num?)?.toInt() ?? 0,
+            "On-Leave": (summary["totalLeaves"] as num?)?.toInt() ?? 0,
+          };
+
           ////////////////////////////////////////////////////////////
 
           return SingleChildScrollView(
@@ -144,7 +155,15 @@ class _EmployeeAttendanceCalendarScreenState
 
                 const SizedBox(height: 24),
 
-                AttendanceMonthSummary(counts: counts),
+                ////////////////////////////////////////////////////
+                /// ✅ SUMMARY (FIXED)
+                ////////////////////////////////////////////////////
+                summaryAsync.when(
+                  loading: () =>
+                      const Center(child: CircularProgressIndicator()),
+                  error: (_, __) => const SizedBox(),
+                  data: (_) => AttendanceMonthSummary(counts: counts),
+                ),
 
                 const SizedBox(height: 24),
 
@@ -154,7 +173,6 @@ class _EmployeeAttendanceCalendarScreenState
                 AttendanceCalendarWidget(
                   focusedDay: _focusedDay,
                   selectedDay: _selectedDay,
-
                   statusResolver: resolveStatus,
 
                   onDaySelected: (selectedDay, focusedDay) {
@@ -164,7 +182,6 @@ class _EmployeeAttendanceCalendarScreenState
                     });
 
                     final key = DateFormat('yyyy-MM-dd').format(selectedDay);
-
                     final dayData = attendanceMap[key];
 
                     AttendanceDayDetailBottomSheet.show(
@@ -180,12 +197,8 @@ class _EmployeeAttendanceCalendarScreenState
                       focusedDay.month,
                     );
 
-                    /// prevent going to future months
-                    if (_isFutureMonth(normalized)) {
-                      return;
-                    }
+                    if (_isFutureMonth(normalized)) return;
 
-                    /// prevent duplicate rebuild
                     if (_focusedDay.year == normalized.year &&
                         _focusedDay.month == normalized.month) {
                       return;
@@ -194,59 +207,28 @@ class _EmployeeAttendanceCalendarScreenState
                     setState(() {
                       _focusedDay = normalized;
                     });
+
+                    ////////////////////////////////////////////////////
+                    /// 🔥 REFRESH ON MONTH CHANGE
+                    ////////////////////////////////////////////////////
+                    ref.invalidate(
+                      employeeAttendanceProvider(
+                        AttendanceParams(
+                          userId: widget.employee.userId,
+                          month: normalized,
+                        ),
+                      ),
+                    );
+
+                    ref.invalidate(
+                      employeeAttendanceSummaryProvider(
+                        AttendanceParams(
+                          userId: widget.employee.userId,
+                          month: normalized,
+                        ),
+                      ),
+                    );
                   },
-                ),
-
-                const SizedBox(height: 28),
-
-                ////////////////////////////////////////////////////
-                /// LEGEND
-                ////////////////////////////////////////////////////
-                Text(
-                  "Attendance Legend",
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                    color: scheme.onSurface,
-                  ),
-                ),
-
-                const SizedBox(height: 14),
-
-                Wrap(
-                  spacing: 10,
-                  runSpacing: 10,
-                  children: [
-                    _legendItem(
-                      "On-Time (${counts["On-Time"] ?? 0})",
-                      _statusColor("On-Time"),
-                      scheme,
-                    ),
-
-                    _legendItem(
-                      "Late (${counts["Late"] ?? 0})",
-                      _statusColor("Late"),
-                      scheme,
-                    ),
-
-                    _legendItem(
-                      "Absent (${counts["Absent"] ?? 0})",
-                      _statusColor("Absent"),
-                      scheme,
-                    ),
-
-                    _legendItem(
-                      "Holiday (${counts["Holiday"] ?? 0})",
-                      _statusColor("Holiday"),
-                      scheme,
-                    ),
-
-                    _legendItem(
-                      "On-Leave (${counts["On-Leave"] ?? 0})",
-                      _statusColor("On-Leave"),
-                      scheme,
-                    ),
-                  ],
                 ),
               ],
             ),
@@ -287,9 +269,7 @@ class _EmployeeHeader extends StatelessWidget {
               ),
             ),
           ),
-
           const SizedBox(width: 14),
-
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [

@@ -21,6 +21,9 @@ class ManagerLeaveRequest {
 
   final List<String> revocationRequestedDates;
 
+  /// ✅ NEW FIELD (for revoke reason)
+  final String? revocationReason;
+
   ManagerLeaveRequest({
     required this.id,
     required this.status,
@@ -38,6 +41,9 @@ class ManagerLeaveRequest {
     required this.profilePicture,
     required this.requestedDates,
     required this.revocationRequestedDates,
+
+    /// ✅ NEW
+    this.revocationReason,
   });
 
   factory ManagerLeaveRequest.fromJson(Map<String, dynamic> json) {
@@ -93,6 +99,9 @@ class ManagerLeaveRequest {
               ?.map<String>((e) => e.toString())
               .toList() ??
           [],
+
+      /// ✅ NEW (safe parsing)
+      revocationReason: json['revocationReason']?.toString(),
     );
   }
 }

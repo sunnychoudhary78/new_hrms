@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lms/core/screens/splash_loading_screen.dart';
@@ -5,15 +6,20 @@ import 'package:lms/core/screens/subscribtion_expired_screen.dart';
 import 'package:lms/features/attendance/correction_attendance/presentation/providers/attendance_requests_provider.dart';
 import 'package:lms/features/attendance/correction_attendance/presentation/providers/my_corrections_provider.dart';
 import 'package:lms/features/attendance/view_attendance/presentation/providers/view_attendance_provider.dart';
+import 'package:lms/features/dashboard/presentation/providers/team_attendance_provider.dart';
 import 'package:lms/features/leave/presentation/providers/leave_apply_provider.dart';
 import 'package:lms/features/leave/presentation/providers/leave_approve_provider.dart';
 import 'package:lms/features/leave/presentation/providers/leave_balance_provider.dart';
 import 'package:lms/features/leave/presentation/providers/leave_details_provider.dart';
 import 'package:lms/features/notifications/presentation/providers/notifications_provider.dart';
+import 'package:lms/features/expenses/presentation/providers/expense_provider.dart';
+import 'package:lms/features/kra/presentation/providers/kra_provider.dart';
+
 import '../core/notifications/notification_action.dart';
 import '../core/notifications/notification_router.dart';
 import '../core/notifications/notification_action_notifier.dart';
 import '../core/providers/notification_api_providers.dart';
+
 import '../features/auth/presentation/providers/auth_provider.dart';
 import '../features/auth/presentation/screens/login_screen.dart';
 import '../features/home/presentation/screens/home_screen.dart';
@@ -26,18 +32,32 @@ class AppRoot extends ConsumerStatefulWidget {
 }
 
 class _AppRootState extends ConsumerState<AppRoot> {
-  bool _pushInitialized = false;
+  static bool _hasShownStartupSplashInSession = false;
+
   bool _autoLoginAttempted = false;
+  bool _pushInitialized = false;
+  bool _minimumSplashElapsed = _hasShownStartupSplashInSession;
+  bool _startupSplashCompleted = _hasShownStartupSplashInSession;
 
   String? _lastUserId;
 
   late final ProviderSubscription<NotificationAction?> _notificationSub;
+  Timer? _minimumSplashTimer;
+  Timer? _notificationSyncTimer; // 🔥 periodic sync
 
   @override
   void initState() {
     super.initState();
 
-    /// AUTO LOGIN
+    if (!_hasShownStartupSplashInSession) {
+      _minimumSplashTimer = Timer(const Duration(seconds: 5), () {
+        if (!mounted) return;
+        setState(() {
+          _minimumSplashElapsed = true;
+        });
+      });
+    }
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_autoLoginAttempted) return;
 
@@ -48,6 +68,13 @@ class _AppRootState extends ConsumerState<AppRoot> {
       if (auth.isInitializing && !auth.isSubscriptionExpired) {
         ref.read(authProvider.notifier).tryAutoLogin();
       }
+
+      _initPush();
+
+      // 🔥 Periodic sync (prevents stale data)
+      _notificationSyncTimer = Timer.periodic(const Duration(seconds: 10), (_) {
+        ref.read(notificationProvider.notifier).refresh();
+      });
     });
 
     /// 🔔 Notification action listener
@@ -65,54 +92,77 @@ class _AppRootState extends ConsumerState<AppRoot> {
   @override
   void dispose() {
     _notificationSub.close();
+    _minimumSplashTimer?.cancel();
+    _notificationSyncTimer?.cancel(); // 🔥 cleanup
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
-
     final currentUserId = authState.profile?.userId;
 
+    /// 🔥 USER CHANGE DETECTED
     if (currentUserId != null && _lastUserId != currentUserId) {
       _lastUserId = currentUserId;
 
-      /// 🔥 Reset user-scoped providers
       ref.invalidate(myCorrectionsProvider);
       ref.invalidate(attendanceRequestsProvider);
+      ref.invalidate(employeeAttendanceProvider);
       ref.invalidate(viewAttendanceProvider);
       ref.invalidate(notificationProvider);
       ref.invalidate(leaveApplyProvider);
       ref.invalidate(leaveBalanceProvider);
       ref.invalidate(leaveApproveProvider);
       ref.invalidate(leaveDetailsProvider);
+      ref.invalidate(myExpensesProvider);
+      ref.invalidate(expenseDashboardProvider);
+      ref.invalidate(myKrasProvider);
+      ref.invalidate(managedKrasProvider);
+      ref.invalidate(kraTeamMembersProvider);
+      ref.invalidate(kraCyclesProvider);
+      ref.invalidate(kraActiveCycleProvider);
+      for (final mode in KraReviewMode.values) {
+        ref.invalidate(kraEvaluationsProvider(mode));
+      }
+
+      _initPush(force: true);
     }
 
-    /// 🟡 App initialization
-    if (authState.isInitializing) {
+    final shouldShowStartupSplash =
+        !_startupSplashCompleted &&
+        (authState.isInitializing || !_minimumSplashElapsed);
+
+    if (shouldShowStartupSplash) {
       return const SplashLoadingScreen();
     }
 
-    /// 🔒 Subscription expired
+    if (!_startupSplashCompleted) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || _startupSplashCompleted) return;
+        setState(() {
+          _startupSplashCompleted = true;
+          _hasShownStartupSplashInSession = true;
+        });
+      });
+    }
+
     if (authState.isSubscriptionExpired) {
       return const SubscriptionExpiredScreen();
     }
 
-    /// 🔐 Not logged in
     if (authState.profile == null) {
       return const LoginScreen();
     }
 
-    /// 🚀 Logged in
-    _initPushIfNeeded();
     return const HomeScreen();
   }
 
   /// ─────────────────────────────────────────────
-  /// 🔔 PUSH INIT (only after login)
+  /// 🔔 PUSH INIT (FINAL STABLE)
   /// ─────────────────────────────────────────────
-  void _initPushIfNeeded() {
-    if (_pushInitialized) return;
+  void _initPush({bool force = false}) {
+    if (_pushInitialized && !force) return;
 
     _pushInitialized = true;
 
@@ -126,19 +176,29 @@ class _AppRootState extends ConsumerState<AppRoot> {
         );
 
         ref.read(notificationActionProvider.notifier).emit(action);
-      },
 
-      /// Refresh notifications if received in foreground
-      onForegroundNotification: () {
+        // ✅ Safe refresh on tap
         ref.read(notificationProvider.notifier).refresh();
       },
 
-      /// Register token if logged in
-      onTokenAvailable: (token) {
+      onForegroundNotification: (data) {
+        final notifier = ref.read(notificationProvider.notifier);
+
+        // ✅ ONLY local update (NO immediate refresh)
+        notifier.addNotification({
+          "id": data['id'] ?? DateTime.now().toString(),
+          "is_read": false,
+          ...data,
+        });
+      },
+
+      onTokenAvailable: (token) async {
+        print("🔥 FCM TOKEN: $token");
+
         final authState = ref.read(authProvider);
 
         if (authState.profile != null) {
-          ref.read(authProvider.notifier).registerFcmTokenIfNeeded();
+          await ref.read(authProvider.notifier).registerFcmTokenIfNeeded();
         }
       },
     );

@@ -33,4 +33,37 @@ class ApiEndpoints {
 
   // ───────── NOTIFICATIONS ─────────
   static const String notifications = 'notifications';
+  static const String myPayslips = '/payroll/my-payslips';
+
+  // ───────── EXPENSES ─────────
+  static const String expenses = 'expenses';
+
+  /// POST body: `scope`, `statusFilter`, `page`, `limit` — single list route for all roles.
+  static const String expensesQuery = 'expenses/query';
+
+  // ───────── KRA / KPI ─────────
+  static const String kra = 'kra';
+  static const String kraTeamMembers = 'kra/team-members';
+  static const String kraInitiate = 'kra/initiate';
+  static const String kraActiveCycle = 'kra/active-cycle';
+  static const String kraCycles = 'kra/cycles';
+  static const String kraEvaluations = 'kra/evaluations';
+  static const String kraSubmitRating = 'kra/submit-rating';
+
+  // ───────── RESIGNATION ─────────
+  static const String resignation = 'resignations';
+  static const String myResignation = 'resignations/my';
+  static const String withdrawResignation = 'resignations'; // + /:id/withdraw
+
+  // Manager
+  static const String managerPendingResignation =
+      'resignations/pending/manager';
+  static const String managerAllResignation = 'resignations/manager/all';
+
+  // HOD
+  static const String hodPendingResignation = 'resignations/pending/hod';
+  static const String hodAllResignation = 'resignations/hod/all';
+
+  // HR
+  static const String hrAllResignation = 'resignations/hr/all';
 }

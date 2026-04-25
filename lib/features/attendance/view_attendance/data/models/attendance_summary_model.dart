@@ -17,41 +17,34 @@ class AttendanceSummary {
     required this.expectedWorkingHours,
   });
 
-  /// SAFE parser for ANY backend response
   static int _asInt(dynamic v) {
     if (v == null) return 0;
 
     if (v is int) return v;
-
-    if (v is double) return v.toInt();
-
+    if (v is double) return v.round();
     if (v is String) return int.tryParse(v) ?? 0;
-
-    if (v is Map<String, dynamic>) {
-      if (v.containsKey('count')) return _asInt(v['count']);
-      if (v.containsKey('value')) return _asInt(v['value']);
-      if (v.containsKey('total')) return _asInt(v['total']);
-    }
 
     return 0;
   }
 
   factory AttendanceSummary.fromJson(Map<String, dynamic> json) {
-    print("📊 RAW SUMMARY JSON:");
-    print(json);
+    final data = json['summary'];
+
+    if (data == null) {
+      throw Exception("Summary missing in response");
+    }
 
     return AttendanceSummary(
-      workingDays: _asInt(json['workingDays']),
-      lateDays: _asInt(json['lateDays']),
-      totalLeaves: _asInt(json['totalLeaves']),
-      absentDays: _asInt(json['absentDays']),
-      payableDays: _asInt(json['payableDays']),
-      totalMinutes: _asInt(json['totalMinutes']),
-      expectedWorkingHours: _asInt(json['expectedWorkingHours']),
+      workingDays: _asInt(data['workingDays']),
+      lateDays: _asInt(data['lateDays']),
+      totalLeaves: _asInt(data['totalLeaves']),
+      absentDays: _asInt(data['absentDays']),
+      payableDays: _asInt(data['payableDays']),
+      totalMinutes: _asInt(data['totalMinutes']),
+      expectedWorkingHours: _asInt(data['expectedWorkingHours']),
     );
   }
 
-  /// Convert minutes → HH:mm
   String get totalWorkingHoursFormatted {
     final hours = totalMinutes ~/ 60;
     final minutes = totalMinutes % 60;

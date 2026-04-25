@@ -12,30 +12,35 @@ class SubmitButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-
     return SizedBox(
       width: double.infinity,
+
       child: ElevatedButton(
         onPressed: isLoading ? null : onPressed,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: scheme.primary,
-          foregroundColor: scheme.onPrimary,
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-        child: isLoading
-            ? SizedBox(
-                height: 20,
-                width: 20,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: scheme.onPrimary,
+
+        /// ❌ removed manual colors → using global theme
+        child: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 200),
+          transitionBuilder: (child, animation) =>
+              FadeTransition(opacity: animation, child: child),
+
+          child: isLoading
+              ? const SizedBox(
+                  key: ValueKey("loader"),
+                  height: 20,
+                  width: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Row(
+                  key: ValueKey("text"),
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.send_rounded, size: 18),
+                    SizedBox(width: 8),
+                    Text("Submit", style: TextStyle(fontSize: 16)),
+                  ],
                 ),
-              )
-            : const Text("Submit", style: TextStyle(fontSize: 16)),
+        ),
       ),
     );
   }

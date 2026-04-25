@@ -5,6 +5,7 @@ import 'package:lms/app/app_root.dart';
 import 'package:lms/features/auth/presentation/providers/auth_provider.dart';
 import 'package:lms/features/home/presentation/widgets/drawer_item_tile.dart';
 import 'package:lms/features/leave/presentation/providers/leave_approve_provider.dart';
+import 'package:lms/features/kra/presentation/kra_route_args.dart';
 import 'package:lms/features/notifications/presentation/providers/notifications_provider.dart';
 
 class AppDrawer extends ConsumerStatefulWidget {
@@ -18,25 +19,40 @@ class _AppDrawerState extends ConsumerState<AppDrawer>
     with TickerProviderStateMixin {
   bool _isLeaveExpanded = false;
   bool _isAttendanceExpanded = false;
+  bool _isExpenseExpanded = false;
+  bool _isResignationExpanded = false;
+  bool _isKraExpanded = false;
 
   @override
   Widget build(BuildContext context) {
     final route = ModalRoute.of(context)?.settings.name;
     final authState = ref.watch(authProvider);
-    final profile = authState.profile;
+
     final permissions = authState.permissions;
-    final companyLogo = authState.companyLogoUrl;
-    print("🏢 Company Logo URL: $companyLogo");
 
-    final bool hasApprovePermission = permissions.contains(
-      'leave.request.approve',
-    );
+    // ================= ROLE DETECTION =================
 
-    final name = profile?.associatesName ?? "User";
-    final empId = profile?.payrollCode ?? "EMP0001";
-    final profileImg = authState.profileUrl;
+    // Expense roles
+    final isExpenseManager = permissions.contains('expense.manager');
+    final isExpenseHod = permissions.contains('expense.hod');
+    final isAccounts = permissions.contains('expense.accounts');
+
+    // Resignation roles
+    final isResignationManager = permissions.contains('resignation.manager');
+    final isResignationHod = permissions.contains('resignation.hod');
+    final isResignationHr = permissions.contains('resignation.hr');
+
+    // Common permissions
+    final hasLeaveApprove = permissions.contains('leave.request.approve');
+    final hasAnyKraPermission = permissions.any((p) => p.startsWith('kra.'));
+    final canViewMyKra = permissions.contains('kra.myrating');
+    final canViewTeamKra = permissions.contains('kra.teamrating');
+    final canViewDepartmentKra = permissions.contains('kra.department');
+    final canViewAllKra = permissions.contains('kra.allrating');
+    final canManageKra = permissions.contains('kra.manage');
 
     final scheme = Theme.of(context).colorScheme;
+    final companyLogo = authState.companyLogoUrl;
 
     int index = 0;
 
@@ -52,7 +68,6 @@ class _AppDrawerState extends ConsumerState<AppDrawer>
       child: SafeArea(
         child: Column(
           children: [
-            /// SCROLLABLE CONTENT
             Expanded(
               child: SingleChildScrollView(
                 physics: const BouncingScrollPhysics(),
@@ -62,6 +77,7 @@ class _AppDrawerState extends ConsumerState<AppDrawer>
 
                     const SizedBox(height: 10),
 
+                    // ================= HOME =================
                     DrawerTile(
                       index: index++,
                       icon: Icons.home_rounded,
@@ -77,6 +93,7 @@ class _AppDrawerState extends ConsumerState<AppDrawer>
                       },
                     ),
 
+                    // ================= PROFILE =================
                     DrawerTile(
                       index: index++,
                       icon: Icons.person,
@@ -88,7 +105,8 @@ class _AppDrawerState extends ConsumerState<AppDrawer>
                       },
                     ),
 
-                    if (hasApprovePermission)
+                    // ================= TEAM DASHBOARD =================
+                    if (hasLeaveApprove)
                       DrawerTile(
                         index: index++,
                         icon: Icons.dashboard_rounded,
@@ -100,6 +118,7 @@ class _AppDrawerState extends ConsumerState<AppDrawer>
                         },
                       ),
 
+                    // ================= LEAVE =================
                     _buildExpandable(
                       index: index++,
                       title: "Leave",
@@ -111,22 +130,83 @@ class _AppDrawerState extends ConsumerState<AppDrawer>
                         _subItem("Leave Balance", "/leave-balance"),
                         _subItem("Leave Apply", "/leave-apply"),
                         _subItem("Leave Status", "/leave-status"),
-                        if (hasApprovePermission)
+                        if (hasLeaveApprove)
                           _subItem("Leave Approve/Reject", "/leave-approve"),
                       ],
                     ),
 
-                    DrawerTile(
+                    // ================= EXPENSES (FIXED) =================
+                    _buildExpandable(
                       index: index++,
-                      icon: Icons.lock_outline_rounded,
-                      title: "Change Password",
-                      isActive: route == "/change-password",
-                      onTap: () {
-                        Navigator.pop(context);
-                        Navigator.pushNamed(context, "/change-password");
-                      },
+                      title: "Expenses",
+                      icon: Icons.receipt_long_rounded,
+                      expanded: _isExpenseExpanded,
+                      onTap: () => setState(
+                        () => _isExpenseExpanded = !_isExpenseExpanded,
+                      ),
+                      subItems: [
+                        // Always visible for every authenticated user
+                        _subItem("My Expenses", "/expenses/my"),
+
+                        // Dashboard is only for approver roles
+                        if (isExpenseManager || isExpenseHod || isAccounts)
+                          _subItem("Expenses Dashboard", "/expenses-dashboard"),
+                      ],
                     ),
 
+                    // ================= RESIGNATION (NEW) =================
+                    _buildExpandable(
+                      index: index++,
+                      title: "Resignation",
+                      icon: Icons.exit_to_app_rounded,
+                      expanded: _isResignationExpanded,
+                      onTap: () => setState(
+                        () => _isResignationExpanded = !_isResignationExpanded,
+                      ),
+                      subItems: [
+                        // ✅ ALWAYS VISIBLE
+                        _subItem("My Resignation", "/resignation/my"),
+
+                        // ✅ Only for approvers
+                        if (isResignationManager ||
+                            isResignationHod ||
+                            isResignationHr)
+                          _subItem(
+                            "Resignation Dashboard",
+                            "/resignation-dashboard",
+                          ),
+                      ],
+                    ),
+
+                    // ================= KRA / KPI =================
+                    if (hasAnyKraPermission)
+                      _buildExpandable(
+                        index: index++,
+                        title: "KRA / KPI",
+                        icon: Icons.track_changes_rounded,
+                        expanded: _isKraExpanded,
+                        onTap: () =>
+                            setState(() => _isKraExpanded = !_isKraExpanded),
+                        subItems: [
+                          if (canManageKra)
+                            _kraSubItem("Create KRA", KraRouteArgs.createKra),
+                          if (canViewMyKra)
+                            _kraSubItem("My Rating", KraRouteArgs.myRating),
+                          if (canViewTeamKra)
+                            _kraSubItem("Team Rating", KraRouteArgs.teamRating),
+                          if (canViewDepartmentKra)
+                            _kraSubItem(
+                              "Department Rating",
+                              KraRouteArgs.departmentRating,
+                            ),
+                          if (canViewAllKra)
+                            _kraSubItem("All Ratings", KraRouteArgs.allRatings),
+                          if (canManageKra)
+                            _kraSubItem("KRA Setup", KraRouteArgs.setup),
+                        ],
+                      ),
+
+                    // ================= ATTENDANCE =================
                     _buildExpandable(
                       index: index++,
                       title: "Attendance",
@@ -139,7 +219,7 @@ class _AppDrawerState extends ConsumerState<AppDrawer>
                         _subItem("Mark Attendance", "/mark-attendance"),
                         _subItem("View Attendance", "/view-attendance"),
                         _subItem("View Corrections", "/view-corrections"),
-                        if (hasApprovePermission)
+                        if (hasLeaveApprove)
                           _subItem(
                             "Attendance Correction",
                             "/correct-attendance",
@@ -147,6 +227,19 @@ class _AppDrawerState extends ConsumerState<AppDrawer>
                       ],
                     ),
 
+                    // ================= PAYSLIP =================
+                    DrawerTile(
+                      index: index++,
+                      icon: Icons.payment,
+                      title: "Payslip",
+                      isActive: route == "/payslip",
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.pushNamed(context, "/payslip");
+                      },
+                    ),
+
+                    // ================= SETTINGS =================
                     DrawerTile(
                       index: index++,
                       icon: Icons.settings,
@@ -164,9 +257,9 @@ class _AppDrawerState extends ConsumerState<AppDrawer>
               ),
             ),
 
-            /// LOGOUT
             Divider(color: scheme.outlineVariant),
 
+            // ================= LOGOUT =================
             Padding(
               padding: const EdgeInsets.fromLTRB(14, 14, 14, 18),
               child: DrawerTile(
@@ -178,6 +271,7 @@ class _AppDrawerState extends ConsumerState<AppDrawer>
                   ref.invalidate(notificationProvider);
                   ref.invalidate(unreadCountProvider);
                   ref.invalidate(leaveApproveProvider);
+
                   Navigator.of(context).pushAndRemoveUntil(
                     MaterialPageRoute(builder: (_) => const AppRoot()),
                     (_) => false,
@@ -190,6 +284,8 @@ class _AppDrawerState extends ConsumerState<AppDrawer>
       ),
     );
   }
+
+  // ================= HEADER =================
 
   Widget _buildHeader(String companyLogo) {
     final theme = Theme.of(context);
@@ -205,46 +301,17 @@ class _AppDrawerState extends ConsumerState<AppDrawer>
     return Container(
       padding: const EdgeInsets.fromLTRB(18, 28, 18, 28),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [startColor, endColor],
-        ),
-        boxShadow: isDark
-            ? [
-                BoxShadow(
-                  color: Colors.black.withOpacity(.6),
-                  blurRadius: 20,
-                  offset: const Offset(0, 10),
-                ),
-              ]
-            : null,
+        gradient: LinearGradient(colors: [startColor, endColor]),
       ),
       child: Center(
         child: companyLogo.isNotEmpty
-            ? Container(
-                height: 64,
-                constraints: const BoxConstraints(maxWidth: 180),
-                child: Image.network(
-                  companyLogo,
-                  fit: BoxFit.contain,
-
-                  errorBuilder: (_, __, ___) => const SizedBox(),
-
-                  loadingBuilder: (_, child, progress) {
-                    if (progress == null) return child;
-                    return const SizedBox(
-                      height: 28,
-                      width: 28,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    );
-                  },
-                ),
-              )
+            ? Image.network(companyLogo, height: 60)
             : const SizedBox(),
       ),
     ).animate().fade().slideY(begin: -.15);
   }
+
+  // ================= EXPANDABLE =================
 
   Widget _buildExpandable({
     required int index,
@@ -269,30 +336,31 @@ class _AppDrawerState extends ConsumerState<AppDrawer>
         ),
         AnimatedSize(
           duration: const Duration(milliseconds: 250),
-          curve: Curves.easeInOut,
-          child: expanded
-              ? Column(
-                  children: subItems,
-                ).animate().fade(duration: 200.ms).slideY(begin: -.1)
-              : const SizedBox.shrink(),
+          child: expanded ? Column(children: subItems) : const SizedBox(),
         ),
       ],
     );
   }
 
-  Widget _subItem(String title, String route) {
-    final scheme = Theme.of(context).colorScheme;
+  void _goToKra(KraRouteArgs args) {
+    final isAlreadyKra = ModalRoute.of(context)?.settings.name == "/kra";
+    Navigator.pop(context);
+    if (isAlreadyKra) {
+      Navigator.pushReplacementNamed(context, "/kra", arguments: args);
+    } else {
+      Navigator.pushNamed(context, "/kra", arguments: args);
+    }
+  }
 
+  /// KRA / KPI: same route, different [KraRouteArgs] — stay on one `/kra` if already there.
+  Widget _kraSubItem(String title, KraRouteArgs args) {
+    final scheme = Theme.of(context).colorScheme;
     return Padding(
       padding: const EdgeInsets.only(left: 48, right: 14, top: 4, bottom: 4),
       child: InkWell(
-        borderRadius: BorderRadius.circular(8),
-        onTap: () {
-          Navigator.pop(context);
-          Navigator.pushNamed(context, route);
-        },
+        onTap: () => _goToKra(args),
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
+          padding: const EdgeInsets.symmetric(vertical: 8),
           child: Row(
             children: [
               Container(
@@ -304,12 +372,38 @@ class _AppDrawerState extends ConsumerState<AppDrawer>
                 ),
               ),
               const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  title,
-                  style: TextStyle(fontSize: 14, color: scheme.onSurface),
+              Expanded(child: Text(title)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _subItem(String title, String route) {
+    final scheme = Theme.of(context).colorScheme;
+
+    return Padding(
+      padding: const EdgeInsets.only(left: 48, right: 14, top: 4, bottom: 4),
+      child: InkWell(
+        onTap: () {
+          Navigator.pop(context);
+          Navigator.pushNamed(context, route);
+        },
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Row(
+            children: [
+              Container(
+                width: 6,
+                height: 6,
+                decoration: BoxDecoration(
+                  color: scheme.primary,
+                  shape: BoxShape.circle,
                 ),
               ),
+              const SizedBox(width: 10),
+              Expanded(child: Text(title)),
             ],
           ),
         ),

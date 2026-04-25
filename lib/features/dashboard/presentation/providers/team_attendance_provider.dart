@@ -35,28 +35,31 @@ String _normalizeDate(dynamic rawDate) {
   try {
     if (rawDate == null) return '';
 
-    // Already correct
-    if (rawDate is String) return rawDate;
+    if (rawDate is String) {
+      final value = rawDate.trim();
+      if (value.isEmpty) return '';
 
-    // Backend sends object: { date: "2026-02-11", halfDayPart: null }
-    if (rawDate is Map<String, dynamic>) {
-      if (rawDate.containsKey('date')) {
-        return rawDate['date']?.toString() ?? '';
+      final parsed = DateTime.tryParse(value);
+      if (parsed != null) {
+        return DateFormat('yyyy-MM-dd').format(parsed.toLocal());
       }
 
-      if (rawDate.containsKey('value')) {
-        return rawDate['value']?.toString() ?? '';
-      }
+      return value;
     }
 
-    return rawDate.toString();
+    if (rawDate is Map<String, dynamic>) {
+      if (rawDate.containsKey('date')) return _normalizeDate(rawDate['date']);
+      if (rawDate.containsKey('value')) return _normalizeDate(rawDate['value']);
+    }
+
+    return _normalizeDate(rawDate.toString());
   } catch (_) {
     return '';
   }
 }
 
 //////////////////////////////////////////////////////////////
-// PROVIDER
+// PROVIDER (WITH DEBUG LOGS)
 //////////////////////////////////////////////////////////////
 
 final employeeAttendanceProvider =
@@ -68,78 +71,134 @@ final employeeAttendanceProvider =
         final api = ref.read(apiServiceProvider);
 
         //////////////////////////////////////////////////////////
-        // DATE RANGE
+        // 1️⃣ FETCH ATTENDANCE (sessions + aggregates)
         //////////////////////////////////////////////////////////
 
-        final firstDay = DateTime(params.month.year, params.month.month, 1);
-
-        final lastDay = DateTime(params.month.year, params.month.month + 1, 0);
-
-        final from = DateFormat('yyyy-MM-dd').format(firstDay);
-        final to = DateFormat('yyyy-MM-dd').format(lastDay);
-
-        //////////////////////////////////////////////////////////
-        // API CALL
-        //////////////////////////////////////////////////////////
-
-        final response = await api.get(
+        final attendanceRes = await api.get(
           'attendance',
-          queryParams: {'userId': params.userId, 'from': from, 'to': to},
+          queryParams: {
+            'month': params.month.month,
+            'year': params.month.year,
+            if (params.userId.isNotEmpty) 'userId': params.userId,
+          },
         );
 
-        final aggregates = (response['aggregates'] as List?) ?? const [];
-
-        final sessions = (response['sessions'] as List?) ?? const [];
+        final sessions = (attendanceRes['sessions'] as List?) ?? [];
+        final aggregates = (attendanceRes['aggregates'] as List?) ?? [];
 
         //////////////////////////////////////////////////////////
-        // GROUP SESSIONS BY DATE
+        // 2️⃣ FETCH SUMMARY (days + summary)
+        //////////////////////////////////////////////////////////
+
+        final monthStr =
+            "${params.month.year}-${params.month.month.toString().padLeft(2, '0')}";
+
+        final summaryRes = await api.get(
+          'attendance/summary',
+          queryParams: {
+            'month': monthStr,
+            if (params.userId.isNotEmpty) 'userId': params.userId,
+          },
+        );
+
+        final days = (summaryRes['days'] as List?) ?? [];
+
+        //////////////////////////////////////////////////////////
+        // 3️⃣ GROUP SESSIONS BY DATE
         //////////////////////////////////////////////////////////
 
         final Map<String, List> sessionsByDate = {};
 
         for (final session in sessions) {
-          try {
-            final date = _normalizeDate(session['date']);
+          final date = _normalizeDate(
+            session['date'] ?? session['checkInTime'] ?? session['checkOutTime'],
+          );
+          if (date.isEmpty) continue;
 
-            if (date.isEmpty) continue;
-
-            sessionsByDate.putIfAbsent(date, () => []);
-
-            sessionsByDate[date]!.add(session);
-          } catch (_) {
-            // Skip bad session safely
-          }
+          sessionsByDate.putIfAbsent(date, () => []);
+          sessionsByDate[date]!.add(session);
         }
 
         //////////////////////////////////////////////////////////
-        // BUILD FINAL RESULT MAP
+        // 4️⃣ CREATE RESULT MAP (FROM DAYS FIRST ✅)
         //////////////////////////////////////////////////////////
 
         final Map<String, AttendanceDayData> result = {};
 
-        for (final aggregate in aggregates) {
-          try {
-            final date = _normalizeDate(aggregate['date']);
+        for (final d in days) {
+          final date = _normalizeDate(d['date']);
+          if (date.isEmpty) continue;
 
-            if (date.isEmpty) continue;
+          final daySessions = sessionsByDate[date] ?? [];
 
-            final daySessions = sessionsByDate[date] ?? const [];
-
-            result[date] = AttendanceDayData.fromJson(
-              aggregate: {
-                ...aggregate,
-                'date': date, // normalized safe date
-              },
-              sessionsJson: daySessions,
-            );
-          } catch (_) {
-            // Skip bad aggregate safely
-          }
+          result[date] = AttendanceDayData.fromJson(
+            aggregate: {
+              'date': date,
+              // "fullWorked" from summary.days is actual worked minutes.
+              // "workCredit" is a day-credit flag (0/1), not minutes.
+              'totalMinutes':
+                  d['fullWorked'] ?? d['totalMinutes'] ?? d['workCredit'] ?? 0,
+              'status': d['status'], // ✅ REAL STATUS
+            },
+            sessionsJson: daySessions,
+          );
         }
 
+        //////////////////////////////////////////////////////////
+        // 5️⃣ FALLBACK: ADD MISSING AGGREGATES (if any)
+        //////////////////////////////////////////////////////////
+
+        for (final agg in aggregates) {
+          final date = _normalizeDate(agg['date']);
+          if (date.isEmpty) continue;
+
+          if (result.containsKey(date)) continue;
+
+          final daySessions = sessionsByDate[date] ?? [];
+
+          result[date] = AttendanceDayData.fromJson(
+            aggregate: {
+              'date': date,
+              'totalMinutes': agg['totalMinutes'] ?? 0,
+              'status': agg['status'] ?? 'Unknown',
+            },
+            sessionsJson: daySessions,
+          );
+        }
+
+        //////////////////////////////////////////////////////////
+        // DONE ✅
+        //////////////////////////////////////////////////////////
+
         return result;
-      } catch (_) {
-        // Never crash UI
+      } catch (e) {
+        print("❌ ERROR in employeeAttendanceProvider: $e");
+        return {};
+      }
+    });
+
+final employeeAttendanceSummaryProvider =
+    FutureProvider.family<Map<String, dynamic>, AttendanceParams>((
+      ref,
+      params,
+    ) async {
+      try {
+        final api = ref.read(apiServiceProvider);
+
+        final monthStr =
+            "${params.month.year}-${params.month.month.toString().padLeft(2, '0')}";
+
+        final res = await api.get(
+          'attendance/summary',
+          queryParams: {
+            'month': monthStr,
+            if (params.userId.isNotEmpty) 'userId': params.userId,
+          },
+        );
+
+        return res['summary'] ?? {};
+      } catch (e) {
+        print("❌ ERROR in summary provider: $e");
         return {};
       }
     });

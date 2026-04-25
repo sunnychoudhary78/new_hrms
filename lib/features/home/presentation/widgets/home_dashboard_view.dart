@@ -7,11 +7,32 @@ import 'package:lms/features/home/presentation/widgets/attendance_overview_card.
 import 'package:lms/features/home/presentation/widgets/home_welcome_attendance_card.dart';
 import 'package:lms/features/home/presentation/widgets/last_five_days_card.dart';
 
-class HomeDashboardView extends ConsumerWidget {
+class HomeDashboardView extends ConsumerStatefulWidget {
   const HomeDashboardView({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<HomeDashboardView> createState() => _HomeDashboardViewState();
+}
+
+class _HomeDashboardViewState extends ConsumerState<HomeDashboardView> {
+  @override
+  void initState() {
+    super.initState();
+
+    /// 🔥 AUTO REFRESH WHEN SCREEN LOADS
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _refreshAll();
+    });
+  }
+
+  void _refreshAll() {
+    ref.invalidate(homeDashboardProvider);
+    ref.invalidate(markAttendanceProvider);
+    ref.invalidate(mobileConfigProvider);
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final state = ref.watch(homeDashboardProvider);
 
     return state.when(
@@ -22,16 +43,7 @@ class HomeDashboardView extends ConsumerWidget {
       data: (dashboard) {
         return RefreshIndicator(
           onRefresh: () async {
-            // Refresh dashboard
-            ref.invalidate(homeDashboardProvider);
-
-            // Refresh attendance sessions
-            ref.invalidate(markAttendanceProvider);
-
-            // Refresh mobile config (THIS IS THE MAIN FIX)
-            ref.invalidate(mobileConfigProvider);
-
-            // Small delay to allow rebuild smoothness
+            _refreshAll();
             await Future.delayed(const Duration(milliseconds: 300));
           },
           child: ListView(
@@ -40,15 +52,15 @@ class HomeDashboardView extends ConsumerWidget {
               HomeWelcomeAttendanceCard(
                 name: dashboard.userName,
                 role: dashboard.designation,
-                imageUrl: dashboard.profileImageUrl, // optional
+                imageUrl: dashboard.profileImageUrl,
               ),
-
               const SizedBox(height: 16),
+
               LastFiveDaysAttendanceCard(days: dashboard.lastFiveDays),
               const SizedBox(height: 16),
 
               AttendanceOverviewCard(dashboard: dashboard),
-              SizedBox(height: 100),
+              const SizedBox(height: 100),
             ],
           ),
         );

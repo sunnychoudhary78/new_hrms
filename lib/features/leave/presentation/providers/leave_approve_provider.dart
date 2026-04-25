@@ -36,20 +36,35 @@ class LeaveApproveNotifier extends AsyncNotifier<List<ManagerLeaveRequest>> {
 
   Future<void> approve(
     String id,
+    String action,
     String? comment,
-    List<Map<String, dynamic>> dates,
+    List<String>? approvedDatesInput,
   ) async {
     final api = ref.read(leaveApproveApiProvider);
     final loader = ref.read(globalLoadingProvider.notifier);
 
     try {
-      loader.showLoading("Approving leave...");
+      /// ✅ Find request from current state
+      final request = state.value?.firstWhere((e) => e.id == id);
 
-      await api.approveLeave(id, comment, dates);
+      final isRevoke = request?.status == "RevocationRequested";
+
+      loader.showLoading(
+        isRevoke ? "Processing revoke request..." : "Approving leave...",
+      );
+
+      await api.approveLeave(
+        id,
+        action,
+        comment,
+        approvedDatesInput: approvedDatesInput,
+      );
 
       await refresh();
 
-      loader.showSuccess("Leave approved successfully");
+      loader.showSuccess(
+        isRevoke ? "Leave revoked successfully" : "Leave approved successfully",
+      );
     } catch (e) {
       loader.showError(e.toString().replaceAll("Exception: ", ""));
     }
@@ -60,13 +75,22 @@ class LeaveApproveNotifier extends AsyncNotifier<List<ManagerLeaveRequest>> {
     final loader = ref.read(globalLoadingProvider.notifier);
 
     try {
-      loader.showLoading("Rejecting leave...");
+      /// ✅ Find request from current state
+      final request = state.value?.firstWhere((e) => e.id == id);
+
+      final isRevoke = request?.status == "RevocationRequested";
+
+      loader.showLoading(
+        isRevoke ? "Processing revoke rejection..." : "Rejecting leave...",
+      );
 
       await api.rejectLeave(id, comment);
 
       await refresh();
 
-      loader.showSuccess("Leave rejected successfully");
+      loader.showSuccess(
+        isRevoke ? "Revoke request rejected" : "Leave rejected successfully",
+      );
     } catch (e) {
       loader.showError(e.toString().replaceAll("Exception: ", ""));
     }

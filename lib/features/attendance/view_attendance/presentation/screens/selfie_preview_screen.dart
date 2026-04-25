@@ -16,7 +16,36 @@ class SelfiePreviewScreen extends StatelessWidget {
       ),
       body: Center(
         child: InteractiveViewer(
-          child: Image.network(imageUrl, headers: headers, fit: BoxFit.contain),
+          child: Image.network(
+            imageUrl,
+            headers: headers,
+            fit: BoxFit.contain,
+            errorBuilder: (context, error, stackTrace) {
+              return Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.broken_image_outlined,
+                      color: Colors.white54,
+                      size: 48,
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      "Could not load this file.\n"
+                      "If you are offline or your session expired, try again after logging in.",
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.85),
+                        height: 1.4,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
         ),
       ),
     );

@@ -20,22 +20,21 @@ class LeaveTypeDropdown extends StatelessWidget {
     return DropdownButtonFormField<LeaveBalance>(
       value: selected,
       isExpanded: true,
-      decoration: InputDecoration(
-        labelText: "Select Leave Type",
-        filled: true,
-        fillColor: scheme.surface,
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 14,
-        ),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+
+      /// ✅ CLEAN DECORATION (let theme handle most things)
+      decoration: const InputDecoration(
+        labelText: "Leave Type",
+        prefixIcon: Icon(Icons.work_outline),
       ),
+
+      dropdownColor: scheme.surface,
+
       items: leaves.map((leave) {
         final disabled = !leave.canApply;
 
         return DropdownMenuItem<LeaveBalance>(
           value: leave,
-          enabled: true, // still selectable
+          enabled: true,
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -46,6 +45,7 @@ class LeaveTypeDropdown extends StatelessWidget {
                   color: disabled ? scheme.error : scheme.onSurface,
                 ),
               ),
+
               if (disabled)
                 Text(
                   "No balance",
@@ -55,6 +55,7 @@ class LeaveTypeDropdown extends StatelessWidget {
           ),
         );
       }).toList(),
+
       onChanged: onChanged,
     );
   }

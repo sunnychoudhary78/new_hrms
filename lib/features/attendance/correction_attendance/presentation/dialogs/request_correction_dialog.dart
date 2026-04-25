@@ -109,7 +109,30 @@ class _RequestCorrectionDialogState
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              /// HEADER
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(14),
+                  color: scheme.primaryContainer,
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.edit_note_rounded, color: scheme.primary),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        "Attendance correction request",
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          color: scheme.onPrimaryContainer,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 14),
+
               Row(
                 children: [
                   const Expanded(
@@ -130,7 +153,6 @@ class _RequestCorrectionDialogState
 
               const SizedBox(height: 16),
 
-              /// DATE
               InkWell(
                 onTap: () async {
                   final picked = await showDatePicker(
@@ -144,8 +166,9 @@ class _RequestCorrectionDialogState
                 child: Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: scheme.primaryContainer,
+                    color: scheme.surfaceContainerLow,
                     borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: scheme.outlineVariant),
                   ),
                   child: Text(
                     DateFormat('EEEE, d MMM y').format(targetDate),

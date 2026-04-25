@@ -7,7 +7,7 @@ import 'leave_approve_actions.dart';
 class LeaveApproveCard extends StatefulWidget {
   final ManagerLeaveRequest request;
   final bool isPending;
-  final Function(String, String?, List<Map<String, dynamic>>)? onApprove;
+  final Function(String, String, String?, List<String>?)? onApprove;
   final Function(String, String?)? onReject;
 
   const LeaveApproveCard({
@@ -24,9 +24,11 @@ class LeaveApproveCard extends StatefulWidget {
 
 class _LeaveApproveCardState extends State<LeaveApproveCard> {
   bool expanded = false;
+  bool get canTakeAction {
+    final s = widget.request.status.toLowerCase();
 
-  bool get canTakeAction =>
-      widget.isPending && widget.request.status.toLowerCase() == "pending";
+    return widget.isPending && (s == "pending" || s == "revocationrequested");
+  }
 
   String formatDays(double days) {
     if (days == days.toInt()) return days.toInt().toString();
@@ -209,6 +211,11 @@ class _LeaveApproveCardState extends State<LeaveApproveCard> {
                   context,
                 ).textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
               ),
+            if (r.status == "RevocationRequested" && r.revocationReason != null)
+              Text(
+                "Revoke Reason: ${r.revocationReason}",
+                style: TextStyle(color: Colors.orange),
+              ),
 
             const SizedBox(height: AppSpacing.sm),
 
@@ -237,6 +244,9 @@ class _LeaveApproveCardState extends State<LeaveApproveCard> {
       case "pending":
         color = scheme.tertiary;
         break;
+      case "revocationrequested":
+        color = Colors.orange;
+        break;
       default:
         color = scheme.outline;
     }
@@ -248,7 +258,7 @@ class _LeaveApproveCardState extends State<LeaveApproveCard> {
         borderRadius: BorderRadius.circular(AppRadius.pill),
       ),
       child: Text(
-        status.toUpperCase(),
+        displayStatus(status),
         style: TextStyle(
           color: color,
           fontSize: 12,
@@ -260,5 +270,10 @@ class _LeaveApproveCardState extends State<LeaveApproveCard> {
 
   String _format(String date) {
     return DateFormat("dd MMM yyyy").format(DateTime.parse(date));
+  }
+
+  String displayStatus(String status) {
+    if (status == "RevocationRequested") return "REVOKE REQUEST";
+    return status.toUpperCase();
   }
 }

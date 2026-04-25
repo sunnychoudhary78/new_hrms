@@ -59,11 +59,7 @@ class RequestCard extends StatelessWidget {
             children: [
               _Chip(label: _typeLabel(), color: scheme.primary),
               const Spacer(),
-              _Chip(
-                label: item.status ?? "PENDING",
-                color: statusColor,
-                isFilled: true,
-              ),
+              _Chip(label: item.status, color: statusColor, isFilled: true),
             ],
           ),
 
@@ -146,39 +142,25 @@ class RequestCard extends StatelessWidget {
           if (item.status == "PENDING")
             Row(
               children: [
-                /// REJECT
                 Expanded(
-                  child: OutlinedButton(
+                  child: FilledButton.tonalIcon(
                     onPressed: () {
                       showReviewDialog(context: context, req: item);
                     },
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.red,
-                      side: const BorderSide(color: Colors.red),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: const Text("Reject"),
+                    icon: const Icon(Icons.close_rounded),
+                    label: const Text("Reject"),
                   ),
                 ),
 
                 const SizedBox(width: 10),
 
-                /// APPROVE
                 Expanded(
-                  child: ElevatedButton(
+                  child: FilledButton.icon(
                     onPressed: () {
                       showReviewDialog(context: context, req: item);
                     },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: const Text("Approve"),
+                    icon: const Icon(Icons.check_rounded),
+                    label: const Text("Approve"),
                   ),
                 ),
               ],
@@ -213,12 +195,17 @@ class _Chip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: isFilled ? color.withOpacity(.15) : Colors.transparent,
+        color: isFilled ? color.withValues(alpha: 0.15) : Colors.transparent,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withOpacity(.4)),
+        border: Border.all(
+          color: isFilled
+              ? color.withValues(alpha: 0.45)
+              : scheme.outlineVariant,
+        ),
       ),
       child: Text(
         label,

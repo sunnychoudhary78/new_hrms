@@ -74,16 +74,38 @@ class _ReviewDialogState extends ConsumerState<_ReviewDialog> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              /// header
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(14),
+                  color: scheme.primaryContainer,
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.rule_folder_outlined, color: scheme.primary),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        "Review ${req.type.toLowerCase()} request",
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          color: scheme.onPrimaryContainer,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 10),
+
               Row(
                 children: [
                   Expanded(
                     child: Text(
-                      "Review ${req.type.toLowerCase()} request",
+                      req.userName,
                       style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: scheme.onSurface,
+                        fontSize: 14,
+                        color: scheme.onSurfaceVariant,
                       ),
                     ),
                   ),
@@ -94,13 +116,6 @@ class _ReviewDialogState extends ConsumerState<_ReviewDialog> {
                         : () => Navigator.pop(context),
                   ),
                 ],
-              ),
-
-              const SizedBox(height: 8),
-
-              Text(
-                req.userName,
-                style: TextStyle(color: scheme.onSurfaceVariant),
               ),
 
               const SizedBox(height: 16),
@@ -137,13 +152,10 @@ class _ReviewDialogState extends ConsumerState<_ReviewDialog> {
               Row(
                 children: [
                   Expanded(
-                    child: OutlinedButton(
+                    child: FilledButton.tonalIcon(
                       onPressed: _submitting ? null : () => _update('reject'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: scheme.error,
-                        side: BorderSide(color: scheme.error),
-                      ),
-                      child: _submitting
+                      icon: const Icon(Icons.close_rounded),
+                      label: _submitting
                           ? const SizedBox(
                               height: 16,
                               width: 16,
@@ -154,13 +166,10 @@ class _ReviewDialogState extends ConsumerState<_ReviewDialog> {
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: ElevatedButton(
+                    child: FilledButton.icon(
                       onPressed: _submitting ? null : () => _update('approve'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: scheme.primary,
-                        foregroundColor: scheme.onPrimary,
-                      ),
-                      child: _submitting
+                      icon: const Icon(Icons.check_rounded),
+                      label: _submitting
                           ? SizedBox(
                               height: 16,
                               width: 16,

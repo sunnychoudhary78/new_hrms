@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:lms/features/attendance/correction_attendance/presentation/dialogs/request_correction_dialog.dart';
 import 'package:lms/features/attendance/view_attendance/presentation/providers/view_attendance_provider.dart';
 import 'package:lms/features/attendance/view_attendance/presentation/widgets/view_attendance_header.dart';
+import 'package:lms/features/dashboard/presentation/providers/team_attendance_provider.dart';
 import 'package:lms/features/home/presentation/widgets/app_drawer.dart';
 
 import 'package:lms/shared/widgets/app_bar.dart';
@@ -12,7 +13,8 @@ import 'package:lms/shared/widgets/attendance_calender_widget.dart';
 import 'package:lms/shared/widgets/attendance_day_detail_bottom_sheet.dart';
 
 import 'package:lms/features/dashboard/data/models/attendance_day_data.dart';
-import 'package:lms/features/attendance/mark_attendance/data/models/attendance_session_model.dart';
+import 'package:lms/features/attendance/view_attendance/data/models/attendance_aggregate_model.dart';
+import 'package:lms/features/attendance/view_attendance/data/models/attendance_summary_model.dart';
 
 import '../widgets/attendance_summary_grid.dart';
 import '../widgets/attendance_pie_chart.dart';
@@ -35,6 +37,15 @@ class _ViewAttendanceScreenState extends ConsumerState<ViewAttendanceScreen> {
 
     Future.microtask(() {
       ref.invalidate(viewAttendanceProvider);
+
+      ref.invalidate(
+        employeeAttendanceProvider(
+          AttendanceParams(
+            userId: "",
+            month: focused, // ✅ FIXED
+          ),
+        ),
+      );
     });
   }
 
@@ -42,78 +53,76 @@ class _ViewAttendanceScreenState extends ConsumerState<ViewAttendanceScreen> {
   /// BUILD ATTENDANCE MAP FROM AGGREGATES + SESSIONS
   ////////////////////////////////////////////////////////////////
 
-  Map<String, AttendanceDayData> _buildAttendanceMap(
-    List aggregates,
-    List<AttendanceSession> sessions,
+  AttendanceDayData? _sessionDataForDay(
+    DateTime day,
+    Map<String, AttendanceDayData> sessionMap,
   ) {
-    final Map<String, List<AttendanceSession>> sessionsByDate = {};
+    final directKey = DateFormat('yyyy-MM-dd').format(day);
+    final direct = sessionMap[directKey];
+    if (direct != null) return direct;
 
-    for (final s in sessions) {
-      final key = DateFormat('yyyy-MM-dd').format(s.checkInTime);
-
-      sessionsByDate.putIfAbsent(key, () => []);
-      sessionsByDate[key]!.add(s);
+    for (final entry in sessionMap.entries) {
+      final parsed = DateTime.tryParse(entry.key);
+      if (parsed != null && DateUtils.isSameDay(parsed.toLocal(), day)) {
+        return entry.value;
+      }
     }
 
+    return null;
+  }
+
+  /// Align [AttendanceSummary] with calendar when API still counts today as
+  /// absent but sessions prove the user checked in.
+  AttendanceSummary _adjustedSummary({
+    required AttendanceSummary summary,
+    required List<AttendanceAggregate> aggregates,
+    required Map<String, AttendanceDayData> sessionMap,
+  }) {
+    final today = DateTime.now();
+
+    AttendanceAggregate? todayAgg;
+
+    for (final a in aggregates) {
+      if (DateUtils.isSameDay(a.date, today)) {
+        todayAgg = a;
+        break;
+      }
+    }
+
+    if (todayAgg == null || todayAgg.status != 'absent') return summary;
+
+    final sessions =
+        _sessionDataForDay(todayAgg.date, sessionMap)?.sessions ?? [];
+
+    if (!sessions.any((s) => s.checkIn != null)) return summary;
+
+    return AttendanceSummary(
+      workingDays: summary.workingDays + 1,
+      lateDays: summary.lateDays,
+      totalLeaves: summary.totalLeaves,
+      absentDays: summary.absentDays > 0 ? summary.absentDays - 1 : 0,
+      payableDays: summary.payableDays,
+      totalMinutes: summary.totalMinutes,
+      expectedWorkingHours: summary.expectedWorkingHours,
+    );
+  }
+
+  Map<String, AttendanceDayData> _buildAttendanceMap(
+    List aggregates,
+    Map<String, AttendanceDayData> sessionMap,
+  ) {
     final Map<String, AttendanceDayData> map = {};
 
     for (final agg in aggregates) {
       final key = DateFormat('yyyy-MM-dd').format(agg.date);
-
-      final daySessions = sessionsByDate[key] ?? [];
-
-      final totalMinutes = daySessions.fold<int>(
-        0,
-        (sum, s) => sum + (s.durationMinutes),
-      );
+      final sessionData = _sessionDataForDay(agg.date, sessionMap);
+      final sessions = sessionData?.sessions ?? [];
 
       map[key] = AttendanceDayData(
         date: key,
-        status: agg.status,
-        totalMinutes: totalMinutes,
-        sessions: daySessions.map((s) {
-          return AttendanceSessionData(
-            checkIn: s.checkInTime,
-            checkOut: s.checkOutTime,
-            durationMinutes: s.durationMinutes,
-            source: s.source,
-            checkInSelfie: s.checkInSelfie,
-            checkOutSelfie: s.checkOutSelfie,
-            lat: s.lat,
-            lng: s.lng,
-          );
-        }).toList(),
-      );
-    }
-
-    ////////////////////////////////////////////////////////////
-    /// GENERATE ABSENT DAYS
-    ////////////////////////////////////////////////////////////
-
-    final startOfMonth = DateTime(focused.year, focused.month, 1);
-    final endOfMonth = DateTime(focused.year, focused.month + 1, 0);
-
-    for (
-      DateTime d = startOfMonth;
-      !d.isAfter(endOfMonth);
-      d = d.add(const Duration(days: 1))
-    ) {
-      final key = DateFormat('yyyy-MM-dd').format(d);
-
-      // already has data
-      if (map.containsKey(key)) continue;
-
-      // skip future days
-      if (d.isAfter(DateTime.now())) continue;
-
-      // skip weekends if your company treats them as holiday
-      if (d.weekday == DateTime.sunday) continue;
-
-      map[key] = AttendanceDayData(
-        date: key,
-        status: "Absent",
-        totalMinutes: 0,
-        sessions: [],
+        status: AttendanceDayData.resolveStatusWithSessions(agg.status, sessions),
+        totalMinutes: sessionData?.totalMinutes ?? 0,
+        sessions: sessions,
       );
     }
 
@@ -145,23 +154,31 @@ class _ViewAttendanceScreenState extends ConsumerState<ViewAttendanceScreen> {
         data: (state) {
           final summary = state.summary;
 
-          if (summary == null) {
-            return Center(
-              child: Text(
-                "No summary available",
-                style: TextStyle(color: scheme.onSurfaceVariant),
-              ),
-            );
-          }
-
           ////////////////////////////////////////////////////////////
           /// BUILD MAP FOR CALENDAR
           ////////////////////////////////////////////////////////////
-
-          final attendanceMap = _buildAttendanceMap(
-            state.aggregates,
-            state.sessions,
+          final sessionAsync = ref.watch(
+            employeeAttendanceProvider(
+              AttendanceParams(
+                userId: "", // keep empty for employee
+                month: focused,
+              ),
+            ),
           );
+
+          final attendanceMap = sessionAsync.when(
+            data: (sessionMap) => _buildAttendanceMap(state.days, sessionMap),
+            loading: () => <String, AttendanceDayData>{},
+            error: (_, __) => <String, AttendanceDayData>{},
+          );
+
+          final displaySummary = attendanceMap.isEmpty
+              ? summary
+              : _adjustedSummary(
+                  summary: summary,
+                  aggregates: state.days,
+                  sessionMap: attendanceMap,
+                );
 
           ////////////////////////////////////////////////////////////
 
@@ -170,6 +187,12 @@ class _ViewAttendanceScreenState extends ConsumerState<ViewAttendanceScreen> {
               await ref
                   .read(viewAttendanceProvider.notifier)
                   .changeMonth(focused);
+
+              ref.invalidate(
+                employeeAttendanceProvider(
+                  AttendanceParams(userId: "", month: focused),
+                ),
+              );
             },
 
             child: SingleChildScrollView(
@@ -307,7 +330,7 @@ class _ViewAttendanceScreenState extends ConsumerState<ViewAttendanceScreen> {
                   _Section(
                     title: "Monthly Summary",
 
-                    child: AttendanceSummaryGrid(summary: summary),
+                    child: AttendanceSummaryGrid(summary: displaySummary),
                   ),
 
                   const SizedBox(height: 28),
@@ -319,13 +342,13 @@ class _ViewAttendanceScreenState extends ConsumerState<ViewAttendanceScreen> {
                     title: "Attendance Breakdown",
 
                     child: AttendancePieChart(
-                      present: summary.workingDays,
+                      present: displaySummary.workingDays,
 
-                      absent: summary.absentDays,
+                      absent: displaySummary.absentDays,
 
-                      late: summary.lateDays,
+                      late: displaySummary.lateDays,
 
-                      leave: summary.totalLeaves,
+                      leave: displaySummary.totalLeaves,
                     ),
                   ),
                 ],

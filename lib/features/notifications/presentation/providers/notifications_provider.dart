@@ -13,26 +13,31 @@ class NotificationNotifier extends AsyncNotifier<List<Map<String, dynamic>>> {
   Future<List<Map<String, dynamic>>> build() async {
     final auth = ref.watch(authProvider);
 
-    /// ⛔ STOP provider until login finishes
     if (auth.profile == null) {
-      throw Exception("User not logged in yet");
+      return [];
     }
 
     final api = ref.read(notificationApiServiceProvider);
     return api.fetchMyNotifications();
   }
 
-  /// 🔄 Manual refresh
   Future<void> refresh() async {
-    state = const AsyncLoading();
-
     try {
       final api = ref.read(notificationApiServiceProvider);
       final data = await api.fetchMyNotifications();
+
+      // ✅ DIRECT update (no loading)
       state = AsyncData(data);
     } catch (e, st) {
       state = AsyncError(e, st);
     }
+  }
+
+  /// 🔥 Add new notification (from FCM)
+  void addNotification(Map<String, dynamic> newNotification) {
+    final currentList = state.value ?? [];
+
+    state = AsyncData([newNotification, ...currentList]);
   }
 
   /// ✅ Mark single notification as read (Optimistic update)

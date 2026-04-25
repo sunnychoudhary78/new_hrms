@@ -148,14 +148,40 @@ class DateRangePicker extends StatelessWidget {
     DateTime? date,
     VoidCallback onTap,
   ) {
+    final scheme = Theme.of(context).colorScheme;
+
     return InkWell(
+      borderRadius: BorderRadius.circular(16),
       onTap: onTap,
-      child: InputDecorator(
-        decoration: const InputDecoration(
-          border: OutlineInputBorder(),
-        ).copyWith(labelText: label),
-        child: Text(
-          date == null ? "Select" : DateFormat('dd MMM yyyy').format(date),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          color: scheme.surfaceContainerHighest,
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.calendar_today, size: 18),
+            const SizedBox(width: 12),
+
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(label, style: const TextStyle(fontSize: 12)),
+                  const SizedBox(height: 4),
+
+                  Text(
+                    date == null
+                        ? "Select date"
+                        : DateFormat('dd MMM yyyy').format(date),
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );

@@ -1,13 +1,27 @@
+enum Environment { uat, prod }
+
 class ApiConstants {
-  static const String baseUrl =
-      'https://hrms.immortaltechnovation.com/api-hrms/api';
+  static Environment current = Environment.uat; // 👈 change only here
 
-  static const String imageBaseUrl =
-      'https://hrms.immortaltechnovation.com/api-hrms/api/uploads/';
+  static String get baseUrl {
+    switch (current) {
+      case Environment.uat:
+        return 'https://uat-hrms.immortaltechnovation.com/api-uat-hrms/api';
+      case Environment.prod:
+        return 'https://hrms.immortaltechnovation.com/api-hrms/api';
+    }
+  }
 
-  static const String selfieBaseUrl =
-      'https://hrms.immortaltechnovation.com/api-hrms/api/uploads/attendance/';
+  static String get imageBaseUrl => '${baseUrl}/uploads/';
 
-  static const String companyLogoBaseUrl =
-      'https://hrms.immortaltechnovation.com/api-hrms/api/uploads/company/';
+  /// Legacy expense uploads root (some assets may still live here).
+  static String get expenseReceiptBaseUrl => '${baseUrl}/uploads/expenses/';
+
+  /// Per line item: `GET .../uploads/expenses/receipts/{filename}`.
+  static String get expenseItemReceiptBaseUrl =>
+      '${baseUrl}/uploads/expenses/receipts/';
+
+  static String get selfieBaseUrl => '${baseUrl}/uploads/attendance/';
+
+  static String get companyLogoBaseUrl => '${baseUrl}/uploads/company/';
 }

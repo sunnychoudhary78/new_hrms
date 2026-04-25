@@ -19,19 +19,29 @@ class AttendanceCalendar extends StatelessWidget {
     this.selectedDay,
   });
 
-  AttendanceAggregate _forDay(DateTime d) {
-    return aggregates.firstWhere(
-      (a) =>
-          a.date.year == d.year &&
-          a.date.month == d.month &&
-          a.date.day == d.day,
-      orElse: () => AttendanceAggregate.empty(d),
-    );
-  }
+  /// ✅ Consistent key formatter
+  String _keyOf(DateTime d) =>
+      "${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}";
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+
+    /// ✅ O(1) lookup instead of O(n)
+    final Map<String, AttendanceAggregate> map = {
+      for (var a in aggregates) _keyOf(a.date): a,
+    };
+
+    /// ✅ Safe + smart fallback
+    AttendanceAggregate forDay(DateTime d) {
+      final key = _keyOf(d);
+
+      return map[key] ??
+          AttendanceAggregate(
+            date: d,
+            status: d.isAfter(DateTime.now()) ? 'none' : 'absent',
+          );
+    }
 
     return Card(
       elevation: 0,
@@ -57,19 +67,19 @@ class AttendanceCalendar extends StatelessWidget {
           calendarStyle: const CalendarStyle(outsideDaysVisible: false),
           calendarBuilders: CalendarBuilders(
             defaultBuilder: (_, d, __) {
-              final status = _forDay(d).status;
+              final status = forDay(d).status;
               final color = AttendanceStatusColor.fromStatus(context, status);
 
               return _cell(context, d, color);
             },
             todayBuilder: (_, d, __) {
-              final status = _forDay(d).status;
+              final status = forDay(d).status;
               final color = AttendanceStatusColor.fromStatus(context, status);
 
               return _cell(context, d, color, isToday: true);
             },
             selectedBuilder: (_, d, __) {
-              final status = _forDay(d).status;
+              final status = forDay(d).status;
               final color = AttendanceStatusColor.fromStatus(context, status);
 
               return _cell(context, d, color, isSelected: true);

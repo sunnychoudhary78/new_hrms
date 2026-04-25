@@ -93,7 +93,9 @@ class TeamEmployee {
       managerName: json['manager_name'] ?? '',
       profilePicture: json['profile_picture'],
       attendanceSummary: json['attendanceSummary'] != null
-          ? AttendanceSummary.fromJson(json['attendanceSummary'])
+          ? AttendanceSummary.fromJson(
+              json['attendanceSummary']['summary'] ?? {},
+            )
           : null,
     );
   }

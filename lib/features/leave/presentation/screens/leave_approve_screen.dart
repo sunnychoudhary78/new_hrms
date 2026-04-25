@@ -43,13 +43,28 @@ class _LeaveApproveScreenState extends ConsumerState<LeaveApproveScreen>
       body: async.when(
         loading: () => const Center(child: CircularProgressIndicator()),
 
-        error: (e, _) => Center(child: Text(e.toString())),
+        error: (e, _) => Padding(
+          padding: const EdgeInsets.all(16),
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: scheme.errorContainer,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Text(
+              "Unable to load leave approvals.\n$e",
+              style: TextStyle(color: scheme.onErrorContainer),
+            ),
+          ),
+        ),
 
         data: (requests) {
           /// Pending
-          final pending = requests
-              .where((e) => e.status.toLowerCase() == "pending")
-              .toList();
+          final pending = requests.where((e) {
+            final s = e.status.toLowerCase();
+
+            return s == "pending" || s == "revocationrequested";
+          }).toList();
 
           /// Approved
           final approved = requests
@@ -60,66 +75,145 @@ class _LeaveApproveScreenState extends ConsumerState<LeaveApproveScreen>
           final closed = requests.where((e) {
             final s = e.status.toLowerCase();
 
-            return s != "pending" && s != "approved";
+            return s != "pending" &&
+                s != "approved" &&
+                s != "revocationrequested";
           }).toList();
 
           return Column(
             children: [
+              Container(
+                width: double.infinity,
+                margin: const EdgeInsets.fromLTRB(16, 14, 16, 10),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(18),
+                  gradient: LinearGradient(
+                    colors: [
+                      scheme.primaryContainer,
+                      scheme.secondaryContainer,
+                    ],
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "Leave approval queue",
+                      style: TextStyle(
+                        color: scheme.onSurface,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 16,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      "Review pending, approved and closed leave requests.",
+                      style: TextStyle(color: scheme.onSurfaceVariant),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _MetricChip(
+                            label: "Pending",
+                            count: pending.length,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: _MetricChip(
+                            label: "Approved",
+                            count: approved.length,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: _MetricChip(
+                            label: "Closed",
+                            count: closed.length,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+
               /// TAB BAR WITH COLORED BADGES
               Container(
-                color: scheme.surface,
+                margin: const EdgeInsets.symmetric(horizontal: 16),
+                decoration: BoxDecoration(
+                  color: scheme.surfaceContainerLow,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: scheme.outlineVariant),
+                ),
 
                 child: TabBar(
                   controller: tabController,
 
+                  labelPadding: const EdgeInsets.symmetric(horizontal: 6),
                   labelColor: scheme.primary,
                   unselectedLabelColor: scheme.onSurfaceVariant,
 
                   tabs: [
                     /// PENDING TAB
                     Tab(
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Text("Pending"),
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Text("Pending"),
 
-                          const SizedBox(width: 6),
+                            const SizedBox(width: 6),
 
-                          _buildCountBadge(pending.length, scheme),
-                        ],
+                            _buildCountBadge(pending.length, scheme),
+                          ],
+                        ),
                       ),
                     ),
 
                     /// APPROVED TAB
                     Tab(
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Text("Approved"),
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Text("Approved"),
 
-                          const SizedBox(width: 6),
+                            const SizedBox(width: 6),
 
-                          _buildCountBadge(approved.length, scheme),
-                        ],
+                            _buildCountBadge(approved.length, scheme),
+                          ],
+                        ),
                       ),
                     ),
 
                     /// CLOSED TAB
                     Tab(
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Text("Closed"),
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Text("Closed"),
 
-                          const SizedBox(width: 6),
+                            const SizedBox(width: 6),
 
-                          _buildCountBadge(closed.length, scheme),
-                        ],
+                            _buildCountBadge(closed.length, scheme),
+                          ],
+                        ),
                       ),
                     ),
                   ],
                 ),
               ),
+              const SizedBox(height: 8),
 
               /// TAB CONTENT
               Expanded(
@@ -134,9 +228,10 @@ class _LeaveApproveScreenState extends ConsumerState<LeaveApproveScreen>
                       onRefresh: () =>
                           ref.read(leaveApproveProvider.notifier).refresh(),
 
-                      onApprove: (id, comment, dates) => ref
-                          .read(leaveApproveProvider.notifier)
-                          .approve(id, comment, dates),
+                      onApprove: (id, action, comment, approvedDatesInput) =>
+                          ref
+                              .read(leaveApproveProvider.notifier)
+                              .approve(id, action, comment, approvedDatesInput),
 
                       onReject: (id, comment) => ref
                           .read(leaveApproveProvider.notifier)
@@ -182,6 +277,47 @@ class _LeaveApproveScreenState extends ConsumerState<LeaveApproveScreen>
           fontWeight: FontWeight.w600,
           color: scheme.primary,
         ),
+      ),
+    );
+  }
+}
+
+class _MetricChip extends StatelessWidget {
+  final String label;
+  final int count;
+
+  const _MetricChip({required this.label, required this.count});
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: scheme.surface.withValues(alpha: 0.65),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              color: scheme.onSurfaceVariant,
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            count.toString(),
+            style: TextStyle(
+              color: scheme.primary,
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -8,6 +8,8 @@ import 'package:lms/core/services/selfie_service.dart';
 import 'package:lms/features/attendance/shared/data/attendance_repository_provider.dart';
 import 'package:lms/features/attendance/shared/data/attendance_rerpository.dart';
 import 'package:lms/features/attendance/mark_attendance/data/models/attendance_session_model.dart';
+import 'package:lms/features/attendance/view_attendance/presentation/providers/view_attendance_provider.dart';
+import 'package:lms/features/dashboard/presentation/providers/team_attendance_provider.dart';
 
 final markAttendanceProvider =
     AsyncNotifierProvider<MarkAttendanceNotifier, List<AttendanceSession>>(
@@ -33,11 +35,7 @@ class MarkAttendanceNotifier extends AsyncNotifier<List<AttendanceSession>> {
   // ─────────────────────────────────────────────
 
   Future<List<AttendanceSession>> _loadToday() async {
-    final now = DateTime.now();
-
-    final res = await _repo.fetchAttendance(month: now.month, year: now.year);
-
-    return res.sessions;
+    return await _repo.fetchAttendanceToday();
   }
 
   Future<void> refresh() async {
@@ -195,6 +193,18 @@ class MarkAttendanceNotifier extends AsyncNotifier<List<AttendanceSession>> {
       overlay.showLoading("Refreshing attendance...");
 
       await refresh();
+
+      // 🔥 CRITICAL: refresh calendar + sessions everywhere
+      ref.invalidate(viewAttendanceProvider);
+
+      ref.invalidate(
+        employeeAttendanceProvider(
+          AttendanceParams(
+            userId: "",
+            month: DateTime.now(), // ✅ OK here (today punch)
+          ),
+        ),
+      );
 
       overlay.showSuccess(
         isCheckIn

@@ -63,20 +63,29 @@ class _AttendanceDayDetailBottomSheetState
   ////////////////////////////////////////////////////////////
 
   Color _statusColor(String? status, ColorScheme scheme) {
-    switch (status) {
-      case "On-Time":
+    final normalized = (status ?? '').trim().toLowerCase();
+
+    switch (normalized) {
+      case "on-time":
+      case "ontime":
+      case "present":
         return Colors.green;
 
-      case "Late":
+      case "late":
         return Colors.orange;
 
-      case "Absent":
+      case "absent":
         return scheme.error;
 
-      case "Holiday":
+      case "holiday":
+      case "weekoff":
+      case "week-off":
+      case "week off":
         return Colors.blue;
 
-      case "On-Leave":
+      case "on-leave":
+      case "on leave":
+      case "leave":
         return Colors.purple;
 
       default:

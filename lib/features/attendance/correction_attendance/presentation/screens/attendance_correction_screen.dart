@@ -40,7 +40,6 @@ class _AttendanceCorrectionScreenState
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text(e.toString())),
         data: (state) {
-          /// 🔥 FILTERED LIST (IMPORTANT)
           final filtered = state.statusFilter == "ALL"
               ? state.requests
               : state.requests
@@ -62,17 +61,49 @@ class _AttendanceCorrectionScreenState
                 AppSpacing.xl,
               ),
               children: [
-                /// 📊 STATS
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(18),
+                    gradient: LinearGradient(
+                      colors: [
+                        scheme.primaryContainer,
+                        scheme.secondaryContainer,
+                      ],
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      CircleAvatar(
+                        backgroundColor: scheme.primary,
+                        child: Icon(
+                          Icons.fact_check_outlined,
+                          color: scheme.onPrimary,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          "Attendance correction requests",
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            color: scheme.onSurface,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.md),
+
                 CorrectionStats(requests: state.requests),
 
                 const SizedBox(height: AppSpacing.lg),
 
-                /// 🔘 FILTER TABS
                 const AttendanceFilterTabs(),
 
                 const SizedBox(height: AppSpacing.md),
 
-                /// 📌 COUNT TEXT (nice polish)
                 Text(
                   "${filtered.length} requests",
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
@@ -82,7 +113,6 @@ class _AttendanceCorrectionScreenState
 
                 const SizedBox(height: AppSpacing.md),
 
-                /// 📋 LIST
                 if (filtered.isEmpty)
                   _EmptyState(status: state.statusFilter)
                 else
@@ -96,7 +126,6 @@ class _AttendanceCorrectionScreenState
   }
 }
 
-/// 🔥 EMPTY STATE (important polish)
 class _EmptyState extends StatelessWidget {
   final String status;
 
@@ -110,7 +139,7 @@ class _EmptyState extends StatelessWidget {
 
     switch (status) {
       case "PENDING":
-        message = "🎉 All caught up!";
+        message = "All pending requests are cleared.";
         break;
       case "APPROVED":
         message = "No approved requests yet";
@@ -124,21 +153,27 @@ class _EmptyState extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 40),
-      child: Column(
-        children: [
-          Icon(
-            Icons.inbox_rounded,
-            size: 48,
-            color: scheme.onSurfaceVariant.withOpacity(.5),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            message,
-            style: Theme.of(
-              context,
-            ).textTheme.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
-          ),
-        ],
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          color: scheme.surfaceContainerLow,
+          border: Border.all(color: scheme.outlineVariant),
+        ),
+        child: Column(
+          children: [
+            Icon(Icons.inbox_rounded, size: 44, color: scheme.primary),
+            const SizedBox(height: 12),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
+            ),
+          ],
+        ),
       ),
     );
   }

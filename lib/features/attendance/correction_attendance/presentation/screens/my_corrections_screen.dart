@@ -38,7 +38,20 @@ class _MyCorrectionsScreenState extends ConsumerState<MyCorrectionsScreen> {
       drawer: const AppDrawer(),
       body: stateAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text(e.toString())),
+        error: (e, _) => Padding(
+          padding: const EdgeInsets.all(16),
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: scheme.errorContainer,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Text(
+              "Unable to load correction requests.\n$e",
+              style: TextStyle(color: scheme.onErrorContainer),
+            ),
+          ),
+        ),
         data: (state) {
           final requests = state.requests;
 
@@ -55,7 +68,41 @@ class _MyCorrectionsScreenState extends ConsumerState<MyCorrectionsScreen> {
                 AppSpacing.xl,
               ),
               children: [
-                /// FILTER HEADER + MENU
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(18),
+                    gradient: LinearGradient(
+                      colors: [
+                        scheme.primaryContainer,
+                        scheme.secondaryContainer,
+                      ],
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      CircleAvatar(
+                        backgroundColor: scheme.primary,
+                        child: Icon(
+                          Icons.fact_check_outlined,
+                          color: scheme.onPrimary,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          "Track all your correction requests and review their status updates.",
+                          style: TextStyle(
+                            color: scheme.onSurface,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.md),
+
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
@@ -116,19 +163,37 @@ class _MyCorrectionsScreenState extends ConsumerState<MyCorrectionsScreen> {
 
                 const SizedBox(height: AppSpacing.lg),
 
-                /// EMPTY STATE
                 if (requests.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.only(top: 80),
-                    child: Center(
-                      child: Text(
-                        "No correction requests found",
-                        style: TextStyle(fontSize: 16),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 40),
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        color: scheme.surfaceContainerLow,
+                        border: Border.all(color: scheme.outlineVariant),
+                      ),
+                      child: Column(
+                        children: [
+                          Icon(
+                            Icons.inbox_rounded,
+                            size: 44,
+                            color: scheme.primary,
+                          ),
+                          const SizedBox(height: 10),
+                          Text(
+                            "No correction requests found",
+                            style: TextStyle(
+                              fontSize: 15,
+                              color: scheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
 
-                /// LIST
                 if (requests.isNotEmpty)
                   ...requests.map(
                     (req) => Padding(

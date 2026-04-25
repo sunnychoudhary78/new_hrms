@@ -28,33 +28,48 @@ class LeaveBalanceScreen extends ConsumerWidget {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text(e.toString())),
         data: (leaves) {
+          final notifier = ref.read(leaveBalanceProvider.notifier);
+
           if (leaves.isEmpty) {
-            return const Center(child: Text("No leave data found"));
+            return RefreshIndicator(
+              onRefresh: notifier.refresh,
+              child: ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                children: const [
+                  SizedBox(height: 260),
+                  Center(child: Text("No leave data found")),
+                ],
+              ),
+            );
           }
 
-          return SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  "Overview",
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(height: 12),
+          return RefreshIndicator(
+            onRefresh: notifier.refresh,
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    "Overview",
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 12),
 
-                LeavePieChart(leaves: leaves), // ✅ CORRECT
+                  LeavePieChart(leaves: leaves), // ✅ CORRECT
 
-                const SizedBox(height: 28),
+                  const SizedBox(height: 28),
 
-                const Text(
-                  "Leave Details",
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(height: 12),
+                  const Text(
+                    "Leave Details",
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 12),
 
-                LeaveBalanceList(leaves: leaves), // ✅ CORRECT
-              ],
+                  LeaveBalanceList(leaves: leaves), // ✅ CORRECT
+                ],
+              ),
             ),
           );
         },

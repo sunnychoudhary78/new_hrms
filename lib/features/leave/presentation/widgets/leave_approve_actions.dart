@@ -4,8 +4,7 @@ import 'package:lms/features/leave/data/models/leave_approve_model.dart';
 class LeaveApproveActions extends StatelessWidget {
   final ManagerLeaveRequest request;
 
-  /// ✅ FIXED TYPE
-  final Function(String, String?, List<Map<String, dynamic>>) onApprove;
+  final Function(String, String, String?, List<String>?) onApprove;
 
   final Function(String, String?) onReject;
 
@@ -26,43 +25,49 @@ class LeaveApproveActions extends StatelessWidget {
             label: const Text("Approve"),
             style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
             onPressed: () async {
-              final confirm = await _confirm(context, "Approve Leave?");
-              if (!confirm) return;
+              if (!_canShowPartialApprove) {
+                final comment = await _askApproveComment(context);
+                if (comment == null) return;
 
-              List<Map<String, dynamic>> dates;
+                final confirm = await _confirm(context, "Approve Leave?");
+                if (!confirm) return;
 
-              /// ✅ FIX: generate full range manually
-              if (request.isHalfDay) {
-                dates = [
-                  {
-                    "date": request.startDate,
-                    "halfDayPart": request.halfDayPart,
-                  },
-                ];
-              } else {
-                final start = DateTime.parse(request.startDate);
-                final end = DateTime.parse(request.endDate);
-
-                dates = [];
-
-                DateTime current = start;
-
-                while (!current.isAfter(end)) {
-                  dates.add({
-                    "date":
-                        "${current.year.toString().padLeft(4, '0')}-"
-                        "${current.month.toString().padLeft(2, '0')}-"
-                        "${current.day.toString().padLeft(2, '0')}",
-                    "halfDayPart": null,
-                  });
-
-                  current = current.add(const Duration(days: 1));
-                }
+                await onApprove(request.id, "approve", comment, null);
+                return;
               }
 
-              print("✅ APPROVING DATES: $dates");
+              final result = await _askApproveType(context);
+              if (result == null) return;
 
-              await onApprove(request.id, "Approved by Manager", dates);
+              final comment = await _askApproveComment(
+                context,
+                isPartial: result == _ApproveAction.partial,
+              );
+              if (comment == null) return;
+
+              if (result == _ApproveAction.approve) {
+                final confirm = await _confirm(context, "Approve Leave?");
+                if (!confirm) return;
+
+                await onApprove(request.id, "approve", comment, null);
+                return;
+              }
+
+              final selectedDates = await _askPartialDates(context);
+              if (selectedDates == null || selectedDates.isEmpty) return;
+
+              final confirm = await _confirm(
+                context,
+                "Partially approve selected dates?",
+              );
+              if (!confirm) return;
+
+              await onApprove(
+                request.id,
+                "partial_approve",
+                comment,
+                selectedDates,
+              );
             },
           ),
         ),
@@ -108,26 +113,219 @@ class LeaveApproveActions extends StatelessWidget {
 
   Future<String?> _askReason(BuildContext context) {
     final controller = TextEditingController();
+    String? errorText;
 
     return showDialog<String>(
       context: context,
-      builder: (_) => AlertDialog(
-        title: const Text("Reject Leave"),
-        content: TextField(
-          controller: controller,
-          decoration: const InputDecoration(hintText: "Enter reason"),
+      builder: (_) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) => AlertDialog(
+          title: const Text("Reject Leave"),
+          content: TextField(
+            controller: controller,
+            decoration: InputDecoration(
+              hintText: "Enter reason",
+              errorText: errorText,
+            ),
+            maxLines: 3,
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text("Cancel"),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                final value = controller.text.trim();
+                if (value.isEmpty) {
+                  setDialogState(() {
+                    errorText = "Comment is required";
+                  });
+                  return;
+                }
+                Navigator.pop(dialogContext, value);
+              },
+              child: const Text("Reject"),
+            ),
+          ],
         ),
+      ),
+    );
+  }
+
+  Future<_ApproveAction?> _askApproveType(BuildContext context) {
+    return showDialog<_ApproveAction>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text("Approve Leave"),
+        content: const Text("Choose approval type"),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text("Cancel"),
           ),
+          OutlinedButton(
+            onPressed: () => Navigator.pop(context, _ApproveAction.partial),
+            child: const Text("Partial Approve"),
+          ),
           ElevatedButton(
-            onPressed: () => Navigator.pop(context, controller.text),
-            child: const Text("Reject"),
+            onPressed: () => Navigator.pop(context, _ApproveAction.approve),
+            child: const Text("Approve"),
           ),
         ],
       ),
     );
   }
+
+  Future<String?> _askApproveComment(
+    BuildContext context, {
+    bool isPartial = false,
+  }) {
+    final controller = TextEditingController();
+    String? errorText;
+    return showDialog<String>(
+      context: context,
+      builder: (_) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) => AlertDialog(
+          title: Text(isPartial ? "Partial Approve Leave" : "Approve Leave"),
+          content: TextField(
+            controller: controller,
+            decoration: InputDecoration(
+              hintText: "Enter comment",
+              errorText: errorText,
+            ),
+            maxLines: 3,
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text("Cancel"),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                final value = controller.text.trim();
+                if (value.isEmpty) {
+                  setDialogState(() {
+                    errorText = "Comment is required";
+                  });
+                  return;
+                }
+                Navigator.pop(dialogContext, value);
+              },
+              child: const Text("Continue"),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<List<String>?> _askPartialDates(BuildContext context) {
+    final requested = _requestedDateOptions();
+    if (requested.isEmpty) return Future.value(null);
+
+    final selected = requested.toSet();
+    return showDialog<List<String>>(
+      context: context,
+      builder: (_) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) => AlertDialog(
+          title: const Text("Partial Approve Dates"),
+          content: SizedBox(
+            width: 360,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: requested
+                    .map(
+                      (date) => CheckboxListTile(
+                        value: selected.contains(date),
+                        title: Text(date),
+                        contentPadding: EdgeInsets.zero,
+                        onChanged: (checked) {
+                          setDialogState(() {
+                            if (checked == true) {
+                              selected.add(date);
+                            } else {
+                              selected.remove(date);
+                            }
+                          });
+                        },
+                      ),
+                    )
+                    .toList(),
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text("Cancel"),
+            ),
+            ElevatedButton(
+              onPressed: selected.isEmpty
+                  ? null
+                  : () => Navigator.pop(
+                        dialogContext,
+                        requested
+                            .where((date) => selected.contains(date))
+                            .toList(),
+                      ),
+              child: const Text("Continue"),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  List<String> _requestedDateOptions() {
+    if (request.requestedDates.isNotEmpty) {
+      final normalized = request.requestedDates
+          .map((e) => _normalizeDate(e['date']))
+          .where((date) => date.isNotEmpty)
+          .toList();
+      if (normalized.isNotEmpty) return normalized;
+    }
+
+    final start = DateTime.tryParse(request.startDate);
+    final end = DateTime.tryParse(request.endDate);
+    if (start == null || end == null) return [];
+
+    final dates = <String>[];
+    var current = start;
+    while (!current.isAfter(end)) {
+      dates.add(
+        "${current.year.toString().padLeft(4, '0')}-"
+        "${current.month.toString().padLeft(2, '0')}-"
+        "${current.day.toString().padLeft(2, '0')}",
+      );
+      current = current.add(const Duration(days: 1));
+    }
+    return dates;
+  }
+
+  bool get _canShowPartialApprove {
+    final normalizedStatus = request.status.trim().toLowerCase();
+    if (normalizedStatus == 'revocationrequested') return false;
+    if (request.isHalfDay) return false;
+    final options = _requestedDateOptions();
+    return options.length > 1;
+  }
+
+  String _normalizeDate(dynamic rawDate) {
+    if (rawDate == null) return '';
+
+    final value = rawDate.toString();
+    try {
+      final parsed = DateTime.parse(value);
+      return "${parsed.year.toString().padLeft(4, '0')}-"
+          "${parsed.month.toString().padLeft(2, '0')}-"
+          "${parsed.day.toString().padLeft(2, '0')}";
+    } catch (_) {
+      // Keep backend-provided value if already date-only or non-ISO.
+      return value.length >= 10 ? value.substring(0, 10) : value;
+    }
+  }
+
 }
+
+enum _ApproveAction { approve, partial }

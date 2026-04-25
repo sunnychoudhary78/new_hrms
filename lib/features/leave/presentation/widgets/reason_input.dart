@@ -9,10 +9,16 @@ class ReasonInput extends StatelessWidget {
   Widget build(BuildContext context) {
     return TextField(
       maxLines: 4,
+
       decoration: const InputDecoration(
         labelText: "Reason",
-        border: OutlineInputBorder(),
+        hintText: "Briefly explain your leave...",
+        prefixIcon: Icon(Icons.notes),
+
+        /// ✅ important for multiline alignment
+        alignLabelWithHint: true,
       ),
+
       onChanged: onChanged,
     );
   }

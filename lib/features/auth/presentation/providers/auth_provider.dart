@@ -138,7 +138,7 @@ class AuthNotifier extends Notifier<AuthState> {
             .read(globalLoadingProvider.notifier)
             .showMessage("Welcome back, $name 👋");
       });
-    } catch (e, stack) {
+    } catch (e) {
       print("🧨 LOGIN CATCH TRIGGERED");
       print("🧨 ERROR TYPE: ${e.runtimeType}");
       print("🧨 ERROR VALUE: $e");

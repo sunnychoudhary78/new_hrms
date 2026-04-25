@@ -10,7 +10,7 @@ class DioClient {
   DioClient({
     required TokenStorage tokenStorage,
     required Function() onSubscriptionExpired,
-  }) : dio = Dio(
+  }       ) : dio = Dio(
          BaseOptions(
            baseUrl: '${ApiConstants.baseUrl}/',
            connectTimeout: const Duration(seconds: 25),

@@ -1,12 +1,9 @@
 import 'dart:io';
-
-import 'package:flutter/cupertino.dart';
 import 'package:lms/features/attendance/correction_attendance/data/models/attendance_request_model.dart';
 import 'package:lms/features/attendance/mark_attendance/data/models/attendance_session_model.dart';
 import 'package:lms/features/attendance/shared/data/attendence_api_service.dart';
-import 'package:lms/features/attendance/shared/data/models/attendance_response_model.dart';
 import 'package:lms/features/attendance/shared/data/models/mobile_config_model.dart';
-import 'package:lms/features/attendance/view_attendance/data/models/attendance_summary_model.dart';
+import 'package:lms/features/attendance/view_attendance/data/models/attendance_full_response.dart';
 
 class AttendanceRepository {
   final AttendanceApiService api;
@@ -14,7 +11,7 @@ class AttendanceRepository {
   AttendanceRepository(this.api);
 
   // ─────────────────────────────────────────────
-  // MOBILE CONFIG (NEW)
+  // MOBILE CONFIG
   // ─────────────────────────────────────────────
 
   Future<MobileConfig> fetchMobileConfig() async {
@@ -23,46 +20,55 @@ class AttendanceRepository {
   }
 
   // ─────────────────────────────────────────────
-  // FETCH ATTENDANCE
+  // ✅ NEW: FETCH ATTENDANCE (SUMMARY + DAYS)
   // ─────────────────────────────────────────────
 
-  Future<AttendanceResponse> fetchAttendance({
+  Future<AttendanceFullResponse> fetchAttendance({
     required int month,
     required int year,
   }) async {
-    final res = await api.fetchAttendance(month: month, year: year);
-    return AttendanceResponse.fromJson(res);
+    final monthStr = "$year-${month.toString().padLeft(2, '0')}";
+
+    final res = await api.fetchSummary(monthStr);
+
+    return AttendanceFullResponse.fromJson(res);
   }
 
-  Future<AttendanceSummary> fetchSummary(String ym) async {
-    final res = await api.fetchSummary(ym);
-    return AttendanceSummary.fromJson(res);
-  }
+  // ─────────────────────────────────────────────
+  // TODAY ATTENDANCE (KEEPING OLD FOR NOW)
+  // ─────────────────────────────────────────────
 
   Future<List<AttendanceSession>> fetchAttendanceToday() async {
     final now = DateTime.now();
 
     final res = await api.fetchAttendance(month: now.month, year: now.year);
 
-    final attendance = AttendanceResponse.fromJson(res);
+    final sessions = (res['sessions'] as List? ?? [])
+        .map((e) => AttendanceSession.fromJson(e))
+        .toList();
 
     bool isSameDay(DateTime a, DateTime b) =>
         a.year == b.year && a.month == b.month && a.day == b.day;
 
-    return attendance.sessions
-        .where((s) => isSameDay(s.checkInTime, now))
+    return sessions.where((s) => isSameDay(s.checkInTime, now)).toList();
+  }
+
+  Future<List<AttendanceSession>> fetchMonthSessions({
+    required int month,
+    required int year,
+  }) async {
+    final res = await api.fetchAttendance(month: month, year: year);
+
+    return (res['sessions'] as List? ?? [])
+        .map((e) => AttendanceSession.fromJson(e))
         .toList();
   }
 
   // ─────────────────────────────────────────────
-  // CHECK-IN (JSON fallback)
+  // CHECK-IN
   // ─────────────────────────────────────────────
 
   Future<void> punchIn(Map<String, dynamic> body) => api.punchIn(body);
-
-  // ─────────────────────────────────────────────
-  // MULTIPART CHECK-IN (UPDATED: file nullable)
-  // ─────────────────────────────────────────────
 
   Future<void> punchInMultipart({
     File? file,
@@ -70,8 +76,10 @@ class AttendanceRepository {
   }) => api.punchInMultipart(file: file, body: body);
 
   // ─────────────────────────────────────────────
-  // MULTIPART CHECK-OUT (UPDATED: file nullable)
+  // CHECK-OUT
   // ─────────────────────────────────────────────
+
+  Future<void> punchOut(Map<String, dynamic> body) => api.punchOut(body);
 
   Future<void> punchOutMultipart({
     File? file,
@@ -79,21 +87,11 @@ class AttendanceRepository {
   }) => api.punchOutMultipart(file: file, body: body);
 
   // ─────────────────────────────────────────────
-  // CHECK OUT (JSON fallback)
-  // ─────────────────────────────────────────────
-
-  Future<void> punchOut(Map<String, dynamic> body) => api.punchOut(body);
-
-  // ─────────────────────────────────────────────
   // CORRECTIONS
   // ─────────────────────────────────────────────
+
   Future<void> requestCorrection(Map<String, dynamic> body) async {
-    debugPrint("📤 REPOSITORY REQUEST CORRECTION");
-    debugPrint("📦 BODY: $body");
-
     await api.requestCorrection(body);
-
-    debugPrint("✅ REPOSITORY CORRECTION DONE");
   }
 
   Future<List<AttendanceRequest>> fetchAttendanceCorrections({

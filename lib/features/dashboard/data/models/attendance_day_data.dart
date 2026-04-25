@@ -45,7 +45,26 @@ class AttendanceDayData {
 
       if (value is double) return value.toInt();
 
-      if (value is String) return int.tryParse(value) ?? 0;
+      if (value is String) {
+        final v = value.trim();
+        if (v.isEmpty) return 0;
+
+        final asInt = int.tryParse(v);
+        if (asInt != null) return asInt;
+
+        final asDouble = double.tryParse(v);
+        if (asDouble != null) return asDouble.round();
+
+        // Supports "HH:mm" style work credit, converts to minutes.
+        final hhmm = RegExp(r'^(\d{1,2}):(\d{1,2})$').firstMatch(v);
+        if (hhmm != null) {
+          final hours = int.tryParse(hhmm.group(1)!) ?? 0;
+          final mins = int.tryParse(hhmm.group(2)!) ?? 0;
+          return (hours * 60) + mins;
+        }
+
+        return 0;
+      }
 
       if (value is Map<String, dynamic>) {
         if (value.containsKey('minutes')) {
@@ -68,6 +87,33 @@ class AttendanceDayData {
   }
 
   ////////////////////////////////////////////////////////////
+  /// Backend may mark [status] as absent until checkout; if we already have a
+  /// check-in session, treat the day as present for UI and summaries.
+  ////////////////////////////////////////////////////////////
+
+  static String resolveStatusWithSessions(
+    String aggregateStatus,
+    List<AttendanceSessionData> sessions,
+  ) {
+    final normalized = aggregateStatus.trim().toLowerCase();
+    final hasCheckIn = sessions.any((s) => s.checkIn != null);
+    if (!hasCheckIn) return aggregateStatus;
+
+    final isLeave =
+        normalized.contains('leave') || normalized.contains('on-leave');
+    final isWeekOff =
+        normalized.contains('week') ||
+        normalized.contains('holiday') ||
+        normalized.contains('weekoff');
+
+    if (isLeave || isWeekOff) return aggregateStatus;
+
+    if (normalized.contains('absent')) return 'present';
+
+    return aggregateStatus;
+  }
+
+  ////////////////////////////////////////////////////////////
   // SAFE FACTORY
   ////////////////////////////////////////////////////////////
 
@@ -78,9 +124,14 @@ class AttendanceDayData {
     try {
       final safeDate = _asString(aggregate['date']);
 
-      final safeStatus = aggregate['status']?.toString() ?? 'Unknown';
+      final rawStatus = aggregate['status']?.toString() ?? 'Unknown';
 
-      final safeMinutes = _asInt(aggregate['totalMinutes']);
+      final safeMinutes = _asInt(
+        aggregate['fullWorked'] ??
+            aggregate['totalMinutes'] ??
+            aggregate['workCredit'] ??
+            0,
+      );
 
       final List<AttendanceSessionData> safeSessions = [];
 
@@ -91,6 +142,8 @@ class AttendanceDayData {
           // skip broken session
         }
       }
+
+      final safeStatus = resolveStatusWithSessions(rawStatus, safeSessions);
 
       return AttendanceDayData(
         date: safeDate,
@@ -108,7 +161,16 @@ class AttendanceDayData {
     }
   }
 
-  double get totalHours => totalMinutes / 60;
+  double get totalHours {
+    if (totalMinutes > 0) return totalMinutes / 60;
+
+    final sessionsTotal = sessions.fold<int>(
+      0,
+      (sum, s) => sum + s.resolvedDurationMinutes,
+    );
+
+    return sessionsTotal / 60;
+  }
 }
 
 //////////////////////////////////////////////////////////////
@@ -160,7 +222,26 @@ class AttendanceSessionData {
 
       if (value is double) return value.toInt();
 
-      if (value is String) return int.tryParse(value) ?? 0;
+      if (value is String) {
+        final v = value.trim();
+        if (v.isEmpty) return 0;
+
+        final asInt = int.tryParse(v);
+        if (asInt != null) return asInt;
+
+        final asDouble = double.tryParse(v);
+        if (asDouble != null) return asDouble.round();
+
+        // Supports "HH:mm" strings when backend returns formatted duration.
+        final hhmm = RegExp(r'^(\d{1,2}):(\d{1,2})$').firstMatch(v);
+        if (hhmm != null) {
+          final hours = int.tryParse(hhmm.group(1)!) ?? 0;
+          final mins = int.tryParse(hhmm.group(2)!) ?? 0;
+          return (hours * 60) + mins;
+        }
+
+        return 0;
+      }
 
       return 0;
     } catch (_) {
@@ -175,11 +256,21 @@ class AttendanceSessionData {
   factory AttendanceSessionData.fromJson(Map<String, dynamic> json) {
     try {
       final location = json['location'] as Map<String, dynamic>?;
+      final checkIn = _asDate(json['checkInTime']);
+      final checkOut = _asDate(json['checkOutTime']);
+
+      int duration = _asInt(
+        json['durationMinutes'] ?? json['duration'] ?? json['workCredit'],
+      );
+
+      if (duration <= 0 && checkIn != null && checkOut != null) {
+        duration = checkOut.difference(checkIn).inMinutes;
+      }
 
       return AttendanceSessionData(
-        checkIn: _asDate(json['checkInTime']),
-        checkOut: _asDate(json['checkOutTime']),
-        durationMinutes: _asInt(json['durationMinutes']),
+        checkIn: checkIn,
+        checkOut: checkOut,
+        durationMinutes: duration > 0 ? duration : 0,
         source: json['source']?.toString() ?? '',
 
         checkInSelfie: json['checkInSelfie']?.toString(),
@@ -201,4 +292,11 @@ class AttendanceSessionData {
   }
 
   double get hours => durationMinutes / 60;
+
+  int get resolvedDurationMinutes {
+    if (durationMinutes > 0) return durationMinutes;
+    if (checkIn == null || checkOut == null) return 0;
+
+    return checkOut!.difference(checkIn!).inMinutes;
+  }
 }

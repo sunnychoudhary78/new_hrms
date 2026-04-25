@@ -155,16 +155,19 @@ class _LeaveApplyScreenState extends ConsumerState<LeaveApplyScreen> {
 
     /// ---------- PREPARE DATA ----------
 
+    final startDate = _formatDate(fromDate!);
+    final endDate = dayType == DayType.half ? startDate : _formatDate(toDate!);
+
     final requestData = {
       "leaveTypeId": selectedLeave!.leaveTypeId,
-      "startDate": _formatDate(fromDate!),
-      "endDate": _formatDate(toDate!),
-      "reason": reason,
+      "startDate": startDate,
+      "endDate": endDate,
+      "reason": reason.trim(),
       "isHalfDay": dayType == DayType.half,
     };
 
     if (dayType == DayType.half) {
-      requestData["halfDayPart"] = halfDayPart!.name.toUpperCase();
+      requestData["halfDayPart"] = _toBackendHalfDayPart(halfDayPart!);
     }
 
     /// ---------- CALL API ----------
@@ -172,6 +175,15 @@ class _LeaveApplyScreenState extends ConsumerState<LeaveApplyScreen> {
     await ref
         .read(leaveApplyProvider.notifier)
         .submitLeave(data: requestData, document: document);
+  }
+
+  String _toBackendHalfDayPart(HalfDayPart value) {
+    switch (value) {
+      case HalfDayPart.am:
+        return "AM";
+      case HalfDayPart.pm:
+        return "PM";
+    }
   }
 
   @override
@@ -191,142 +203,196 @@ class _LeaveApplyScreenState extends ConsumerState<LeaveApplyScreen> {
         data: (leaves) => ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            Card(
-              elevation: 4,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(18),
+                gradient: LinearGradient(
+                  colors: [scheme.primaryContainer, scheme.secondaryContainer],
+                ),
               ),
-              child: Padding(
-                padding: const EdgeInsets.all(20),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    backgroundColor: scheme.primary,
+                    child: Icon(
+                      Icons.event_note_outlined,
+                      color: scheme.onPrimary,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      "Submit your leave request with date, reason and supporting document.",
+                      style: TextStyle(
+                        color: scheme.onSurface,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            /// 🔹 LEAVE TYPE
+            SectionCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const _SectionTitle("Leave Type"),
+                  const SizedBox(height: 12),
+
+                  LeaveTypeDropdown(
+                    leaves: leaves,
+                    selected: selectedLeave,
+                    onChanged: (leave) {
+                      setState(() {
+                        selectedLeave = leave;
+                        fromDate = null;
+                        toDate = null;
+                        dayType = DayType.full;
+                        halfDayPart = null;
+                        document = null;
+                      });
+                    },
+                  ),
+
+                  if (selectedLeave != null) ...[
+                    const SizedBox(height: 12),
+                    _BalanceCard(leave: selectedLeave!),
+                  ],
+                ],
+              ),
+            ),
+
+            /// 🔹 DURATION
+            SectionCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const _SectionTitle("Duration"),
+                  const SizedBox(height: 12),
+
+                  _DayTypeSelector(
+                    value: dayType,
+                    allowHalfDay: selectedLeave?.allowHalfDay ?? false,
+                    onChanged: (v) {
+                      setState(() {
+                        dayType = v;
+                        halfDayPart = null;
+                        if (v == DayType.half && fromDate != null) {
+                          toDate = fromDate;
+                        }
+                      });
+                    },
+                  ),
+
+                  if (dayType == DayType.half) ...[
+                    const SizedBox(height: 12),
+                    _HalfDaySelector(
+                      value: halfDayPart,
+                      onChanged: (v) => setState(() => halfDayPart = v),
+                    ),
+                  ],
+
+                  const SizedBox(height: 16),
+
+                  DateRangePicker(
+                    from: fromDate,
+                    to: toDate,
+                    maxLeaveDays: selectedLeave == null
+                        ? 0
+                        : selectedLeave!.allowNegativeBalance
+                        ? -1
+                        : selectedLeave!.available,
+                    isHalfDay: dayType == DayType.half,
+                    onFromPick: (d) {
+                      setState(() {
+                        fromDate = d;
+                        if (dayType == DayType.half) toDate = d;
+                      });
+                    },
+                    onToPick: (d) {
+                      setState(() {
+                        toDate = d;
+                      });
+                    },
+                  ),
+                ],
+              ),
+            ),
+
+            /// 🔹 REASON
+            SectionCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const _SectionTitle("Reason"),
+                  const SizedBox(height: 12),
+
+                  ReasonInput(onChanged: (v) => reason = v),
+                ],
+              ),
+            ),
+
+            /// 🔹 DOCUMENT
+            if (isDocumentRequired)
+              SectionCard(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const _SectionTitle("Leave Type"),
+                    const _SectionTitle("Supporting Document"),
+                    const SizedBox(height: 12),
 
-                    LeaveTypeDropdown(
-                      leaves: leaves,
-                      selected: selectedLeave,
-                      onChanged: (leave) {
-                        setState(() {
-                          selectedLeave = leave;
-                          fromDate = null;
-                          toDate = null;
-                          dayType = DayType.full;
-                          halfDayPart = null;
-                          document = null;
-                        });
-                      },
-                    ),
+                    InkWell(
+                      onTap: _pickDocument,
+                      borderRadius: BorderRadius.circular(16),
+                      child: Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(16),
+                          color: scheme.surfaceContainerHighest,
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.upload_file),
+                            const SizedBox(width: 12),
 
-                    if (selectedLeave != null) ...[
-                      const SizedBox(height: 12),
-                      _BalanceCard(leave: selectedLeave!),
-                    ],
-
-                    const SizedBox(height: 24),
-                    const _SectionTitle("Duration"),
-
-                    const SizedBox(height: 8),
-
-                    _DayTypeSelector(
-                      value: dayType,
-                      allowHalfDay: selectedLeave?.allowHalfDay ?? false,
-                      onChanged: (v) {
-                        setState(() {
-                          dayType = v;
-                          halfDayPart = null;
-                        });
-                      },
-                    ),
-
-                    if (dayType == DayType.half) ...[
-                      const SizedBox(height: 12),
-                      _HalfDaySelector(
-                        value: halfDayPart,
-                        onChanged: (v) => setState(() => halfDayPart = v),
-                      ),
-                    ],
-
-                    const SizedBox(height: 16),
-
-                    DateRangePicker(
-                      from: fromDate,
-                      to: toDate,
-                      maxLeaveDays: selectedLeave == null
-                          ? 0
-                          : selectedLeave!.allowNegativeBalance
-                          ? -1
-                          : selectedLeave!.available,
-                      isHalfDay: dayType == DayType.half,
-                      onFromPick: (d) {
-                        setState(() {
-                          fromDate = d;
-                          if (dayType == DayType.half) toDate = d;
-                        });
-                      },
-                      onToPick: (d) {
-                        setState(() {
-                          toDate = d;
-                        });
-                      },
-                    ),
-
-                    const SizedBox(height: 24),
-                    const _SectionTitle("Reason"),
-
-                    ReasonInput(onChanged: (v) => reason = v),
-
-                    if (isDocumentRequired) ...[
-                      const SizedBox(height: 24),
-                      const _SectionTitle("Supporting Document"),
-
-                      InkWell(
-                        onTap: _pickDocument,
-                        borderRadius: BorderRadius.circular(14),
-                        child: Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(color: Colors.grey),
-                          ),
-                          child: Row(
-                            children: [
-                              const Icon(Icons.upload_file),
-                              const SizedBox(width: 12),
-
-                              Expanded(
-                                child: Text(
-                                  document == null
-                                      ? "Tap to upload document"
-                                      : document!.path.split('/').last,
-                                ),
+                            Expanded(
+                              child: Text(
+                                document == null
+                                    ? "Tap to upload document"
+                                    : document!.path.split('/').last,
                               ),
+                            ),
 
-                              if (document != null)
-                                IconButton(
-                                  icon: const Icon(Icons.close),
-                                  onPressed: () {
-                                    setState(() {
-                                      document = null;
-                                    });
-                                  },
-                                ),
-                            ],
-                          ),
+                            if (document != null)
+                              IconButton(
+                                icon: const Icon(Icons.close),
+                                onPressed: () {
+                                  setState(() {
+                                    document = null;
+                                  });
+                                },
+                              ),
+                          ],
                         ),
                       ),
-                    ],
-
-                    const SizedBox(height: 28),
-
-                    SubmitButton(
-                      isLoading: applyState == LeaveApplyStatus.loading,
-                      onPressed: _submit,
                     ),
                   ],
                 ),
               ),
+
+            const SizedBox(height: 8),
+
+            /// 🔹 SUBMIT
+            SubmitButton(
+              isLoading: applyState == LeaveApplyStatus.loading,
+              onPressed: _submit,
             ),
+
+            const SizedBox(height: 20),
           ],
         ),
       ),
@@ -341,16 +407,28 @@ class _SectionTitle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Text(
-        text,
-        style: TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w600,
-          color: scheme.onSurfaceVariant,
+
+    return Row(
+      children: [
+        Container(
+          width: 4,
+          height: 16,
+          decoration: BoxDecoration(
+            color: scheme.primary,
+            borderRadius: BorderRadius.circular(4),
+          ),
         ),
-      ),
+        const SizedBox(width: 8),
+
+        Text(
+          text,
+          style: TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+            color: scheme.onSurface,
+          ),
+        ),
+      ],
     );
   }
 }
@@ -438,23 +516,33 @@ class _BalanceCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         gradient: LinearGradient(
           colors: isZero
-              ? [scheme.errorContainer, scheme.errorContainer.withOpacity(0.7)]
+              ? [scheme.errorContainer, scheme.errorContainer.withOpacity(0.8)]
               : [
                   scheme.primaryContainer,
-                  scheme.primaryContainer.withOpacity(0.7),
+                  scheme.primaryContainer.withOpacity(0.8),
                 ],
         ),
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          const Text(
-            "Available Balance",
-            style: TextStyle(fontWeight: FontWeight.w500),
-          ),
-          Text(
-            "${leave.available} days",
-            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          Icon(Icons.wallet, color: scheme.onPrimaryContainer),
+          const SizedBox(width: 12),
+
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text("Available Balance", style: TextStyle(fontSize: 12)),
+                const SizedBox(height: 4),
+                Text(
+                  "${leave.available} days",
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -521,6 +609,19 @@ class _LeaveSummaryCard extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class SectionCard extends StatelessWidget {
+  final Widget child;
+
+  const SectionCard({super.key, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(padding: const EdgeInsets.all(16), child: child),
     );
   }
 }

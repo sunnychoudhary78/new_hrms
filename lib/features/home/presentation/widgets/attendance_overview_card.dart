@@ -69,26 +69,67 @@ class _AttendancePieChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final total = distribution.total;
+    final sections = <PieChartSectionData?>[
+      _section(
+        value: distribution.worked,
+        color: AttendanceColors.worked,
+        total: total,
+      ),
+      _section(
+        value: distribution.leave,
+        color: AttendanceColors.leave,
+        total: total,
+      ),
+      _section(
+        value: distribution.absent,
+        color: AttendanceColors.absent,
+        total: total,
+      ),
+      _section(
+        value: distribution.late,
+        color: AttendanceColors.late,
+        total: total,
+      ),
+    ].whereType<PieChartSectionData>().toList();
+
+    if (sections.isEmpty) {
+      return const Center(
+        child: Text(
+          "No attendance data",
+          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+        ),
+      );
+    }
+
     return PieChart(
       PieChartData(
         sectionsSpace: 2,
         centerSpaceRadius: 40,
-        sections: [
-          _section(distribution.worked, AttendanceColors.worked),
-          _section(distribution.leave, AttendanceColors.leave),
-          _section(distribution.absent, AttendanceColors.absent),
-          _section(distribution.late, AttendanceColors.late),
-        ],
+        sections: sections,
       ),
     );
   }
 
-  PieChartSectionData _section(double value, Color color) {
+  PieChartSectionData? _section({
+    required double value,
+    required Color color,
+    required double total,
+  }) {
+    if (value <= 0 || total <= 0) return null;
+
+    final percent = ((value / total) * 100).toStringAsFixed(0);
     return PieChartSectionData(
       value: value,
       color: color,
       radius: 45,
-      showTitle: false,
+      showTitle: true,
+      title: "$percent%",
+      titleStyle: const TextStyle(
+        fontSize: 10,
+        fontWeight: FontWeight.w700,
+        color: Colors.white,
+      ),
     );
   }
 }
@@ -100,17 +141,38 @@ class _PieLegend extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Column(
+    return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _LegendItem(color: AttendanceColors.worked, label: 'Worked'),
-        SizedBox(height: 12),
-        _LegendItem(color: AttendanceColors.leave, label: 'Leave'),
-        SizedBox(height: 12),
-        _LegendItem(color: AttendanceColors.absent, label: 'Absent'),
-        SizedBox(height: 12),
-        _LegendItem(color: AttendanceColors.late, label: 'Late'),
+        _LegendItem(
+          color: AttendanceColors.worked,
+          label: 'Worked',
+          value: distribution.worked,
+        ),
+        const SizedBox(height: 10),
+        _LegendItem(
+          color: AttendanceColors.leave,
+          label: 'Leave',
+          value: distribution.leave,
+        ),
+        const SizedBox(height: 10),
+        _LegendItem(
+          color: AttendanceColors.absent,
+          label: 'Absent',
+          value: distribution.absent,
+        ),
+        const SizedBox(height: 10),
+        _LegendItem(
+          color: AttendanceColors.late,
+          label: 'Late',
+          value: distribution.late,
+        ),
+        const SizedBox(height: 12),
+        Text(
+          "Tracked: ${distribution.total.toStringAsFixed(0)} days",
+          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+        ),
       ],
     );
   }
@@ -119,11 +181,18 @@ class _PieLegend extends StatelessWidget {
 class _LegendItem extends StatelessWidget {
   final Color color;
   final String label;
+  final double value;
 
-  const _LegendItem({required this.color, required this.label});
+  const _LegendItem({
+    required this.color,
+    required this.label,
+    required this.value,
+  });
 
   @override
   Widget build(BuildContext context) {
+    if (value <= 0) return const SizedBox.shrink();
+
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -133,7 +202,10 @@ class _LegendItem extends StatelessWidget {
           decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
         const SizedBox(width: 6),
-        Text(label, style: const TextStyle(fontSize: 12)),
+        Text(
+          "$label (${value.toStringAsFixed(0)})",
+          style: const TextStyle(fontSize: 12),
+        ),
       ],
     );
   }

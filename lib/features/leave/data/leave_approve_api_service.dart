@@ -30,17 +30,18 @@ class LeaveApproveApiService {
     }
   }
 
-  /// ✅ APPROVE LEAVE (FINAL SAFE VERSION)
+  /// ✅ APPROVE OR PARTIAL APPROVE LEAVE
   Future<void> approveLeave(
     String requestId,
-    String? comment,
-    List<Map<String, dynamic>> approvedDates,
-  ) async {
-    final body = {
-      "approvedDatesInput": approvedDates,
-      "action": "approve",
-      "comment": comment ?? "",
-    };
+    String action,
+    String? comment, {
+    List<String>? approvedDatesInput,
+  }) async {
+    final body = <String, dynamic>{"action": action, "comment": comment ?? ""};
+
+    if (action == "partial_approve") {
+      body["approvedDatesInput"] = approvedDatesInput ?? <String>[];
+    }
 
     try {
       debugPrint("🌐 Approving leave");

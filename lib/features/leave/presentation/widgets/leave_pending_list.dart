@@ -8,7 +8,7 @@ class LeavePendingList extends StatelessWidget {
 
   final Future<void> Function() onRefresh;
 
-  final Function(String, String?, List<Map<String, dynamic>>) onApprove;
+  final Function(String, String, String?, List<String>?) onApprove;
 
   final Function(String, String?) onReject;
 

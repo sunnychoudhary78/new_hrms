@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:lms/features/attendance/mark_attendance/data/models/attendance_session_model.dart';
 import 'package:lms/features/attendance/shared/data/attendance_repository_provider.dart';
 import 'package:lms/features/attendance/view_attendance/data/models/attendance_aggregate_model.dart';
 import 'package:lms/features/attendance/view_attendance/data/models/attendance_summary_model.dart';
@@ -12,15 +11,10 @@ final viewAttendanceProvider =
     );
 
 class ViewAttendanceState {
-  final List<AttendanceAggregate> aggregates;
-  final AttendanceSummary? summary;
-  final List<AttendanceSession> sessions;
+  final List<AttendanceAggregate> days;
+  final AttendanceSummary summary;
 
-  const ViewAttendanceState({
-    required this.aggregates,
-    required this.summary,
-    required this.sessions,
-  });
+  const ViewAttendanceState({required this.days, required this.summary});
 }
 
 class ViewAttendanceNotifier extends AsyncNotifier<ViewAttendanceState> {
@@ -29,33 +23,31 @@ class ViewAttendanceNotifier extends AsyncNotifier<ViewAttendanceState> {
 
   @override
   Future<ViewAttendanceState> build() async {
-    /// 🔒 SUBSCRIPTION GUARD
     _repo = ref.read(attendanceRepositoryProvider);
     _currentMonth = DateTime.now();
     return _loadMonth(_currentMonth);
   }
 
+  ////////////////////////////////////////////////////////////////
+  /// ✅ CLEAN: single API call
+  ////////////////////////////////////////////////////////////////
+
   Future<ViewAttendanceState> _loadMonth(DateTime date) async {
     final res = await _repo.fetchAttendance(month: date.month, year: date.year);
 
-    final summary = await _repo.fetchSummary(
-      "${date.year}-${date.month.toString().padLeft(2, '0')}",
-    );
-
-    return ViewAttendanceState(
-      aggregates: res.aggregates,
-      sessions: res.sessions,
-      summary: summary,
-    );
+    return ViewAttendanceState(days: res.days, summary: res.summary);
   }
+
+  ////////////////////////////////////////////////////////////////
 
   Future<void> changeMonth(DateTime date) async {
     _currentMonth = date;
 
-    final newState = await _loadMonth(date);
-
-    state = AsyncData(newState);
+    state = const AsyncLoading();
+    state = AsyncData(await _loadMonth(date));
   }
+
+  ////////////////////////////////////////////////////////////////
 
   Future<void> requestAttendanceCorrection({
     required DateTime date,
