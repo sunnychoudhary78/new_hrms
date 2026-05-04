@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+
 import 'package:lms/features/leave/data/models/leave_approve_model.dart';
+
+/// Accent for positive actions — distinct from generic `primary`, tuned for clarity.
+const Color _kApproveAccent = Color(0xFF0F766E);
 
 class LeaveApproveActions extends StatelessWidget {
   final ManagerLeaveRequest request;
@@ -15,24 +20,43 @@ class LeaveApproveActions extends StatelessWidget {
     required this.onReject,
   });
 
+  static ShapeBorder _dialogShape() => RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(24),
+      );
+
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
     return Row(
       children: [
         Expanded(
-          child: ElevatedButton.icon(
-            icon: const Icon(Icons.check),
-            label: const Text("Approve"),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+          child: FilledButton.icon(
+            icon: const Icon(Icons.check_rounded, size: 22),
+            label: const Text('Approve'),
+            style: FilledButton.styleFrom(
+              backgroundColor: _kApproveAccent,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+            ),
             onPressed: () async {
               if (!_canShowPartialApprove) {
                 final comment = await _askApproveComment(context);
                 if (comment == null) return;
 
-                final confirm = await _confirm(context, "Approve Leave?");
+                final confirm = await _confirm(
+                  context,
+                  title: 'Approve leave',
+                  message:
+                      'This will approve the full request using your comment for the audit trail.',
+                  confirmLabel: 'Approve',
+                );
                 if (!confirm) return;
 
-                await onApprove(request.id, "approve", comment, null);
+                await onApprove(request.id, 'approve', comment, null);
                 return;
               }
 
@@ -46,10 +70,16 @@ class LeaveApproveActions extends StatelessWidget {
               if (comment == null) return;
 
               if (result == _ApproveAction.approve) {
-                final confirm = await _confirm(context, "Approve Leave?");
+                final confirm = await _confirm(
+                  context,
+                  title: 'Approve leave',
+                  message:
+                      'All requested dates will be approved with your comment.',
+                  confirmLabel: 'Approve',
+                );
                 if (!confirm) return;
 
-                await onApprove(request.id, "approve", comment, null);
+                await onApprove(request.id, 'approve', comment, null);
                 return;
               }
 
@@ -58,13 +88,16 @@ class LeaveApproveActions extends StatelessWidget {
 
               final confirm = await _confirm(
                 context,
-                "Partially approve selected dates?",
+                title: 'Confirm partial approval',
+                message:
+                    '${selectedDates.length} date${selectedDates.length == 1 ? '' : 's'} will be approved.',
+                confirmLabel: 'Confirm',
               );
               if (!confirm) return;
 
               await onApprove(
                 request.id,
-                "partial_approve",
+                'partial_approve',
                 comment,
                 selectedDates,
               );
@@ -75,10 +108,17 @@ class LeaveApproveActions extends StatelessWidget {
         const SizedBox(width: 12),
 
         Expanded(
-          child: ElevatedButton.icon(
-            icon: const Icon(Icons.close),
-            label: const Text("Reject"),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+          child: FilledButton.icon(
+            icon: const Icon(Icons.close_rounded, size: 22),
+            label: const Text('Reject'),
+            style: FilledButton.styleFrom(
+              backgroundColor: scheme.error,
+              foregroundColor: scheme.onError,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+            ),
             onPressed: () async {
               final reason = await _askReason(context);
               if (reason == null) return;
@@ -91,22 +131,85 @@ class LeaveApproveActions extends StatelessWidget {
     );
   }
 
-  Future<bool> _confirm(BuildContext context, String title) async {
+  Future<bool> _confirm(
+    BuildContext context, {
+    required String title,
+    String? message,
+    String confirmLabel = 'Confirm',
+  }) async {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+
     return await showDialog<bool>(
           context: context,
-          builder: (_) => AlertDialog(
-            title: Text(title),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text("Cancel"),
+          barrierDismissible: true,
+          builder: (dialogContext) {
+            return AlertDialog(
+              shape: _dialogShape(),
+              contentPadding: const EdgeInsets.fromLTRB(24, 20, 24, 8),
+              title: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: _kApproveAccent.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: const Icon(
+                      Icons.verified_rounded,
+                      color: _kApproveAccent,
+                      size: 26,
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          style: theme.textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.w700,
+                            height: 1.2,
+                          ),
+                        ),
+                        if (message != null && message.isNotEmpty) ...[
+                          const SizedBox(height: 8),
+                          Text(
+                            message,
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: scheme.onSurfaceVariant,
+                              height: 1.4,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
               ),
-              ElevatedButton(
-                onPressed: () => Navigator.pop(context, true),
-                child: const Text("Yes"),
-              ),
-            ],
-          ),
+              actionsAlignment: MainAxisAlignment.end,
+              actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext, false),
+                  child: const Text('Cancel'),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.pop(dialogContext, true),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: _kApproveAccent,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: Text(confirmLabel),
+                ),
+              ],
+            );
+          },
         ) ??
         false;
   }
@@ -117,62 +220,200 @@ class LeaveApproveActions extends StatelessWidget {
 
     return showDialog<String>(
       context: context,
-      builder: (_) => StatefulBuilder(
-        builder: (dialogContext, setDialogState) => AlertDialog(
-          title: const Text("Reject Leave"),
-          content: TextField(
-            controller: controller,
-            decoration: InputDecoration(
-              hintText: "Enter reason",
-              errorText: errorText,
-            ),
-            maxLines: 3,
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: const Text("Cancel"),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                final value = controller.text.trim();
-                if (value.isEmpty) {
-                  setDialogState(() {
-                    errorText = "Comment is required";
-                  });
-                  return;
-                }
-                Navigator.pop(dialogContext, value);
-              },
-              child: const Text("Reject"),
-            ),
-          ],
-        ),
-      ),
+      builder: (dialogContext) {
+        final theme = Theme.of(dialogContext);
+        final scheme = theme.colorScheme;
+
+        return StatefulBuilder(
+          builder: (ctx, setDialogState) {
+            return AlertDialog(
+              shape: _dialogShape(),
+              contentPadding: const EdgeInsets.fromLTRB(24, 20, 24, 8),
+              title: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: scheme.errorContainer,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Icon(
+                      Icons.cancel_outlined,
+                      color: scheme.onErrorContainer,
+                      size: 26,
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Reject leave',
+                          style: theme.textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.w700,
+                            height: 1.2,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'A clear reason is required for the employee and audit trail.',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: scheme.onSurfaceVariant,
+                            height: 1.4,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              content: SingleChildScrollView(
+                child: SizedBox(
+                  width: 400,
+                  child: TextField(
+                    controller: controller,
+                    maxLines: 5,
+                    autofocus: true,
+                    textCapitalization: TextCapitalization.sentences,
+                    onChanged: (_) {
+                      if (errorText != null) {
+                        setDialogState(() => errorText = null);
+                      }
+                    },
+                    decoration: InputDecoration(
+                      labelText: 'Reason *',
+                      hintText:
+                          'Explain why this request cannot be approved…',
+                      errorText: errorText,
+                      filled: true,
+                      fillColor: scheme.surfaceContainerLow,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              actionsAlignment: MainAxisAlignment.end,
+              actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  child: const Text('Cancel'),
+                ),
+                FilledButton(
+                  onPressed: () {
+                    final value = controller.text.trim();
+                    if (value.isEmpty) {
+                      setDialogState(() {
+                        errorText = 'Please enter a reason';
+                      });
+                      return;
+                    }
+                    Navigator.pop(dialogContext, value);
+                  },
+                  style: FilledButton.styleFrom(
+                    backgroundColor: scheme.error,
+                    foregroundColor: scheme.onError,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text('Reject leave'),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 
   Future<_ApproveAction?> _askApproveType(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+
     return showDialog<_ApproveAction>(
       context: context,
-      builder: (_) => AlertDialog(
-        title: const Text("Approve Leave"),
-        content: const Text("Choose approval type"),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Cancel"),
+      builder: (dialogContext) {
+        return AlertDialog(
+          shape: _dialogShape(),
+          contentPadding: const EdgeInsets.fromLTRB(24, 20, 24, 8),
+          title: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: scheme.primaryContainer,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(
+                  Icons.task_alt_rounded,
+                  color: scheme.onPrimaryContainer,
+                  size: 26,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Approval type',
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        height: 1.2,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'This request spans multiple days. Choose how you want to approve.',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                        height: 1.4,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-          OutlinedButton(
-            onPressed: () => Navigator.pop(context, _ApproveAction.partial),
-            child: const Text("Partial Approve"),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _ApproveTypeCard(
+                scheme: scheme,
+                icon: Icons.event_available_rounded,
+                title: 'Full approval',
+                subtitle: 'Approve every day in this request',
+                onTap: () =>
+                    Navigator.pop(dialogContext, _ApproveAction.approve),
+              ),
+              const SizedBox(height: 12),
+              _ApproveTypeCard(
+                scheme: scheme,
+                icon: Icons.date_range_rounded,
+                title: 'Partial approval',
+                subtitle: 'Pick specific dates to approve',
+                onTap: () =>
+                    Navigator.pop(dialogContext, _ApproveAction.partial),
+              ),
+            ],
           ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, _ApproveAction.approve),
-            child: const Text("Approve"),
-          ),
-        ],
-      ),
+          actionsAlignment: MainAxisAlignment.end,
+          actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Cancel'),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -182,40 +423,120 @@ class LeaveApproveActions extends StatelessWidget {
   }) {
     final controller = TextEditingController();
     String? errorText;
+
     return showDialog<String>(
       context: context,
-      builder: (_) => StatefulBuilder(
-        builder: (dialogContext, setDialogState) => AlertDialog(
-          title: Text(isPartial ? "Partial Approve Leave" : "Approve Leave"),
-          content: TextField(
-            controller: controller,
-            decoration: InputDecoration(
-              hintText: "Enter comment",
-              errorText: errorText,
-            ),
-            maxLines: 3,
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: const Text("Cancel"),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                final value = controller.text.trim();
-                if (value.isEmpty) {
-                  setDialogState(() {
-                    errorText = "Comment is required";
-                  });
-                  return;
-                }
-                Navigator.pop(dialogContext, value);
-              },
-              child: const Text("Continue"),
-            ),
-          ],
-        ),
-      ),
+      builder: (dialogContext) {
+        final theme = Theme.of(dialogContext);
+        final scheme = theme.colorScheme;
+
+        return StatefulBuilder(
+          builder: (ctx, setDialogState) {
+            return AlertDialog(
+              shape: _dialogShape(),
+              contentPadding: const EdgeInsets.fromLTRB(24, 20, 24, 8),
+              title: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: _kApproveAccent.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: const Icon(
+                      Icons.comment_bank_outlined,
+                      color: _kApproveAccent,
+                      size: 26,
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          isPartial
+                              ? 'Comment for partial approval'
+                              : 'Manager comment',
+                          style: theme.textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.w700,
+                            height: 1.2,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          isPartial
+                              ? 'Your note will be stored with the approved dates.'
+                              : 'Visible to HR and the employee on the request history.',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: scheme.onSurfaceVariant,
+                            height: 1.4,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              content: SingleChildScrollView(
+                child: SizedBox(
+                  width: 400,
+                  child: TextField(
+                    controller: controller,
+                    maxLines: 5,
+                    autofocus: true,
+                    textCapitalization: TextCapitalization.sentences,
+                    onChanged: (_) {
+                      if (errorText != null) {
+                        setDialogState(() => errorText = null);
+                      }
+                    },
+                    decoration: InputDecoration(
+                      labelText: 'Comment *',
+                      hintText: 'Add context for this decision…',
+                      errorText: errorText,
+                      filled: true,
+                      fillColor: scheme.surfaceContainerLow,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              actionsAlignment: MainAxisAlignment.end,
+              actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  child: const Text('Cancel'),
+                ),
+                FilledButton(
+                  onPressed: () {
+                    final value = controller.text.trim();
+                    if (value.isEmpty) {
+                      setDialogState(() {
+                        errorText = 'Comment is required';
+                      });
+                      return;
+                    }
+                    Navigator.pop(dialogContext, value);
+                  },
+                  style: FilledButton.styleFrom(
+                    backgroundColor: _kApproveAccent,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text('Continue'),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 
@@ -224,56 +545,144 @@ class LeaveApproveActions extends StatelessWidget {
     if (requested.isEmpty) return Future.value(null);
 
     final selected = requested.toSet();
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+
     return showDialog<List<String>>(
       context: context,
-      builder: (_) => StatefulBuilder(
-        builder: (dialogContext, setDialogState) => AlertDialog(
-          title: const Text("Partial Approve Dates"),
-          content: SizedBox(
-            width: 360,
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: requested
-                    .map(
-                      (date) => CheckboxListTile(
-                        value: selected.contains(date),
-                        title: Text(date),
-                        contentPadding: EdgeInsets.zero,
-                        onChanged: (checked) {
-                          setDialogState(() {
-                            if (checked == true) {
-                              selected.add(date);
-                            } else {
-                              selected.remove(date);
-                            }
-                          });
-                        },
-                      ),
-                    )
-                    .toList(),
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (ctx, setDialogState) {
+            final count = selected.length;
+
+            return AlertDialog(
+              shape: _dialogShape(),
+              contentPadding: const EdgeInsets.fromLTRB(24, 20, 24, 8),
+              title: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: scheme.secondaryContainer,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Icon(
+                      Icons.edit_calendar_rounded,
+                      color: scheme.onSecondaryContainer,
+                      size: 26,
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Select dates to approve',
+                          style: theme.textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.w700,
+                            height: 1.2,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          count == 0
+                              ? 'Choose at least one day.'
+                              : '$count day${count == 1 ? '' : 's'} selected',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: scheme.onSurfaceVariant,
+                            height: 1.4,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: const Text("Cancel"),
-            ),
-            ElevatedButton(
-              onPressed: selected.isEmpty
-                  ? null
-                  : () => Navigator.pop(
-                        dialogContext,
-                        requested
-                            .where((date) => selected.contains(date))
-                            .toList(),
-                      ),
-              child: const Text("Continue"),
-            ),
-          ],
-        ),
-      ),
+              content: SizedBox(
+                width: 400,
+                child: Material(
+                  color: scheme.surfaceContainerLow,
+                  borderRadius: BorderRadius.circular(16),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxHeight: 320),
+                    child: ListView(
+                      shrinkWrap: true,
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      children: requested.map((date) {
+                        final checked = selected.contains(date);
+                        return CheckboxTheme(
+                          data: CheckboxThemeData(
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                          ),
+                          child: CheckboxListTile(
+                            value: checked,
+                            title: Text(
+                              _formatDisplayDate(date),
+                              style: theme.textTheme.bodyLarge?.copyWith(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            subtitle: Text(
+                              date,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: scheme.onSurfaceVariant,
+                              ),
+                            ),
+                            controlAffinity: ListTileControlAffinity.leading,
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                            ),
+                            onChanged: (v) {
+                              setDialogState(() {
+                                if (v == true) {
+                                  selected.add(date);
+                                } else {
+                                  selected.remove(date);
+                                }
+                              });
+                            },
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                ),
+              ),
+              actionsAlignment: MainAxisAlignment.end,
+              actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  child: const Text('Cancel'),
+                ),
+                FilledButton(
+                  onPressed: selected.isEmpty
+                      ? null
+                      : () => Navigator.pop(
+                            dialogContext,
+                            requested
+                                .where((date) => selected.contains(date))
+                                .toList(),
+                          ),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: _kApproveAccent,
+                    foregroundColor: Colors.white,
+                    disabledBackgroundColor: scheme.surfaceContainerHighest,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text('Continue'),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 
@@ -294,9 +703,9 @@ class LeaveApproveActions extends StatelessWidget {
     var current = start;
     while (!current.isAfter(end)) {
       dates.add(
-        "${current.year.toString().padLeft(4, '0')}-"
-        "${current.month.toString().padLeft(2, '0')}-"
-        "${current.day.toString().padLeft(2, '0')}",
+        '${current.year.toString().padLeft(4, '0')}-'
+        '${current.month.toString().padLeft(2, '0')}-'
+        '${current.day.toString().padLeft(2, '0')}',
       );
       current = current.add(const Duration(days: 1));
     }
@@ -317,15 +726,94 @@ class LeaveApproveActions extends StatelessWidget {
     final value = rawDate.toString();
     try {
       final parsed = DateTime.parse(value);
-      return "${parsed.year.toString().padLeft(4, '0')}-"
-          "${parsed.month.toString().padLeft(2, '0')}-"
-          "${parsed.day.toString().padLeft(2, '0')}";
+      return '${parsed.year.toString().padLeft(4, '0')}-'
+          '${parsed.month.toString().padLeft(2, '0')}-'
+          '${parsed.day.toString().padLeft(2, '0')}';
     } catch (_) {
-      // Keep backend-provided value if already date-only or non-ISO.
       return value.length >= 10 ? value.substring(0, 10) : value;
     }
   }
 
+  String _formatDisplayDate(String ymd) {
+    final d = DateTime.tryParse(ymd);
+    if (d == null) return ymd;
+    return DateFormat('EEE, d MMM yyyy').format(d);
+  }
 }
 
 enum _ApproveAction { approve, partial }
+
+class _ApproveTypeCard extends StatelessWidget {
+  const _ApproveTypeCard({
+    required this.scheme,
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  final ColorScheme scheme;
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Material(
+      color: scheme.surface,
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: scheme.outlineVariant),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: scheme.primaryContainer.withValues(alpha: 0.5),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: scheme.onPrimaryContainer, size: 26),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      subtitle,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                        height: 1.35,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                Icons.chevron_right_rounded,
+                color: scheme.onSurfaceVariant,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}

@@ -5,7 +5,7 @@ import 'leave_status_card.dart';
 class LeaveStatusList extends StatefulWidget {
   final List<LeaveStatus> leaves;
   final Future<void> Function() onRefresh;
-  final Function(String, List<String>) onRevoke;
+  final Future<void> Function(String, List<String>) onRevoke;
   final String? expandLeaveId;
 
   const LeaveStatusList({
@@ -82,7 +82,9 @@ class _LeaveStatusListState extends State<LeaveStatusList> {
             child: LeaveStatusCard(
               leave: leave,
               isInitiallyExpanded: shouldExpand,
-              onRevoke: canRevoke ? () => widget.onRevoke(leave.id, []) : null,
+              onRevoke: canRevoke
+                  ? () => widget.onRevoke(leave.id, [])
+                  : null,
             ),
           );
         },

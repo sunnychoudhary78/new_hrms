@@ -23,9 +23,13 @@ class _KraDashboardScreenState extends ConsumerState<KraDashboardScreen> {
     final modes = ref.watch(kraVisibleReviewModesProvider);
     final canManage = ref.watch(canManageKraProvider);
     final tabs = [
-      for (final mode in modes) _KraTab(mode.label, KraReviewTab(mode: mode)),
-      if (modes.contains(KraReviewMode.self))
-        const _KraTab('My KRAs', MyKrasList()),
+      for (final mode in modes)
+        _KraTab(
+          mode.label,
+          mode == KraReviewMode.self
+              ? const KraMyKraUnifiedTab()
+              : KraReviewTab(mode: mode),
+        ),
       if (canManage) const _KraTab('KRA Setup', KraManagementTab()),
       if (canManage) const _KraTab('Cycles', KraCyclesTab()),
     ];
@@ -43,7 +47,7 @@ class _KraDashboardScreenState extends ConsumerState<KraDashboardScreen> {
         !_openedCreateSheet) {
       _openedCreateSheet = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) showKraCreateFormSheet(context);
+        if (mounted) showKraCreateFormSheet(context, ref);
       });
     }
 
@@ -55,7 +59,9 @@ class _KraDashboardScreenState extends ConsumerState<KraDashboardScreen> {
     }
 
     return DefaultTabController(
-      key: ValueKey('kra-tabs-${tabs.length}-$initialIndex'),
+      key: ValueKey(
+        'kra-tc-len${tabs.length}-m$canManage-t${args?.tab.name ?? 'none'}',
+      ),
       length: tabs.length,
       initialIndex: initialIndex,
       child: Scaffold(

@@ -25,7 +25,7 @@ void main() async {
 
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
 
-  runApp(const Root());
+  runApp(Root(key: Root.rootKey));
 }
 
 /// ✅ ROOT is now StatefulWidget (NOT ConsumerWidget)

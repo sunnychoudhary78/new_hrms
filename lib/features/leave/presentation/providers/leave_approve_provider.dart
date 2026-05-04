@@ -44,10 +44,19 @@ class LeaveApproveNotifier extends AsyncNotifier<List<ManagerLeaveRequest>> {
     final loader = ref.read(globalLoadingProvider.notifier);
 
     try {
-      /// ✅ Find request from current state
-      final request = state.value?.firstWhere((e) => e.id == id);
+      ManagerLeaveRequest? request;
+      final list = state.value;
+      if (list != null) {
+        for (final e in list) {
+          if (e.id == id) {
+            request = e;
+            break;
+          }
+        }
+      }
 
-      final isRevoke = request?.status == "RevocationRequested";
+      final isRevoke =
+          (request?.status.toLowerCase() ?? '') == "revocationrequested";
 
       loader.showLoading(
         isRevoke ? "Processing revoke request..." : "Approving leave...",
@@ -75,10 +84,19 @@ class LeaveApproveNotifier extends AsyncNotifier<List<ManagerLeaveRequest>> {
     final loader = ref.read(globalLoadingProvider.notifier);
 
     try {
-      /// ✅ Find request from current state
-      final request = state.value?.firstWhere((e) => e.id == id);
+      ManagerLeaveRequest? request;
+      final list = state.value;
+      if (list != null) {
+        for (final e in list) {
+          if (e.id == id) {
+            request = e;
+            break;
+          }
+        }
+      }
 
-      final isRevoke = request?.status == "RevocationRequested";
+      final isRevoke =
+          (request?.status.toLowerCase() ?? '') == "revocationrequested";
 
       loader.showLoading(
         isRevoke ? "Processing revoke rejection..." : "Rejecting leave...",

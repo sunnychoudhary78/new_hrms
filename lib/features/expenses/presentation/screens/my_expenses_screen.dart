@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lms/shared/widgets/premium_feature_components.dart';
 import '../../data/models/expense_model.dart';
 import '../providers/expense_provider.dart';
 
@@ -26,10 +27,7 @@ class _MyExpensesScreenState extends ConsumerState<MyExpensesScreen> {
     final expensesAsync = ref.watch(myExpensesProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("My Expenses"),
-        elevation: 0,
-      ),
+      appBar: AppBar(title: const Text("My Expenses"), elevation: 0),
 
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
@@ -88,9 +86,7 @@ class _MyExpensesScreenState extends ConsumerState<MyExpensesScreen> {
                 error: (e, _) => ListView(
                   physics: const AlwaysScrollableScrollPhysics(),
                   padding: const EdgeInsets.all(16),
-                  children: [
-                    Text("Error: $e", textAlign: TextAlign.center),
-                  ],
+                  children: [Text("Error: $e", textAlign: TextAlign.center)],
                 ),
                 data: (expenses) {
                   final filtered = expenses.where((e) {
@@ -113,15 +109,13 @@ class _MyExpensesScreenState extends ConsumerState<MyExpensesScreen> {
                     return ListView(
                       physics: const AlwaysScrollableScrollPhysics(),
                       padding: const EdgeInsets.fromLTRB(12, 8, 12, 100),
-                      children: [
-                        SizedBox(
-                          height: MediaQuery.sizeOf(context).height * 0.25,
-                        ),
-                        Center(
-                          child: Text(
-                            "No claims found",
-                            style: TextStyle(color: scheme.onSurfaceVariant),
-                          ),
+                      children: const [
+                        SizedBox(height: 80),
+                        PremiumEmptyState(
+                          icon: Icons.receipt_long_outlined,
+                          title: "No claims found",
+                          subtitle:
+                              "Try another status or create a new expense claim.",
                         ),
                       ],
                     );
@@ -159,54 +153,29 @@ class _MyExpensesScreenState extends ConsumerState<MyExpensesScreen> {
           0,
           (sum, item) => sum + item.totalAmount,
         );
-        return Container(
-          margin: const EdgeInsets.fromLTRB(12, 8, 12, 6),
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(18),
-            gradient: LinearGradient(
-              colors: [
-                scheme.primaryContainer,
-                scheme.secondaryContainer,
-              ],
-            ),
-          ),
-          child: Row(
+        return PremiumFeatureHeader(
+          icon: Icons.receipt_long,
+          title: "My Expense Claims",
+          subtitle:
+              "${data.length} claim(s) submitted across drafts, approvals and payments.",
+          trailing: Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            mainAxisSize: MainAxisSize.min,
             children: [
-              CircleAvatar(
-                radius: 22,
-                backgroundColor: scheme.primary,
-                child: Icon(Icons.receipt_long, color: scheme.onPrimary),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      "Total Claims",
-                      style: TextStyle(
-                        color: scheme.onSurfaceVariant,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    Text(
-                      "${data.length}",
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w800,
-                        color: scheme.onSurface,
-                      ),
-                    ),
-                  ],
+              Text(
+                "Total",
+                style: TextStyle(
+                  color: scheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 12,
                 ),
               ),
               Text(
                 "₹${total.toStringAsFixed(0)}",
                 style: TextStyle(
                   fontSize: 18,
-                  fontWeight: FontWeight.w800,
-                  color: scheme.onSurface,
+                  fontWeight: FontWeight.w900,
+                  color: scheme.primary,
                 ),
               ),
             ],
@@ -224,13 +193,7 @@ class _MyExpensesScreenState extends ConsumerState<MyExpensesScreen> {
         await Navigator.pushNamed(context, "/expenses/detail", arguments: exp);
         ref.invalidate(myExpensesProvider);
       },
-      child: Ink(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: scheme.surfaceContainerLow,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: scheme.outlineVariant),
-        ),
+      child: PremiumCard(
         child: Row(
           children: [
             Container(
@@ -262,6 +225,19 @@ class _MyExpensesScreenState extends ConsumerState<MyExpensesScreen> {
               ),
             ),
             const SizedBox(width: 10),
+            if (exp.status == "Draft")
+              IconButton(
+                tooltip: "Edit draft",
+                icon: const Icon(Icons.edit_outlined),
+                onPressed: () async {
+                  await Navigator.pushNamed(
+                    context,
+                    "/expenses/create",
+                    arguments: exp,
+                  );
+                  ref.invalidate(myExpensesProvider);
+                },
+              ),
             Text(
               "₹${exp.totalAmount.toStringAsFixed(0)}",
               style: TextStyle(
@@ -298,16 +274,6 @@ class _MyExpensesScreenState extends ConsumerState<MyExpensesScreen> {
         color = Colors.blue;
     }
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        status,
-        style: TextStyle(color: color, fontWeight: FontWeight.w500),
-      ),
-    );
+    return PremiumStatusPill(label: status, color: color);
   }
 }

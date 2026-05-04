@@ -12,7 +12,12 @@ class KraApiService {
 
   KraApiService(this.api);
 
-  Future<dynamic> listKras({String? departmentId, String? employeeId}) {
+  Future<dynamic> listKras({
+    String? departmentId,
+    String? employeeId,
+    int? page,
+    int? limit,
+  }) {
     final query = <String, dynamic>{};
     if (departmentId != null && departmentId.trim().isNotEmpty) {
       query['department_id'] = departmentId.trim();
@@ -20,11 +25,23 @@ class KraApiService {
     if (employeeId != null && employeeId.trim().isNotEmpty) {
       query['employee_id'] = employeeId.trim();
     }
+    if (page != null) query['page'] = page;
+    if (limit != null) query['limit'] = limit;
 
     return api.get(ApiEndpoints.kra, queryParams: query.isEmpty ? null : query);
   }
 
-  Future<dynamic> getTeamMembers() => api.get(ApiEndpoints.kraTeamMembers);
+  Future<dynamic> getTeamMembers({int? page, int? limit}) {
+    final query = <String, dynamic>{
+      if (page != null) 'page': page,
+      if (limit != null) 'limit': limit,
+    };
+
+    return api.get(
+      ApiEndpoints.kraTeamMembers,
+      queryParams: query.isEmpty ? null : query,
+    );
+  }
 
   Future<dynamic> createKra(Map<String, dynamic> payload) {
     return api.post(ApiEndpoints.kra, payload);
@@ -44,13 +61,30 @@ class KraApiService {
 
   Future<dynamic> getActiveCycle() => api.get(ApiEndpoints.kraActiveCycle);
 
-  Future<dynamic> listCycles() => api.get(ApiEndpoints.kraCycles);
+  Future<dynamic> listCycles({int? page, int? limit}) {
+    final query = <String, dynamic>{
+      if (page != null) 'page': page,
+      if (limit != null) 'limit': limit,
+    };
 
-  Future<dynamic> listEvaluations({required String mode, String? cycleId}) {
+    return api.get(
+      ApiEndpoints.kraCycles,
+      queryParams: query.isEmpty ? null : query,
+    );
+  }
+
+  Future<dynamic> listEvaluations({
+    required String mode,
+    String? cycleId,
+    int? page,
+    int? limit,
+  }) {
     final query = <String, dynamic>{'mode': mode};
     if (cycleId != null && cycleId.trim().isNotEmpty) {
       query['cycle_id'] = cycleId.trim();
     }
+    if (page != null) query['page'] = page;
+    if (limit != null) query['limit'] = limit;
     return api.get(ApiEndpoints.kraEvaluations, queryParams: query);
   }
 

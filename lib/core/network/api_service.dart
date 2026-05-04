@@ -149,6 +149,30 @@ class ApiService {
     }
   }
 
+  Future<dynamic> putMultipart(String endpoint, FormData formData) async {
+    final path = endpoint.startsWith("/") ? endpoint.substring(1) : endpoint;
+    debugPrint("🌐 PUT MULTIPART ${_dio.options.baseUrl}$path");
+    final ct =
+        '${Headers.multipartFormDataContentType}; boundary=${formData.boundary}';
+    debugPrint("📎 Content-Type: $ct");
+
+    try {
+      final response = await _dio.put(
+        path,
+        data: formData,
+        options: Options(contentType: ct),
+      );
+
+      debugPrint("✅ PUT MULTIPART success | status=${response.statusCode}");
+      debugPrint("📥 RAW RESPONSE: ${response.data}");
+
+      return _handle(response);
+    } on DioException catch (e) {
+      _logError("PUT MULTIPART", endpoint, e);
+      throw _extractException(e);
+    }
+  }
+
   Future<dynamic> put(String endpoint, Map<String, dynamic> data) async {
     debugPrint("🌐 PUT ${_dio.options.baseUrl}$endpoint");
     debugPrint("📦 ORIGINAL BODY: $data");
@@ -205,8 +229,6 @@ class ApiService {
 
   // ───────── ERROR PARSER ─────────
   Exception _extractException(DioException e) {
-    final auth = ref.read(authProvider);
-
     /// 🔥 STEP 1: capture raw error
     dynamic rawError = e.response?.data;
 
@@ -255,14 +277,9 @@ class ApiService {
       return Exception("No internet connection");
     }
 
-    // ───────── SESSION EXPIRED FALLBACK ─────────
-    if (e.response == null && auth.profile != null) {
-      ref.read(sessionGuardProvider).trigger(() {
-        ref.read(authProvider.notifier).forceSubscriptionExpired();
-      });
-
-      return Exception("SESSION_EXPIRED");
-    }
+    // ───────── UNKNOWN / NO RESPONSE ─────────
+    // Never map generic network failures (null response, unknown type, etc.) to
+    // subscription expired — that caused rare false positives while logged in.
 
     return Exception("Something went wrong");
   }

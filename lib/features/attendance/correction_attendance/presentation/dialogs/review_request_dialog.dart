@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lms/core/providers/global_loading_provider.dart';
 import '../../data/models/attendance_request_model.dart';
 import '../providers/attendance_requests_provider.dart';
 
@@ -26,12 +27,12 @@ class _ReviewDialog extends ConsumerStatefulWidget {
 
 class _ReviewDialogState extends ConsumerState<_ReviewDialog> {
   final _noteController = TextEditingController();
-  bool _submitting = false;
+  String? _submittingAction;
 
   Future<void> _update(String status) async {
-    if (_submitting) return;
+    if (_submittingAction != null) return;
 
-    setState(() => _submitting = true);
+    setState(() => _submittingAction = status);
 
     try {
       await ref
@@ -44,11 +45,16 @@ class _ReviewDialogState extends ConsumerState<_ReviewDialog> {
                 : _noteController.text.trim(),
           );
 
+      final actionText = status == 'approve' ? 'approved' : 'rejected';
+      ref
+          .read(globalLoadingProvider.notifier)
+          .showSuccess("Correction request $actionText successfully");
+
       if (mounted) Navigator.pop(context);
-    } catch (_) {
-      // Optional: show snackbar here
+    } catch (e) {
+      ref.read(globalLoadingProvider.notifier).showError(e.toString());
     } finally {
-      if (mounted) setState(() => _submitting = false);
+      if (mounted) setState(() => _submittingAction = null);
     }
   }
 
@@ -62,18 +68,24 @@ class _ReviewDialogState extends ConsumerState<_ReviewDialog> {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final req = widget.req;
+    final isSubmitting = _submittingAction != null;
 
     return SafeArea(
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: scheme.surface,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+      child: AnimatedPadding(
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOut,
+        padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: scheme.surface,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
@@ -111,7 +123,7 @@ class _ReviewDialogState extends ConsumerState<_ReviewDialog> {
                   ),
                   IconButton(
                     icon: Icon(Icons.close, color: scheme.onSurface),
-                    onPressed: _submitting
+                    onPressed: isSubmitting
                         ? null
                         : () => Navigator.pop(context),
                   ),
@@ -153,9 +165,9 @@ class _ReviewDialogState extends ConsumerState<_ReviewDialog> {
                 children: [
                   Expanded(
                     child: FilledButton.tonalIcon(
-                      onPressed: _submitting ? null : () => _update('reject'),
+                      onPressed: isSubmitting ? null : () => _update('reject'),
                       icon: const Icon(Icons.close_rounded),
-                      label: _submitting
+                      label: _submittingAction == 'reject'
                           ? const SizedBox(
                               height: 16,
                               width: 16,
@@ -167,9 +179,9 @@ class _ReviewDialogState extends ConsumerState<_ReviewDialog> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: FilledButton.icon(
-                      onPressed: _submitting ? null : () => _update('approve'),
+                      onPressed: isSubmitting ? null : () => _update('approve'),
                       icon: const Icon(Icons.check_rounded),
-                      label: _submitting
+                      label: _submittingAction == 'approve'
                           ? SizedBox(
                               height: 16,
                               width: 16,
@@ -183,7 +195,8 @@ class _ReviewDialogState extends ConsumerState<_ReviewDialog> {
                   ),
                 ],
               ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

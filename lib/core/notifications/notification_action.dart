@@ -32,6 +32,25 @@ class OpenAttendanceCorrection extends NotificationAction {
   const OpenAttendanceCorrection({required this.correctionId});
 }
 
+/// Open expenses module (my list or dashboard)
+class OpenExpenses extends NotificationAction {
+  final bool preferDashboard;
+
+  const OpenExpenses({this.preferDashboard = false});
+}
+
+/// Open resignation module (my request or approval dashboard)
+class OpenResignation extends NotificationAction {
+  final bool preferDashboard;
+
+  const OpenResignation({this.preferDashboard = false});
+}
+
+/// Open KRA dashboard
+class OpenKra extends NotificationAction {
+  const OpenKra();
+}
+
 /// Open notifications list (fallback)
 class OpenNotifications extends NotificationAction {
   const OpenNotifications();

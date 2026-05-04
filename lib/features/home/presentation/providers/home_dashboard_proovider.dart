@@ -124,14 +124,6 @@ class HomeDashboardNotifier extends AsyncNotifier<HomeDashboardModel> {
 
       return dashboard;
     } catch (e, stack) {
-      if (e.toString().contains("SESSION_EXPIRED")) {
-        Future.microtask(() {
-          ref.read(authProvider.notifier).forceSubscriptionExpired();
-        });
-
-        throw Exception("SUBSCRIPTION_EXPIRED");
-      }
-
       print("\n");
       print("══════════════════════════════════════");
       print("❌ HOME DASHBOARD CRASH DETECTED");

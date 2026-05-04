@@ -43,6 +43,7 @@ import 'package:lms/features/payslip/presentation/screens/payslip_list_screen.da
 import 'package:lms/features/kra/presentation/screens/kra_dashboard_screen.dart';
 
 // ================= EXPENSES =================
+import 'package:lms/features/expenses/data/models/expense_model.dart';
 import 'package:lms/features/expenses/presentation/screens/my_expenses_screen.dart';
 import 'package:lms/features/expenses/presentation/screens/create_expense_screen.dart';
 
@@ -84,8 +85,12 @@ class AppRoutes {
     // Employee
     "/expenses/my": (_) => const MyExpensesScreen(),
 
-    // Create
-    "/expenses/create": (_) => const CreateExpenseScreen(),
+    // Create (optional [ExpenseClaim] arguments = edit draft)
+    "/expenses/create": (context) {
+      final args = ModalRoute.of(context)!.settings.arguments;
+      final edit = args is ExpenseClaim ? args : null;
+      return CreateExpenseScreen(editClaim: edit);
+    },
 
     "/expenses/detail": (_) => const ExpenseDetailScreen(),
 

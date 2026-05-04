@@ -9,7 +9,7 @@ import 'package:lms/core/theme/app_design.dart';
 
 class LeaveStatusCard extends ConsumerStatefulWidget {
   final LeaveStatus leave;
-  final VoidCallback? onRevoke;
+  final Future<void> Function()? onRevoke;
   final bool isInitiallyExpanded;
 
   const LeaveStatusCard({
@@ -255,19 +255,7 @@ class _LeaveStatusCardState extends ConsumerState<LeaveStatusCard>
                                   );
 
                                   if (confirm == true) {
-                                    widget.onRevoke!();
-
-                                    if (context.mounted) {
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        const SnackBar(
-                                          content: Text(
-                                            "Leave revocation requested",
-                                          ),
-                                        ),
-                                      );
-                                    }
+                                    await widget.onRevoke!();
                                   }
                                 },
                               ),

@@ -237,12 +237,37 @@ class AttendanceApiService {
   Future<List<dynamic>> fetchAttendanceCorrectionsManaged({
     required String status,
   }) async {
-    final res = await api.get(
-      ApiEndpoints.attendanceCorrectionsManaged,
-      queryParams: {"status": status},
-    );
+    const pageSize = 100;
+    final rows = <dynamic>[];
+    var page = 1;
+    var totalPages = 1;
 
-    return res["data"] ?? [];
+    do {
+      final res = await api.get(
+        ApiEndpoints.attendanceCorrectionsManaged,
+        queryParams: {"status": status, "page": page, "limit": pageSize},
+      );
+
+      if (res is List) {
+        return res;
+      }
+
+      final data = res["data"];
+      if (data is List) {
+        rows.addAll(data);
+      }
+
+      final meta = res["meta"];
+      if (meta is Map && meta["totalPages"] != null) {
+        totalPages = int.tryParse(meta["totalPages"].toString()) ?? totalPages;
+      } else {
+        break;
+      }
+
+      page++;
+    } while (page <= totalPages);
+
+    return rows;
   }
 
   Future<List<dynamic>> fetchAttendanceCorrectionsMy({

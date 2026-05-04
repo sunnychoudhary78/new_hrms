@@ -11,19 +11,40 @@ class LeaveApproveApiService {
     try {
       debugPrint("🌐 Fetching manager leave requests");
 
-      final res = await api.get('leave-requests/manager/requests/all');
+      const pageSize = 100;
+      final rows = <dynamic>[];
+      var page = 1;
+      var totalPages = 1;
 
-      if (res is Map && res['data'] is List) {
-        debugPrint("✅ Manager requests fetched: ${res['data'].length}");
-        return res['data'];
-      }
+      do {
+        final res = await api.get(
+          'leave-requests/manager/requests/all',
+          queryParams: {"page": page, "limit": pageSize},
+        );
 
-      if (res is List) {
-        debugPrint("✅ Manager requests fetched: ${res.length}");
-        return res;
-      }
+        if (res is List) {
+          debugPrint("✅ Manager requests fetched: ${res.length}");
+          return res;
+        }
 
-      throw Exception("Invalid manager request response format");
+        if (res is Map && res['data'] is List) {
+          rows.addAll(res['data'] as List);
+          final meta = res['meta'];
+          if (meta is Map && meta['totalPages'] != null) {
+            totalPages =
+                int.tryParse(meta['totalPages'].toString()) ?? totalPages;
+          } else {
+            break;
+          }
+        } else {
+          throw Exception("Invalid manager request response format");
+        }
+
+        page++;
+      } while (page <= totalPages);
+
+      debugPrint("✅ Manager requests fetched: ${rows.length}");
+      return rows;
     } catch (e) {
       debugPrint("❌ fetchManagerRequests error: $e");
       throw Exception(e.toString().replaceAll("Exception: ", ""));

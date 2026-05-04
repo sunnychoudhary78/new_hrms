@@ -21,19 +21,52 @@ class ResignationApiService {
     return api.delete("${ApiEndpoints.resignation}/$id/withdraw", {});
   }
 
-  /// Manager
-  Future<dynamic> getManagerPending() {
-    return api.get(ApiEndpoints.managerPendingResignation);
+  /// Manager list (`GET resignations/manager/all`) — see API docs: `rows`, `meta`, optional `status`.
+  Future<dynamic> getManagerResignations({
+    required String status,
+    int page = 1,
+    int limit = 200,
+  }) {
+    return api.get(
+      ApiEndpoints.managerAllResignation,
+      queryParams: {
+        'status': status,
+        'page': page,
+        'limit': limit,
+      },
+    );
   }
 
-  /// HOD
-  Future<dynamic> getHodPending() {
-    return api.get(ApiEndpoints.hodPendingResignation);
+  /// HOD list (`GET resignations/hod/all`).
+  Future<dynamic> getHodResignations({
+    required String status,
+    int page = 1,
+    int limit = 200,
+  }) {
+    return api.get(
+      ApiEndpoints.hodAllResignation,
+      queryParams: {
+        'status': status,
+        'page': page,
+        'limit': limit,
+      },
+    );
   }
 
-  /// HR
-  Future<dynamic> getHrAll() {
-    return api.get(ApiEndpoints.hrAllResignation);
+  /// HR list (`GET resignations/hr/all`).
+  Future<dynamic> getHrAll({
+    required String status,
+    int page = 1,
+    int limit = 200,
+  }) {
+    return api.get(
+      ApiEndpoints.hrAllResignation,
+      queryParams: {
+        'status': status,
+        'page': page,
+        'limit': limit,
+      },
+    );
   }
 
   Future<dynamic> approve(String id, String remarks) {

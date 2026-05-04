@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lms/core/providers/global_loading_provider.dart';
 import 'package:lms/features/kra/presentation/providers/kra_provider.dart';
 import 'package:lms/features/kra/presentation/widgets/kra_ui_widgets.dart';
 
@@ -18,6 +19,7 @@ class _KraCyclesTabState extends ConsumerState<KraCyclesTab> {
   Widget build(BuildContext context) {
     final cyclesAsync = ref.watch(kraCyclesProvider);
     final state = ref.watch(kraActionProvider);
+    final scheme = Theme.of(context).colorScheme;
 
     return Column(
       children: [
@@ -43,7 +45,14 @@ class _KraCyclesTabState extends ConsumerState<KraCyclesTab> {
               Expanded(
                 child: DropdownButtonFormField<int>(
                   initialValue: _month,
-                  decoration: const InputDecoration(labelText: 'Month'),
+                  decoration: InputDecoration(
+                    labelText: 'Month',
+                    filled: true,
+                    fillColor: scheme.surfaceContainerLow,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
                   items: List.generate(
                     12,
                     (i) =>
@@ -56,7 +65,14 @@ class _KraCyclesTabState extends ConsumerState<KraCyclesTab> {
               Expanded(
                 child: TextFormField(
                   initialValue: _year.toString(),
-                  decoration: const InputDecoration(labelText: 'Year'),
+                  decoration: InputDecoration(
+                    labelText: 'Year',
+                    filled: true,
+                    fillColor: scheme.surfaceContainerLow,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
                   keyboardType: TextInputType.number,
                   onChanged: (v) => _year = int.tryParse(v) ?? _year,
                 ),
@@ -82,12 +98,14 @@ class _KraCyclesTabState extends ConsumerState<KraCyclesTab> {
                     final cycle = cycles[i];
                     return ListTile(
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
+                        borderRadius: BorderRadius.circular(18),
+                        side: BorderSide(color: scheme.outlineVariant),
                       ),
-                      tileColor: Theme.of(
-                        context,
-                      ).colorScheme.surfaceContainerLow,
-                      leading: const Icon(Icons.event_available),
+                      tileColor: scheme.surfaceContainerLow,
+                      leading: Icon(
+                        Icons.event_available,
+                        color: scheme.primary,
+                      ),
                       title: Text(cycle.label),
                       subtitle: Text(cycle.status),
                     );
@@ -109,12 +127,11 @@ class _KraCyclesTabState extends ConsumerState<KraCyclesTab> {
         .initiateCycle(month: _month, year: _year);
     final state = ref.read(kraActionProvider);
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          state.hasError ? 'Error: ${state.error}' : 'Review cycle started',
-        ),
-      ),
-    );
+    final o = ref.read(globalLoadingProvider.notifier);
+    if (state.hasError) {
+      o.showError('${state.error}');
+    } else {
+      o.showSuccess('Review cycle started');
+    }
   }
 }

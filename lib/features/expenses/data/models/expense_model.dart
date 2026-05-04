@@ -2,6 +2,41 @@ import 'dart:convert';
 
 import 'package:lms/core/network/api_constants.dart';
 
+/// Reads claim status from common API / ORM field names.
+String? _expenseStatusRawFromMap(Map<String, dynamic> root) {
+  const keys = <String>[
+    'status',
+    'claim_status',
+    'claimStatus',
+    'approval_status',
+    'approvalStatus',
+  ];
+  for (final k in keys) {
+    final v = root[k];
+    if (v == null) continue;
+    final s = v.toString().trim();
+    if (s.isNotEmpty) return s;
+  }
+  return null;
+}
+
+/// Aligns backend strings with the workflow labels used in screens (doc §15–16).
+String normalizeExpenseClaimStatus(String raw) {
+  final t = raw.trim();
+  if (t.isEmpty) return t;
+  final key = t.toLowerCase().replaceAll(RegExp(r'[_\-]+'), ' ');
+  final collapsed = key.replaceAll(RegExp(r'\s+'), ' ');
+  return switch (collapsed) {
+    'draft' => 'Draft',
+    'pending' => 'Pending',
+    'manager approved' => 'Manager Approved',
+    'hod approved' => 'HOD Approved',
+    'processed' => 'Processed',
+    'rejected' => 'Rejected',
+    _ => t,
+  };
+}
+
 /// Parses [receipt_file] from API: plain filename, JSON array string, or list.
 List<String> parseExpenseReceiptNames(dynamic raw) {
   if (raw == null) return const [];
@@ -210,11 +245,12 @@ class ExpenseClaim {
     final Map<String, dynamic> root =
         claim is Map ? Map<String, dynamic>.from(claim) : json;
 
+    final rawStatus = _expenseStatusRawFromMap(root) ?? '';
     return ExpenseClaim(
       id: root['id']?.toString() ?? '',
 
       title: (root['title'] ?? root['name'] ?? '').toString(),
-      status: (root['status'] ?? '').toString(),
+      status: normalizeExpenseClaimStatus(rawStatus),
 
       /// ✅ Safe double parsing
       totalAmount:

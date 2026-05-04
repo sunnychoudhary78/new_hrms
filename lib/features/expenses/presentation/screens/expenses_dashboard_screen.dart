@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lms/shared/widgets/premium_feature_components.dart';
 import '../../data/models/expense_model.dart';
 import '../providers/expense_provider.dart';
 
@@ -11,10 +12,53 @@ class ExpensesDashboardScreen extends ConsumerStatefulWidget {
       _ExpensesDashboardScreenState();
 }
 
-class _ExpensesDashboardScreenState extends ConsumerState<ExpensesDashboardScreen> {
+class _ExpensesDashboardScreenState
+    extends ConsumerState<ExpensesDashboardScreen> {
   Future<void> _refreshDashboard() async {
     ref.invalidate(expenseDashboardProvider);
     await ref.read(expenseDashboardProvider.future);
+  }
+
+  Widget _statusFilterChips(ExpenseDashboardRole role, ColorScheme scheme) {
+    final choices = expenseDashboardStatusChoices(role);
+    if (choices.isEmpty) return const SizedBox.shrink();
+
+    final selected = ref.watch(expenseDashboardStatusFilterProvider);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Status',
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            fontSize: 13,
+            color: scheme.onSurfaceVariant,
+          ),
+        ),
+        const SizedBox(height: 8),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              for (final s in choices) ...[
+                FilterChip(
+                  label: Text(s),
+                  selected: selected == s,
+                  onSelected: (_) {
+                    ref
+                        .read(expenseDashboardStatusFilterProvider.notifier)
+                        .setFilter(s);
+                  },
+                  showCheckmark: false,
+                ),
+                const SizedBox(width: 8),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
   }
 
   @override
@@ -31,10 +75,7 @@ class _ExpensesDashboardScreenState extends ConsumerState<ExpensesDashboardScree
     };
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("Expenses Dashboard"),
-        elevation: 0,
-      ),
+      appBar: AppBar(title: const Text("Expenses Dashboard"), elevation: 0),
       body: RefreshIndicator(
         onRefresh: _refreshDashboard,
         child: expensesAsync.when(
@@ -73,8 +114,11 @@ class _ExpensesDashboardScreenState extends ConsumerState<ExpensesDashboardScree
               );
             }
 
-            final pendingCount = expenses.length;
-            final pendingAmount = expenses.fold<double>(
+            final statusFilter = ref.watch(
+              expenseDashboardStatusFilterProvider,
+            );
+            final claimCount = expenses.length;
+            final totalAmount = expenses.fold<double>(
               0,
               (sum, e) => sum + e.totalAmount,
             );
@@ -83,88 +127,47 @@ class _ExpensesDashboardScreenState extends ConsumerState<ExpensesDashboardScree
               physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.all(16),
               children: [
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(18),
-                    gradient: LinearGradient(
-                      colors: [scheme.primaryContainer, scheme.secondaryContainer],
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      CircleAvatar(
-                        radius: 22,
-                        backgroundColor: scheme.primary,
-                        child: Icon(
-                          Icons.analytics_outlined,
-                          color: scheme.onPrimary,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          "$roleTitle queue for pending expense claims.",
-                          style: TextStyle(
-                            color: scheme.onSurface,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+                PremiumFeatureHeader(
+                  icon: Icons.analytics_outlined,
+                  title: "$roleTitle Expense Queue",
+                  subtitle:
+                      "Review, approve and process claims from your action queue. Change status below to audit other stages.",
                 ),
+                const SizedBox(height: 14),
+                _statusFilterChips(role, scheme),
                 const SizedBox(height: 14),
                 Row(
                   children: [
                     Expanded(
                       child: _MetricCard(
-                        title: "Pending",
-                        value: pendingCount.toString(),
+                        title: "Claims (this filter)",
+                        value: claimCount.toString(),
                       ),
                     ),
                     const SizedBox(width: 10),
                     Expanded(
                       child: _MetricCard(
-                        title: "Pending Amount",
-                        value: "₹${pendingAmount.toStringAsFixed(0)}",
+                        title: "Total amount",
+                        value: "₹${totalAmount.toStringAsFixed(0)}",
                       ),
                     ),
                   ],
                 ),
+                const SizedBox(height: 6),
+                Text(
+                  'Showing: $statusFilter',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: scheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
                 const SizedBox(height: 18),
                 if (expenses.isEmpty)
-                  Container(
-                    padding: const EdgeInsets.all(18),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(16),
-                      color: scheme.surfaceContainerLow,
-                      border: Border.all(color: scheme.outlineVariant),
-                    ),
-                    child: Column(
-                      children: [
-                        Icon(
-                          Icons.inbox_outlined,
-                          size: 44,
-                          color: scheme.primary,
-                        ),
-                        const SizedBox(height: 10),
-                        const Text(
-                          "No pending expense requests.",
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 15,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          "Pull down to refresh and check again.",
-                          textAlign: TextAlign.center,
-                          style: TextStyle(color: scheme.onSurfaceVariant),
-                        ),
-                      ],
-                    ),
+                  PremiumEmptyState(
+                    icon: Icons.inbox_outlined,
+                    title: 'No expense claims for "$statusFilter"',
+                    subtitle: "Try another status or pull down to refresh.",
                   )
                 else
                   ...expenses.map(_buildExpenseTile),
@@ -192,13 +195,7 @@ class _ExpensesDashboardScreenState extends ConsumerState<ExpensesDashboardScree
       },
       child: Padding(
         padding: const EdgeInsets.only(bottom: 10),
-        child: Ink(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: scheme.surfaceContainerLow,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: scheme.outlineVariant),
-          ),
+        child: PremiumCard(
           child: Row(
             children: [
               Container(
@@ -302,16 +299,6 @@ class _StatusChip extends StatelessWidget {
       _ => Theme.of(context).colorScheme.primary,
     };
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        status,
-        style: TextStyle(color: color, fontWeight: FontWeight.w500),
-      ),
-    );
+    return PremiumStatusPill(label: status, color: color);
   }
 }

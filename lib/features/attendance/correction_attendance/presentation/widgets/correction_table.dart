@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../data/models/attendance_request_model.dart';
+import '../dialogs/review_request_dialog.dart';
 import 'user_cell.dart';
 
 class CorrectionTable extends StatelessWidget {
@@ -79,7 +80,7 @@ class CorrectionTable extends StatelessWidget {
               DataCell(
                 ElevatedButton(
                   onPressed: () {
-                    // TODO: open review dialog
+                    showReviewDialog(context: context, req: item);
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.white,
@@ -117,7 +118,7 @@ class _TimeChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: Colors.indigo.withOpacity(0.1),
+        color: Colors.indigo.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(

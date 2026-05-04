@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:lms/features/kra/data/models/kra_model.dart';
+import 'package:lms/shared/widgets/premium_feature_components.dart';
 
 class KraInfoBanner extends StatelessWidget {
   final IconData icon;
@@ -16,45 +18,11 @@ class KraInfoBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.fromLTRB(12, 12, 12, 4),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(18),
-        gradient: LinearGradient(
-          colors: [scheme.primaryContainer, scheme.secondaryContainer],
-        ),
-      ),
-      child: Row(
-        children: [
-          CircleAvatar(
-            backgroundColor: scheme.primary,
-            child: Icon(icon, color: scheme.onPrimary),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(fontWeight: FontWeight.w800),
-                ),
-                if (subtitle.isNotEmpty) ...[
-                  const SizedBox(height: 3),
-                  Text(
-                    subtitle,
-                    style: TextStyle(color: scheme.onSurfaceVariant),
-                  ),
-                ],
-              ],
-            ),
-          ),
-          if (trailing != null) ...[const SizedBox(width: 10), trailing!],
-        ],
-      ),
+    return PremiumFeatureHeader(
+      icon: icon,
+      title: title,
+      subtitle: subtitle,
+      trailing: trailing,
     );
   }
 }
@@ -66,24 +34,15 @@ class KraStatusChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = switch (status) {
+    final s = normalizeKraEvaluationStatus(status);
+    final color = switch (s) {
       'COMPLETED' => Colors.green,
       'PENDING_SELF' => Colors.orange,
       'PENDING_MANAGER' => Colors.blue,
       'PENDING_HOD' => Colors.purple,
       _ => Colors.grey,
     };
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        status.replaceAll('_', ' '),
-        style: TextStyle(color: color, fontWeight: FontWeight.w700),
-      ),
-    );
+    return PremiumStatusPill(label: s.replaceAll('_', ' '), color: color);
   }
 }
 
@@ -149,6 +108,227 @@ class KraErrorList extends StatelessWidget {
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.all(16),
       children: [Text(message, textAlign: TextAlign.center)],
+    );
+  }
+}
+
+/// Read-only KRA + KPI line items (from `GET /kra`); edit/delete use KRA Setup or creator actions.
+class KraAssignmentCard extends StatelessWidget {
+  final KraModel kra;
+  final Widget? trailing;
+
+  const KraAssignmentCard({super.key, required this.kra, this.trailing});
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return PremiumCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'KRA',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+              letterSpacing: .4,
+              color: scheme.primary,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      kra.name,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    if (kra.employee != null)
+                      Text(
+                        kra.employee!.name,
+                        style: TextStyle(color: scheme.onSurfaceVariant),
+                      ),
+                  ],
+                ),
+              ),
+              if (trailing != null) trailing!,
+            ],
+          ),
+          if (kra.description.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(kra.description),
+          ],
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              KraMetaPill(
+                icon: Icons.account_tree_outlined,
+                text:
+                    kra.department?.name ??
+                    'Department ${kra.departmentId ?? '-'}',
+              ),
+              KraMetaPill(
+                icon: Icons.checklist_rtl,
+                text: '${kra.kpis.length} KPI(s)',
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: scheme.surfaceContainerLowest,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: scheme.outlineVariant),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'KPI',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: .4,
+                    color: scheme.primary,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                if (kra.kpis.isEmpty)
+                  Text(
+                    'No KPI targets added',
+                    style: TextStyle(color: scheme.onSurfaceVariant),
+                  )
+                else
+                  for (final kpi in kra.kpis)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.flag_rounded,
+                            size: 16,
+                            color: scheme.primary,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(child: Text(kpi.name)),
+                          Text(
+                            '${kpi.weightage.toStringAsFixed(0)}%',
+                            style: TextStyle(
+                              color: scheme.primary,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Tappable 1–5 star row for KRA ratings (aligned with backend 1–5 scale).
+class KraStarRatingPicker extends StatelessWidget {
+  final int value;
+  final ValueChanged<int> onChanged;
+  final String label;
+
+  const KraStarRatingPicker({
+    super.key,
+    required this.value,
+    required this.onChanged,
+    this.label = 'Rating',
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final selected = value.clamp(0, 5);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: scheme.onSurfaceVariant,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Row(
+          children: List.generate(5, (i) {
+            final starIndex = i + 1;
+            final filled = starIndex <= selected;
+            return IconButton(
+              visualDensity: VisualDensity.compact,
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+              onPressed: () => onChanged(starIndex),
+              icon: Icon(
+                filled ? Icons.star_rounded : Icons.star_outline_rounded,
+                size: 32,
+                color: filled ? Colors.amber.shade700 : scheme.outline,
+              ),
+            );
+          }),
+        ),
+        if (selected > 0)
+          Text(
+            '$selected / 5',
+            style: TextStyle(
+              fontSize: 12,
+              color: scheme.primary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+/// Read-only star row from a numeric rating (nullable).
+class KraStarRatingDisplay extends StatelessWidget {
+  final double? rating;
+  final double iconSize;
+
+  const KraStarRatingDisplay({
+    super.key,
+    required this.rating,
+    this.iconSize = 16,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    if (rating == null) {
+      return Text('—', style: TextStyle(color: scheme.onSurfaceVariant));
+    }
+    final v = rating!.clamp(1, 5).round().clamp(1, 5);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: List.generate(
+        5,
+        (i) => Icon(
+          i < v ? Icons.star_rounded : Icons.star_outline_rounded,
+          size: iconSize,
+          color: Colors.amber.shade800,
+        ),
+      ),
     );
   }
 }

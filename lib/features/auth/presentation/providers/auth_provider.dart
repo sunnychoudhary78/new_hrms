@@ -70,9 +70,10 @@ class AuthNotifier extends Notifier<AuthState> {
 
       await _registerFcmIfAvailable();
     } catch (e) {
-      final message = e.toString().toLowerCase();
-
-      if (message.contains("expired") || message.contains("402")) {
+      // Only treat explicit company subscription signal from ApiService / 402.
+      // Avoid substring "expired" (matches JWT "token expired", session text, etc.).
+      final msg = e.toString();
+      if (msg.contains('SUBSCRIPTION_EXPIRED')) {
         state = const AuthState(
           isLoading: false,
           isInitializing: false,
@@ -144,6 +145,11 @@ class AuthNotifier extends Notifier<AuthState> {
       print("🧨 ERROR VALUE: $e");
 
       state = state.copyWith(isLoading: false, isInitializing: false);
+
+      if (e.toString().contains('SUBSCRIPTION_EXPIRED')) {
+        forceSubscriptionExpired();
+        return;
+      }
 
       if (e is DioException) {
         final status = e.response?.statusCode;
@@ -231,6 +237,11 @@ class AuthNotifier extends Notifier<AuthState> {
       await _registerFcmIfAvailable();
     } catch (e) {
       state = state.copyWith(isLoading: false);
+
+      if (e.toString().contains('SUBSCRIPTION_EXPIRED')) {
+        forceSubscriptionExpired();
+        return;
+      }
 
       final overlay = ref.read(globalLoadingProvider.notifier);
 
@@ -354,8 +365,18 @@ class AuthNotifier extends Notifier<AuthState> {
 
     await _tokenStorage.clear();
 
-    state = const AuthState();
+    // Logged-out state should never keep app in initializing mode.
+    state = const AuthState(isInitializing: false);
 
+    // Force clear stacked authenticated routes (e.g. /home, /profile).
+    Future.microtask(() {
+      navigatorKey.currentState?.pushNamedAndRemoveUntil(
+        '/login',
+        (route) => false,
+      );
+    });
+
+    // Recreate ProviderScope to fully reset app-scoped providers.
     Root.restartApp();
   }
 

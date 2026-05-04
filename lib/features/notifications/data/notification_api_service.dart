@@ -7,11 +7,42 @@ class NotificationApiService {
 
   // 📥 Fetch notifications
   Future<List<Map<String, dynamic>>> fetchMyNotifications() async {
-    final response = await api.get('/notifications/my');
+    const pageSize = 100;
+    final rows = <Map<String, dynamic>>[];
+    var page = 1;
+    var totalPages = 1;
 
-    final List list = response['data'];
+    do {
+      final response = await api.get(
+        '/notifications/my',
+        queryParams: {"page": page, "limit": pageSize},
+      );
 
-    return list.cast<Map<String, dynamic>>();
+      if (response is List) {
+        return response
+            .whereType<Map>()
+            .map((e) => Map<String, dynamic>.from(e))
+            .toList();
+      }
+
+      final data = response is Map ? response['data'] : null;
+      if (data is List) {
+        rows.addAll(
+          data.whereType<Map>().map((e) => Map<String, dynamic>.from(e)),
+        );
+      }
+
+      final meta = response is Map ? response['meta'] : null;
+      if (meta is Map && meta['totalPages'] != null) {
+        totalPages = int.tryParse(meta['totalPages'].toString()) ?? totalPages;
+      } else {
+        break;
+      }
+
+      page++;
+    } while (page <= totalPages);
+
+    return rows;
   }
 
   // ✅ Mark as read

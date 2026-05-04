@@ -48,9 +48,7 @@ int resolveKraInitialTabIndex({
 
   int setupIndex() {
     if (!canManage) return 0;
-    var n = modes.length;
-    if (modes.contains(KraReviewMode.self)) n += 1;
-    return n;
+    return modes.length;
   }
 
   int cyclesIndex() {
@@ -73,11 +71,8 @@ int resolveKraInitialTabIndex({
       index = firstReviewOrZero(KraReviewMode.all);
       break;
     case KraTabTarget.myKras:
-      if (modes.contains(KraReviewMode.self)) {
-        index = modes.length;
-      } else {
-        index = 0;
-      }
+      // Aliased to the unified "My KRA" tab (same as myRating).
+      index = firstReviewOrZero(KraReviewMode.self);
       break;
     case KraTabTarget.setup:
       index = setupIndex();

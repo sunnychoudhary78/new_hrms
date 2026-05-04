@@ -58,23 +58,32 @@ class ExpenseRepository {
     final dynamic rawRows = response['rows'] ?? response['data'];
     final List rows = rawRows is List ? rawRows : const [];
 
-    final mapped = rows
-        .whereType<Map<String, dynamic>>()
-        .map(ExpenseClaim.fromJson)
-        .toList();
+    final mapped = <ExpenseClaim>[];
+    for (final e in rows) {
+      if (e is! Map) continue;
+      mapped.add(ExpenseClaim.fromJson(Map<String, dynamic>.from(e)));
+    }
     return _sortNewestFirst(mapped);
   }
 
   /// ───────── GET DASHBOARD EXPENSES (APPROVER) ─────────
-  Future<List<ExpenseClaim>> getManagerPendingExpenses() =>
-      _queryAllPages(scope: 'manager', statusFilter: 'Pending');
+  /// [scope]: `manager` | `hod` | `accounts`. [statusFilter] matches backend
+  /// (`Pending`, `Manager Approved`, `HOD Approved`, `Processed`, `Rejected`, `All`, …).
+  Future<List<ExpenseClaim>> queryApproverExpenses({
+    required String scope,
+    required String statusFilter,
+  }) =>
+      _queryAllPages(scope: scope, statusFilter: statusFilter);
 
-  Future<List<ExpenseClaim>> getHodPendingExpenses() => _queryAllPages(
+  Future<List<ExpenseClaim>> getManagerPendingExpenses() =>
+      queryApproverExpenses(scope: 'manager', statusFilter: 'Pending');
+
+  Future<List<ExpenseClaim>> getHodPendingExpenses() => queryApproverExpenses(
         scope: 'hod',
         statusFilter: 'Manager Approved',
       );
 
-  Future<List<ExpenseClaim>> getAccountsAllExpenses() => _queryAllPages(
+  Future<List<ExpenseClaim>> getAccountsAllExpenses() => queryApproverExpenses(
         scope: 'accounts',
         statusFilter: 'HOD Approved',
       );
@@ -97,8 +106,17 @@ class ExpenseRepository {
     return id;
   }
 
+  /// ───────── UPDATE DRAFT (PUT multipart, Draft only) ─────────
+  Future<void> updateDraftExpense({
+    required String id,
+    required String title,
+    required List<Map<String, dynamic>> items,
+  }) async {
+    await api.updateDraftExpense(id: id, title: title, items: items);
+  }
+
   /// ───────── SUBMIT EXPENSE ─────────
-  Future<void> submitExpense(String id) async {
+  Future<void> submitExpense(String id, {required String remarks}) async {
     if (id.isEmpty) {
       throw Exception("Invalid expense ID");
     }
@@ -106,11 +124,11 @@ class ExpenseRepository {
     /// 🔍 Debug
     print("🚀 SUBMITTING EXPENSE ID: $id");
 
-    await api.submitExpense(id);
+    await api.submitExpense(id, remarks: remarks);
   }
 
   /// ───────── APPROVE EXPENSE ─────────
-  Future<void> approveExpense(String id, {String? remarks}) async {
+  Future<void> approveExpense(String id, {required String remarks}) async {
     if (id.isEmpty) {
       throw Exception("Invalid expense ID");
     }
@@ -121,9 +139,9 @@ class ExpenseRepository {
   /// ───────── PAY (ACCOUNTS) ─────────
   Future<void> payExpense(
     String id, {
-    String? remarks,
-    String? paymentMode,
-    String? paymentReference,
+    required String remarks,
+    required String paymentMode,
+    required String paymentReference,
   }) async {
     if (id.isEmpty) {
       throw Exception("Invalid expense ID");
@@ -138,7 +156,7 @@ class ExpenseRepository {
   }
 
   /// ───────── REJECT EXPENSE ─────────
-  Future<void> rejectExpense(String id, {String? remarks}) async {
+  Future<void> rejectExpense(String id, {required String remarks}) async {
     if (id.isEmpty) {
       throw Exception("Invalid expense ID");
     }

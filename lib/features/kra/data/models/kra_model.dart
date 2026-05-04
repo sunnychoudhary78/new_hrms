@@ -1,3 +1,14 @@
+/// Normalizes KRA evaluation `status` for comparisons (API may differ in case/spacing).
+String normalizeKraEvaluationStatus(String raw) {
+  var s = raw.trim();
+  if (s.isEmpty) return '';
+  s = s.toUpperCase().replaceAll(RegExp(r'[\s\-]+'), '_');
+  while (s.contains('__')) {
+    s = s.replaceAll('__', '_');
+  }
+  return s;
+}
+
 class KraPerson {
   final String id;
   final String name;
@@ -157,10 +168,13 @@ class KraRating {
   final String kpiId;
   final double? employeeRating;
   final String? employeeRemarks;
+  final String? employeeDocument;
   final double? managerRating;
   final String? managerRemarks;
+  final String? managerDocument;
   final double? hodRating;
   final String? hodRemarks;
+  final String? hodDocument;
   final KpiModel? kpi;
 
   const KraRating({
@@ -168,10 +182,13 @@ class KraRating {
     required this.kpiId,
     this.employeeRating,
     this.employeeRemarks,
+    this.employeeDocument,
     this.managerRating,
     this.managerRemarks,
+    this.managerDocument,
     this.hodRating,
     this.hodRemarks,
+    this.hodDocument,
     this.kpi,
   });
 
@@ -181,10 +198,18 @@ class KraRating {
       kpiId: json['kpi_id']?.toString() ?? json['kpiId']?.toString() ?? '',
       employeeRating: _nullableDouble(json['employee_rating']),
       employeeRemarks: json['employee_remarks']?.toString(),
+      employeeDocument:
+          json['employee_document']?.toString() ??
+          json['employeeDocument']?.toString(),
       managerRating: _nullableDouble(json['manager_rating']),
       managerRemarks: json['manager_remarks']?.toString(),
+      managerDocument:
+          json['manager_document']?.toString() ??
+          json['managerDocument']?.toString(),
       hodRating: _nullableDouble(json['hod_rating']),
       hodRemarks: json['hod_remarks']?.toString(),
+      hodDocument:
+          json['hod_document']?.toString() ?? json['hodDocument']?.toString(),
       kpi: json['kpi'] is Map
           ? KpiModel.fromJson(Map<String, dynamic>.from(json['kpi'] as Map))
           : null,
@@ -212,6 +237,9 @@ class KraEvaluation {
     this.employee,
     this.ratings = const [],
   });
+
+  /// Use for workflow checks instead of raw [status] (case/spacing-safe).
+  String get statusNormalized => normalizeKraEvaluationStatus(status);
 
   factory KraEvaluation.fromJson(Map<String, dynamic> json) {
     return KraEvaluation(

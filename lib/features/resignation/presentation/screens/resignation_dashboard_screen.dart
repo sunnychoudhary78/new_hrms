@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lms/core/providers/global_loading_provider.dart';
+import 'package:lms/features/resignation/data/resignation_list_query.dart';
 import 'package:lms/features/resignation/presentation/providers/resignation_providers.dart';
+import 'package:lms/shared/widgets/premium_feature_components.dart';
 
 class ResignationDashboardScreen extends ConsumerStatefulWidget {
   const ResignationDashboardScreen({super.key});
@@ -12,96 +15,81 @@ class ResignationDashboardScreen extends ConsumerStatefulWidget {
 
 class _ResignationDashboardScreenState
     extends ConsumerState<ResignationDashboardScreen> {
-  String selectedTab = "Pending Queue";
+  bool _isActionLoading = false;
 
-  final tabs = ["Pending Queue", "Final Approved", "Rejected"];
+  static String _normStatus(String status) => status.trim().toLowerCase();
 
-  bool matchesTab(String status) {
-    if (selectedTab == "Pending Queue") {
-      return status == "Pending" ||
-          status == "Manager Approved" ||
-          status == "HOD Approved";
-    }
-
-    if (selectedTab == "Final Approved") {
-      return status == "HR Approved";
-    }
-
-    if (selectedTab == "Rejected") {
-      return status == "Rejected";
-    }
-
-    return true;
+  Future<void> _onRefresh() async {
+    ref.invalidate(resignationDashboardProvider);
+    await ref.read(resignationDashboardProvider.future);
   }
 
   Future<void> showActionDialog({
     required String id,
     required bool isApprove,
   }) async {
-    final controller = TextEditingController();
+    if (_isActionLoading) return;
 
-    await showDialog(
+    final remarks = await showDialog<String>(
       context: context,
-      builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text(isApprove ? "Approve Resignation" : "Reject Resignation"),
-        content: TextField(
-          controller: controller,
-          minLines: 2,
-          maxLines: 4,
-          decoration: InputDecoration(
-            labelText: "Remarks ${isApprove ? '(optional)' : '*'}",
-            border: const OutlineInputBorder(),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Cancel"),
-          ),
-          FilledButton(
-            onPressed: () async {
-              final remarks = controller.text.trim();
-
-              if (!isApprove && remarks.isEmpty) {
-                _show("Remarks required");
-                return;
-              }
-
-              Navigator.pop(context);
-
-              if (isApprove) {
-                await ref
-                    .read(resignationActionProvider.notifier)
-                    .approve(id, remarks);
-              } else {
-                await ref
-                    .read(resignationActionProvider.notifier)
-                    .reject(id, remarks);
-              }
-
-              final state = ref.read(resignationActionProvider);
-
-              if (!state.hasError) {
-                _show(isApprove ? "Request approved" : "Request rejected");
-              } else {
-                _show("Error: ${state.error}");
-              }
-            },
-            child: Text(isApprove ? "Approve" : "Reject"),
-          ),
-        ],
-      ),
+      builder: (_) => _ResignationActionDialog(isApprove: isApprove),
     );
+    if (remarks == null || !mounted) return;
+
+    setState(() => _isActionLoading = true);
+
+    try {
+      ref
+          .read(globalLoadingProvider.notifier)
+          .showLoading(
+            isApprove ? "Approving resignation..." : "Rejecting resignation...",
+          );
+
+      if (isApprove) {
+        await ref.read(resignationActionProvider.notifier).approve(id, remarks);
+      } else {
+        await ref.read(resignationActionProvider.notifier).reject(id, remarks);
+      }
+
+      if (!mounted) return;
+
+      final state = ref.read(resignationActionProvider);
+      final role = ref.read(resignationRoleProvider);
+
+      if (!state.hasError) {
+        final msg = isApprove
+            ? _approvalSuccessMessage(role)
+            : "Request rejected — status updated";
+        ref.read(globalLoadingProvider.notifier).showSuccess(msg);
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          ref.invalidate(resignationDashboardProvider);
+          ref.invalidate(myResignationProvider);
+        });
+      } else {
+        ref.read(globalLoadingProvider.notifier).showError('${state.error}');
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isActionLoading = false);
+      }
+    }
   }
 
-  void _show(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+  String _approvalSuccessMessage(ResignationRole role) {
+    return switch (role) {
+      ResignationRole.manager =>
+        "Request approved — status is now Manager Approved.",
+      ResignationRole.hod => "Request approved — status is now HOD Approved.",
+      ResignationRole.hr => "Request approved — status is now HR Approved.",
+      ResignationRole.employee => "Request approved.",
+    };
   }
 
   @override
   Widget build(BuildContext context) {
     final resignationsAsync = ref.watch(resignationDashboardProvider);
+    final listFilter = ref.watch(resignationListFilterProvider);
     final role = ref.watch(resignationRoleProvider);
     final roleTitle = switch (role) {
       ResignationRole.manager => "Manager",
@@ -116,178 +104,191 @@ class _ResignationDashboardScreenState
       body: Column(
         children: [
           _WorkflowHeader(roleTitle: roleTitle),
-          const SizedBox(height: 8),
-          SizedBox(
-            height: 50,
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              itemCount: tabs.length,
-              itemBuilder: (_, i) {
-                final tab = tabs[i];
-                final isSelected = tab == selectedTab;
-
-                return GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      selectedTab = tab;
-                    });
-                  },
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 8,
-                    ),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      color: isSelected
-                          ? Theme.of(context).colorScheme.primary
-                          : Theme.of(
-                              context,
-                            ).colorScheme.surfaceContainerHighest,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Center(
-                      child: Text(
-                        tab,
-                        style: TextStyle(
-                          color: isSelected
-                              ? Theme.of(context).colorScheme.onPrimary
-                              : Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ),
-                  ),
-                );
-              },
+          const SizedBox(height: 4),
+          if (role != ResignationRole.employee)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 4),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: ResignationListQuery.values.map((q) {
+                    final selected = listFilter == q;
+                    return ChoiceChip(
+                      label: Text(q.label),
+                      selected: selected,
+                      onSelected: (sel) {
+                        if (sel) {
+                          ref
+                              .read(resignationListFilterProvider.notifier)
+                              .select(q);
+                        }
+                      },
+                    );
+                  }).toList(),
+                ),
+              ),
             ),
-          ),
 
           Expanded(
-            child: resignationsAsync.when(
-              loading: () => const Center(child: CircularProgressIndicator()),
+            child: RefreshIndicator(
+              onRefresh: _onRefresh,
+              child: resignationsAsync.when(
+                loading: () => ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  children: const [
+                    SizedBox(
+                      height: 280,
+                      child: Center(child: CircularProgressIndicator()),
+                    ),
+                  ],
+                ),
 
-              error: (e, _) => Center(child: Text("Error: $e")),
+                error: (e, _) => ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  children: [
+                    SizedBox(
+                      height: 280,
+                      child: Center(child: Text("Error: $e")),
+                    ),
+                  ],
+                ),
 
-              data: (list) {
-                if (role == ResignationRole.employee) {
-                  return const Center(
-                    child: Text("No dashboard access for employee role"),
-                  );
-                }
-
-                final filtered = list
-                    .where((e) => matchesTab(e.status))
-                    .toList();
-
-                if (filtered.isEmpty) {
-                  return const Center(
-                    child: Text("No requests in this section"),
-                  );
-                }
-
-                return ListView.builder(
-                  itemCount: filtered.length,
-                  itemBuilder: (_, i) {
-                    final r = filtered[i];
-                    final canTakeAction = _canTakeAction(
-                      role: role,
-                      status: r.status,
-                    );
-
-                    return Card(
-                      margin: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 8,
-                      ),
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        side: BorderSide(
-                          color: Theme.of(context).colorScheme.outlineVariant,
+                data: (list) {
+                  if (role == ResignationRole.employee) {
+                    return ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      children: const [
+                        SizedBox(
+                          height: 280,
+                          child: Center(
+                            child: Text(
+                              "No dashboard access for employee role",
+                            ),
+                          ),
                         ),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(14),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    r.employeeName ?? "Employee",
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 16,
-                                    ),
-                                  ),
-                                ),
-                                _StatusChip(status: r.status),
-                              ],
+                      ],
+                    );
+                  }
+
+                  if (list.isEmpty) {
+                    return ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      children: [
+                        SizedBox(
+                          height: 280,
+                          child: Center(
+                            child: Text(
+                              listFilter == ResignationListQuery.all
+                                  ? "No resignation requests"
+                                  : "No requests for this filter — try All",
                             ),
-                            const SizedBox(height: 10),
-                            Text(
-                              r.reason,
-                              style: TextStyle(
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.onSurfaceVariant,
-                              ),
-                            ),
-                            const SizedBox(height: 10),
-                            Wrap(
-                              spacing: 10,
-                              runSpacing: 8,
-                              children: [
-                                _MetaPill(
-                                  icon: Icons.route_rounded,
-                                  text: _stageText(r.status),
-                                ),
-                                if (r.lastWorkingDate != null)
-                                  _MetaPill(
-                                    icon: Icons.calendar_today_rounded,
-                                    text: "LWD: ${r.lastWorkingDate}",
-                                  ),
-                              ],
-                            ),
-                            if (canTakeAction) ...[
-                              const SizedBox(height: 12),
+                          ),
+                        ),
+                      ],
+                    );
+                  }
+
+                  return ListView.builder(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    itemCount: list.length,
+                    itemBuilder: (_, i) {
+                      final r = list[i];
+                      final canTakeAction = _canTakeAction(
+                        role: role,
+                        status: r.status,
+                      );
+
+                      return PremiumCard(
+                        margin: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 8,
+                        ),
+                        child: Padding(
+                          padding: EdgeInsets.zero,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
                               Row(
                                 children: [
                                   Expanded(
-                                    child: FilledButton.tonalIcon(
-                                      onPressed: () => showActionDialog(
-                                        id: r.id,
-                                        isApprove: false,
+                                    child: Text(
+                                      r.employeeName ?? "Employee",
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 16,
                                       ),
-                                      icon: const Icon(Icons.close_rounded),
-                                      label: const Text("Reject"),
                                     ),
                                   ),
-                                  const SizedBox(width: 10),
-                                  Expanded(
-                                    child: FilledButton.icon(
-                                      onPressed: () => showActionDialog(
-                                        id: r.id,
-                                        isApprove: true,
-                                      ),
-                                      icon: const Icon(Icons.check_rounded),
-                                      label: const Text("Approve"),
-                                    ),
-                                  ),
+                                  _StatusChip(status: r.status),
                                 ],
                               ),
+                              const SizedBox(height: 10),
+                              Text(
+                                r.reason,
+                                style: TextStyle(
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+                              Wrap(
+                                spacing: 10,
+                                runSpacing: 8,
+                                children: [
+                                  _MetaPill(
+                                    icon: Icons.route_rounded,
+                                    text: _stageText(r.status),
+                                  ),
+                                  if (r.lastWorkingDate != null)
+                                    _MetaPill(
+                                      icon: Icons.calendar_today_rounded,
+                                      text: "LWD: ${r.lastWorkingDate}",
+                                    ),
+                                ],
+                              ),
+                              if (canTakeAction) ...[
+                                const SizedBox(height: 12),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: FilledButton.tonalIcon(
+                                        onPressed: _isActionLoading
+                                            ? null
+                                            : () => showActionDialog(
+                                                id: r.id,
+                                                isApprove: false,
+                                              ),
+                                        icon: const Icon(Icons.close_rounded),
+                                        label: const Text("Reject"),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: FilledButton.icon(
+                                        onPressed: _isActionLoading
+                                            ? null
+                                            : () => showActionDialog(
+                                                id: r.id,
+                                                isApprove: true,
+                                              ),
+                                        icon: const Icon(Icons.check_rounded),
+                                        label: const Text("Approve"),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
                             ],
-                          ],
+                          ),
                         ),
-                      ),
-                    );
-                  },
-                );
-              },
+                      );
+                    },
+                  );
+                },
+              ),
             ),
           ),
         ],
@@ -296,33 +297,97 @@ class _ResignationDashboardScreenState
   }
 
   bool _canTakeAction({required ResignationRole role, required String status}) {
+    final s = _normStatus(status);
     switch (role) {
       case ResignationRole.manager:
-        return status == "Pending";
+        return s == "pending";
       case ResignationRole.hod:
-        return status == "Manager Approved";
+        return s == "manager approved";
       case ResignationRole.hr:
-        return status == "HOD Approved";
+        return s == "hod approved";
       case ResignationRole.employee:
         return false;
     }
   }
 
   String _stageText(String status) {
-    switch (status) {
-      case "Pending":
+    switch (_normStatus(status)) {
+      case "pending":
         return "Waiting for Manager";
-      case "Manager Approved":
+      case "manager approved":
         return "Waiting for HOD";
-      case "HOD Approved":
+      case "hod approved":
         return "Waiting for HR";
-      case "HR Approved":
+      case "hr approved":
         return "Completed";
-      case "Rejected":
+      case "rejected":
         return "Closed";
+      case "withdrawn":
+        return "Withdrawn by employee";
       default:
         return status;
     }
+  }
+}
+
+class _ResignationActionDialog extends StatefulWidget {
+  final bool isApprove;
+
+  const _ResignationActionDialog({required this.isApprove});
+
+  @override
+  State<_ResignationActionDialog> createState() =>
+      _ResignationActionDialogState();
+}
+
+class _ResignationActionDialogState extends State<_ResignationActionDialog> {
+  final _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final canProceed = _controller.text.trim().isNotEmpty;
+
+    return AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      title: Text(
+        widget.isApprove ? "Approve Resignation" : "Reject Resignation",
+      ),
+      content: SizedBox(
+        width: 420,
+        child: TextField(
+          controller: _controller,
+          minLines: 3,
+          maxLines: 5,
+          onChanged: (_) => setState(() {}),
+          textCapitalization: TextCapitalization.sentences,
+          decoration: InputDecoration(
+            labelText: "Remarks *",
+            helperText: "Required - visible to the employee and on record",
+            filled: true,
+            fillColor: Theme.of(context).colorScheme.surfaceContainerLow,
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text("Cancel"),
+        ),
+        FilledButton(
+          onPressed: canProceed
+              ? () => Navigator.pop(context, _controller.text.trim())
+              : null,
+          child: Text(widget.isApprove ? "Approve" : "Reject"),
+        ),
+      ],
+    );
   }
 }
 
@@ -333,37 +398,10 @@ class _WorkflowHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.fromLTRB(14, 12, 14, 0),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        gradient: LinearGradient(
-          colors: [
-            Theme.of(context).colorScheme.primary,
-            Theme.of(context).colorScheme.primaryContainer,
-          ],
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            "$roleTitle Approval Queue",
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.w700,
-              fontSize: 17,
-            ),
-          ),
-          const SizedBox(height: 6),
-          const Text(
-            "Workflow: Employee → Manager → HOD → HR",
-            style: TextStyle(color: Colors.white),
-          ),
-        ],
-      ),
+    return PremiumFeatureHeader(
+      icon: Icons.assignment_return_outlined,
+      title: "$roleTitle Approval Queue",
+      subtitle: "Workflow: Employee -> Manager -> HOD -> HR",
     );
   }
 }
@@ -374,30 +412,17 @@ class _StatusChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = switch (status) {
-      "Pending" => Colors.orange,
-      "Manager Approved" || "HOD Approved" => Colors.indigo,
-      "HR Approved" => Colors.green,
-      "Rejected" => Colors.red,
+    final s = status.trim().toLowerCase();
+    final color = switch (s) {
+      "pending" => Colors.orange,
+      "manager approved" || "hod approved" => Colors.indigo,
+      "hr approved" => Colors.green,
+      "rejected" => Colors.red,
+      "withdrawn" => Colors.grey,
       _ => Theme.of(context).colorScheme.primary,
     };
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: color),
-      ),
-      child: Text(
-        status,
-        style: TextStyle(
-          color: color,
-          fontWeight: FontWeight.w600,
-          fontSize: 12,
-        ),
-      ),
-    );
+    return PremiumStatusPill(label: status, color: color);
   }
 }
 

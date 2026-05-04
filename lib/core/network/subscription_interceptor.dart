@@ -11,10 +11,8 @@ class SubscriptionInterceptor extends Interceptor {
     final data = response?.data;
     if (data is Map && data['expired'] == true) return true;
 
-    if (err?.message != null &&
-        err!.message!.toLowerCase().contains("subscription")) {
-      return true;
-    }
+    // Do not inspect DioException.message: URLs or unrelated errors can contain
+    // "subscription" and would incorrectly open the subscription-expired flow.
 
     return false;
   }

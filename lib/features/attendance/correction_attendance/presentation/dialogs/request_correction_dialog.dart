@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:lms/core/providers/global_loading_provider.dart';
 import 'package:lms/features/attendance/shared/data/attendance_repository_provider.dart';
 import '../widgets/section_header.dart';
 import '../widgets/time_picker_card.dart';
@@ -12,12 +13,14 @@ void showRequestCorrectionDialog({
   showDialog(
     context: context,
     barrierDismissible: false,
-    builder: (_) => const _RequestCorrectionDialog(),
+    builder: (_) => _RequestCorrectionDialog(selectedDate: selectedDate),
   );
 }
 
 class _RequestCorrectionDialog extends ConsumerStatefulWidget {
-  const _RequestCorrectionDialog();
+  final DateTime selectedDate;
+
+  const _RequestCorrectionDialog({required this.selectedDate});
 
   @override
   ConsumerState<_RequestCorrectionDialog> createState() =>
@@ -35,7 +38,7 @@ class _RequestCorrectionDialogState
   @override
   void initState() {
     super.initState();
-    targetDate = DateTime.now();
+    targetDate = widget.selectedDate;
   }
 
   DateTime _combine(DateTime date, TimeOfDay time) {
@@ -43,15 +46,11 @@ class _RequestCorrectionDialogState
   }
 
   void _showError(String msg) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(msg), backgroundColor: Colors.red));
+    ref.read(globalLoadingProvider.notifier).showError(msg);
   }
 
   void _showSuccess(String msg) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(msg), backgroundColor: Colors.green));
+    ref.read(globalLoadingProvider.notifier).showSuccess(msg);
   }
 
   Future<void> _submit() async {

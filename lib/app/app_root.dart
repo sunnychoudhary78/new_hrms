@@ -3,17 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lms/core/screens/splash_loading_screen.dart';
 import 'package:lms/core/screens/subscribtion_expired_screen.dart';
-import 'package:lms/features/attendance/correction_attendance/presentation/providers/attendance_requests_provider.dart';
-import 'package:lms/features/attendance/correction_attendance/presentation/providers/my_corrections_provider.dart';
-import 'package:lms/features/attendance/view_attendance/presentation/providers/view_attendance_provider.dart';
-import 'package:lms/features/dashboard/presentation/providers/team_attendance_provider.dart';
-import 'package:lms/features/leave/presentation/providers/leave_apply_provider.dart';
-import 'package:lms/features/leave/presentation/providers/leave_approve_provider.dart';
-import 'package:lms/features/leave/presentation/providers/leave_balance_provider.dart';
-import 'package:lms/features/leave/presentation/providers/leave_details_provider.dart';
+import 'package:lms/core/providers/user_data_invalidation.dart';
 import 'package:lms/features/notifications/presentation/providers/notifications_provider.dart';
-import 'package:lms/features/expenses/presentation/providers/expense_provider.dart';
-import 'package:lms/features/kra/presentation/providers/kra_provider.dart';
 
 import '../core/notifications/notification_action.dart';
 import '../core/notifications/notification_router.dart';
@@ -106,25 +97,7 @@ class _AppRootState extends ConsumerState<AppRoot> {
     if (currentUserId != null && _lastUserId != currentUserId) {
       _lastUserId = currentUserId;
 
-      ref.invalidate(myCorrectionsProvider);
-      ref.invalidate(attendanceRequestsProvider);
-      ref.invalidate(employeeAttendanceProvider);
-      ref.invalidate(viewAttendanceProvider);
-      ref.invalidate(notificationProvider);
-      ref.invalidate(leaveApplyProvider);
-      ref.invalidate(leaveBalanceProvider);
-      ref.invalidate(leaveApproveProvider);
-      ref.invalidate(leaveDetailsProvider);
-      ref.invalidate(myExpensesProvider);
-      ref.invalidate(expenseDashboardProvider);
-      ref.invalidate(myKrasProvider);
-      ref.invalidate(managedKrasProvider);
-      ref.invalidate(kraTeamMembersProvider);
-      ref.invalidate(kraCyclesProvider);
-      ref.invalidate(kraActiveCycleProvider);
-      for (final mode in KraReviewMode.values) {
-        ref.invalidate(kraEvaluationsProvider(mode));
-      }
+      invalidateAllUserScopedData(ref);
 
       _initPush(force: true);
     }
@@ -219,10 +192,20 @@ class _AppRootState extends ConsumerState<AppRoot> {
         break;
 
       case OpenLeaveApproval():
-        nav.pushNamed(
-          '/leave-approve',
-          arguments: {'leaveRequestId': action.leaveRequestId},
-        );
+        final permissions = ref.read(authProvider).permissions;
+        if (permissions.contains('leave.request.approve')) {
+          nav.pushNamed(
+            '/leave-approve',
+            arguments: {'leaveRequestId': action.leaveRequestId},
+          );
+        } else if (action.leaveRequestId.isNotEmpty) {
+          nav.pushNamed(
+            '/leave-status',
+            arguments: {'highlightId': action.leaveRequestId},
+          );
+        } else {
+          nav.pushNamed('/notifications');
+        }
         break;
 
       case OpenAttendance():
@@ -234,6 +217,36 @@ class _AppRootState extends ConsumerState<AppRoot> {
           '/correct-attendance',
           arguments: {'correctionId': action.correctionId},
         );
+        break;
+
+      case OpenExpenses():
+        final permissions = ref.read(authProvider).permissions;
+        final canOpenDashboard =
+            action.preferDashboard &&
+            (permissions.contains('expense.manager') ||
+                permissions.contains('expense.hod') ||
+                permissions.contains('expense.accounts'));
+
+        nav.pushNamed(
+          canOpenDashboard ? '/expenses-dashboard' : '/expenses/my',
+        );
+        break;
+
+      case OpenResignation():
+        final permissions = ref.read(authProvider).permissions;
+        final canOpenDashboard =
+            action.preferDashboard &&
+            (permissions.contains('resignation.manager') ||
+                permissions.contains('resignation.hod') ||
+                permissions.contains('resignation.hr'));
+
+        nav.pushNamed(
+          canOpenDashboard ? '/resignation-dashboard' : '/resignation/my',
+        );
+        break;
+
+      case OpenKra():
+        nav.pushNamed('/kra');
         break;
 
       case OpenNotifications():

@@ -121,7 +121,6 @@ class NotificationList extends ConsumerWidget {
               }
 
               final notificationType = n["type"]?.toString();
-              final senderRaw = n["sender"];
               final data = n["data"];
 
               debugPrint("🔔 Notification tapped");
@@ -284,6 +283,43 @@ class NotificationList extends ConsumerWidget {
                 }
               }
 
+              final normalizedType = (notificationType ?? '').toLowerCase();
+              final permissions = authState.permissions;
+
+              if (normalizedType.contains('expense')) {
+                final canOpenExpenseDashboard =
+                    permissions.contains('expense.manager') ||
+                    permissions.contains('expense.hod') ||
+                    permissions.contains('expense.accounts');
+                Navigator.pushNamed(
+                  context,
+                  canOpenExpenseDashboard
+                      ? '/expenses-dashboard'
+                      : '/expenses/my',
+                );
+                return;
+              }
+
+              if (normalizedType.contains('resignation')) {
+                final canOpenResignationDashboard =
+                    permissions.contains('resignation.manager') ||
+                    permissions.contains('resignation.hod') ||
+                    permissions.contains('resignation.hr');
+                Navigator.pushNamed(
+                  context,
+                  canOpenResignationDashboard
+                      ? '/resignation-dashboard'
+                      : '/resignation/my',
+                );
+                return;
+              }
+
+              if (normalizedType.contains('kra') ||
+                  normalizedType.contains('kpi')) {
+                Navigator.pushNamed(context, '/kra');
+                return;
+              }
+
               /// =====================================================
               /// DEFAULT FALLBACK → Open Generic Notification Details
               /// =====================================================
@@ -301,7 +337,12 @@ class NotificationList extends ConsumerWidget {
   }
 
   IconData _iconForType(String? type) {
-    switch (type) {
+    final t = (type ?? '').toLowerCase();
+    if (t.contains('expense')) return Icons.receipt_long;
+    if (t.contains('resignation')) return Icons.assignment_return_outlined;
+    if (t.contains('kra') || t.contains('kpi')) return Icons.insights_rounded;
+
+    switch (t) {
       case 'attendance_checkin':
         return Icons.login;
 
@@ -314,13 +355,13 @@ class NotificationList extends ConsumerWidget {
       case 'attendance_correction_requested':
         return Icons.edit_calendar;
 
-      case 'LEAVE_REQUEST':
+      case 'leave_request':
         return Icons.event_note;
 
-      case 'LEAVE_STATUS_UPDATE':
+      case 'leave_status_update':
         return Icons.check_circle;
 
-      case 'LEAVE_REVOCATION_REQUEST':
+      case 'leave_revocation_request':
         return Icons.warning;
 
       case 'remote_work_requested':

@@ -6,7 +6,7 @@ import 'package:lms/features/kra/data/kra_repository.dart';
 import 'package:lms/features/kra/data/models/kra_model.dart';
 
 enum KraReviewMode {
-  self('self', 'My Review'),
+  self('self', 'My KRA'),
   team('team', 'Team Reviews'),
   department('department', 'Department'),
   all('all', 'All Reviews');
@@ -37,12 +37,16 @@ final hasAnyKraPermissionProvider = Provider<bool>((ref) {
   return permissions.any((permission) => permission.startsWith('kra.'));
 });
 
+/// Review tabs use lane permissions; `kra.manage` also shows manager/HOD
+/// review lanes (aligned with the web when setup rights exist without
+/// `kra.teamrating` / `kra.department` strings in the token).
 final kraVisibleReviewModesProvider = Provider<List<KraReviewMode>>((ref) {
   final permissions = ref.watch(authProvider).permissions;
+  final canManage = ref.watch(canManageKraProvider);
   return [
     if (permissions.contains('kra.myrating')) KraReviewMode.self,
-    if (permissions.contains('kra.teamrating')) KraReviewMode.team,
-    if (permissions.contains('kra.department')) KraReviewMode.department,
+    if (permissions.contains('kra.teamrating') || canManage) KraReviewMode.team,
+    if (permissions.contains('kra.department') || canManage) KraReviewMode.department,
     if (permissions.contains('kra.allrating')) KraReviewMode.all,
   ];
 });
@@ -99,6 +103,12 @@ class KraActionNotifier extends Notifier<AsyncValue<void>> {
   AsyncValue<void> build() {
     repo = ref.read(kraRepositoryProvider);
     return const AsyncValue.data(null);
+  }
+
+  /// Clears cross-feature loading/error so KRA modals (create/save/cycle) are not stuck
+  /// after a previous `kraActionProvider` use (same notifier for all KRA actions).
+  void resetActionState() {
+    state = const AsyncValue.data(null);
   }
 
   Future<void> saveKra({
@@ -165,7 +175,10 @@ class KraActionNotifier extends Notifier<AsyncValue<void>> {
         ratings: ratings,
         documentPathsByKpi: documentPathsByKpi,
       );
-      ref.invalidate(kraEvaluationsProvider(mode));
+      // Same evaluation can appear in multiple lists (e.g. team + all); refresh all.
+      for (final m in KraReviewMode.values) {
+        ref.invalidate(kraEvaluationsProvider(m));
+      }
       ref.invalidate(kraActiveCycleProvider);
       state = const AsyncValue.data(null);
     } catch (e, st) {

@@ -82,7 +82,7 @@ class AttendanceRequestsNotifier
       debugPrintStack(stackTrace: st);
 
       state = AsyncData(current.copyWith(isLoading: false));
-      // ❌ DO NOT rethrow
+      rethrow;
     }
   }
 }

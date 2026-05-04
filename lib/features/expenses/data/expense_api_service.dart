@@ -12,6 +12,35 @@ class ExpenseApiService {
 
   ExpenseApiService(this.api);
 
+  List<String> _localReceiptPaths(Map<String, dynamic> e) {
+    final v = e["_receiptPaths"] ?? e["receipt_paths"];
+    if (v is List) {
+      return v
+          .map((x) => x?.toString().trim() ?? "")
+          .where((s) => s.isNotEmpty)
+          .toList();
+    }
+    return const [];
+  }
+
+  List<String> _existingServerReceiptNames(Map<String, dynamic> e) {
+    final v = e["_existingReceiptFiles"] ?? e["receipt_file"];
+    if (v is List) {
+      return v
+          .map((x) => x?.toString().trim() ?? "")
+          .where((s) => s.isNotEmpty)
+          .toList();
+    }
+    return const [];
+  }
+
+  String _normalizeExpenseDate(String? raw) {
+    final t = raw?.toString().trim() ?? "";
+    if (t.isNotEmpty) return t;
+    final d = DateTime.now();
+    return "${d.year}-${d.month.toString().padLeft(2, "0")}-${d.day.toString().padLeft(2, "0")}";
+  }
+
   /// Whole numbers encode as JSON integers; others as doubles (backend-friendly).
   static Object _jsonAmountForPayload(dynamic a) {
     if (a is int) return a;
@@ -69,24 +98,6 @@ class ExpenseApiService {
     required String title,
     required List<Map<String, dynamic>> items,
   }) async {
-    List<String> _localReceiptPaths(Map<String, dynamic> e) {
-      final v = e["_receiptPaths"] ?? e["receipt_paths"];
-      if (v is List) {
-        return v
-            .map((x) => x?.toString().trim() ?? "")
-            .where((s) => s.isNotEmpty)
-            .toList();
-      }
-      return const [];
-    }
-
-    String _normalizeExpenseDate(String? raw) {
-      final t = raw?.toString().trim() ?? "";
-      if (t.isNotEmpty) return t;
-      final d = DateTime.now();
-      return "${d.year}-${d.month.toString().padLeft(2, "0")}-${d.day.toString().padLeft(2, "0")}";
-    }
-
     // ✅ Build per-item file mapping
     final perItemFiles = <List<String>>[];
     for (final item in items) {
@@ -157,8 +168,89 @@ class ExpenseApiService {
     return res;
   }
 
+  /// `PUT /expenses/:id` — only when claim status is Draft (same multipart rules as create).
+  ///
+  /// Per item: new files via `_receiptPaths` / `receipt_paths`; kept server filenames via
+  /// `_existingReceiptFiles` (sent as `receipt_file` in JSON). Omit a filename to drop it.
+  Future<Map<String, dynamic>> updateDraftExpense({
+    required String id,
+    required String title,
+    required List<Map<String, dynamic>> items,
+  }) async {
+    if (id.isEmpty) {
+      throw Exception("Invalid expense ID");
+    }
+
+    final perItemNewFiles = <List<String>>[];
+    for (final item in items) {
+      perItemNewFiles.add(_localReceiptPaths(item));
+    }
+
+    final itemFileCounts = perItemNewFiles.map((list) => list.length).toList();
+    final flatNewFiles = perItemNewFiles.expand((list) => list).toList();
+
+    final safeItems = items.map((e) {
+      final map = <String, dynamic>{
+        "category": (e["category"] ?? "").toString(),
+        "description": (e["description"] ?? "").toString(),
+        "amount": _jsonAmountForPayload(e["amount"]),
+        "expense_date": _normalizeExpenseDate(e["expense_date"]?.toString()),
+      };
+      final kept = _existingServerReceiptNames(e);
+      if (kept.isNotEmpty) {
+        map["receipt_file"] = kept;
+      }
+      return map;
+    }).toList();
+
+    final String itemsJson = jsonEncode(safeItems);
+
+    final receiptParts = <MultipartFile>[];
+    for (final filePath in flatNewFiles) {
+      final ct = _receiptContentTypeForPath(filePath);
+      receiptParts.add(
+        await MultipartFile.fromFile(
+          filePath,
+          filename: p.basename(filePath),
+          contentType: ct,
+        ),
+      );
+    }
+
+    final sumCounts = itemFileCounts.fold<int>(0, (a, b) => a + b);
+    if (sumCounts != receiptParts.length) {
+      throw Exception(
+        "Mismatch: itemFileCounts=$itemFileCounts vs files=${receiptParts.length}",
+      );
+    }
+
+    final formData = FormData();
+    formData.fields.add(MapEntry("title", title.trim()));
+    formData.fields.add(MapEntry("items", itemsJson));
+
+    // Send counts even when every item has zero new files so the backend can
+    // line up the replacement item payload with the multipart upload contract.
+    formData.fields.add(MapEntry("itemFileCounts", jsonEncode(itemFileCounts)));
+    for (final part in receiptParts) {
+      formData.files.add(MapEntry("receipts", part));
+    }
+
+    print(
+      "updateDraftExpense multipart id=$id itemFileCounts=$itemFileCounts files=${receiptParts.length}",
+    );
+
+    final endpoint = '${ApiEndpoints.expenses}/$id';
+    final res = await api.putMultipart(endpoint, formData);
+
+    if (res == null || res is! Map || res['data'] == null) {
+      throw Exception("Invalid update draft expense response");
+    }
+
+    return Map<String, dynamic>.from(res);
+  }
+
   /// ───────── SUBMIT EXPENSE (DRAFT → PENDING) ─────────
-  Future<void> submitExpense(String id) async {
+  Future<void> submitExpense(String id, {required String remarks}) async {
     if (id.isEmpty) {
       throw Exception("Invalid expense ID");
     }
@@ -166,56 +258,48 @@ class ExpenseApiService {
     /// 🔍 Debug
     print("🚀 SUBMIT EXPENSE ID: $id");
 
-    await api.put('${ApiEndpoints.expenses}/$id/submit', {});
+    await api.put('${ApiEndpoints.expenses}/$id/submit', {
+      "remarks": remarks.trim(),
+    });
   }
 
   /// ───────── APPROVE EXPENSE ─────────
-  Future<void> approveExpense(String id, {String? remarks}) async {
+  Future<void> approveExpense(String id, {required String remarks}) async {
     if (id.isEmpty) {
       throw Exception("Invalid expense ID");
     }
 
-    final body = <String, dynamic>{};
-    if (remarks != null && remarks.trim().isNotEmpty) {
-      body["remarks"] = remarks.trim();
-    }
-    await api.put('${ApiEndpoints.expenses}/$id/approve', body);
+    await api.put('${ApiEndpoints.expenses}/$id/approve', {
+      "remarks": remarks.trim(),
+    });
   }
 
-  /// ───────── PAY (ACCOUNTS → PROCESSED) — `PUT /expenses/{id}/pay` ─────────
+  /// ───────── PROCESS (ACCOUNTS → PROCESSED) — `PUT /expenses/{id}/process` ─────────
   Future<void> payExpense(
     String id, {
-    String? remarks,
-    String? paymentMode,
-    String? paymentReference,
+    required String remarks,
+    required String paymentMode,
+    required String paymentReference,
   }) async {
     if (id.isEmpty) {
       throw Exception("Invalid expense ID");
     }
 
-    final body = <String, dynamic>{};
-    if (remarks != null && remarks.trim().isNotEmpty) {
-      body["remarks"] = remarks.trim();
-    }
-    if (paymentMode != null && paymentMode.trim().isNotEmpty) {
-      body["payment_mode"] = paymentMode.trim();
-    }
-    if (paymentReference != null && paymentReference.trim().isNotEmpty) {
-      body["payment_reference"] = paymentReference.trim();
-    }
-    await api.put('${ApiEndpoints.expenses}/$id/pay', body);
+    await api.put('${ApiEndpoints.expenses}/$id/process', {
+      "remarks": remarks.trim(),
+      "payment_mode": paymentMode.trim(),
+      "payment_reference": paymentReference.trim(),
+    });
   }
 
   /// ───────── REJECT EXPENSE ─────────
-  Future<void> rejectExpense(String id, {String? remarks}) async {
+  Future<void> rejectExpense(String id, {required String remarks}) async {
     if (id.isEmpty) {
       throw Exception("Invalid expense ID");
     }
 
-    final body = <String, dynamic>{};
-    if (remarks != null && remarks.trim().isNotEmpty) {
-      body["remarks"] = remarks.trim();
-    }
-    await api.put('${ApiEndpoints.expenses}/$id/reject', body);
+    await api.put('${ApiEndpoints.expenses}/$id/reject', {
+      "remarks": remarks.trim(),
+    });
   }
 }

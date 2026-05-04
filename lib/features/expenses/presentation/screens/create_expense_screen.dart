@@ -1,12 +1,19 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lms/core/providers/global_loading_provider.dart';
+import 'package:lms/features/expenses/data/models/expense_model.dart';
+import 'package:lms/shared/widgets/premium_feature_components.dart';
 import '../providers/expense_provider.dart';
 import 'package:image_picker/image_picker.dart';
 import '../widgets/add_item_sheet.dart';
+import '../widgets/expense_remarks_dialog.dart';
 
 class CreateExpenseScreen extends ConsumerStatefulWidget {
-  const CreateExpenseScreen({super.key});
+  /// When set, screen loads this draft and saves via `PUT /expenses/:id`.
+  final ExpenseClaim? editClaim;
+
+  const CreateExpenseScreen({super.key, this.editClaim});
 
   @override
   ConsumerState<CreateExpenseScreen> createState() =>
@@ -39,8 +46,40 @@ class _CreateExpenseScreenState extends ConsumerState<CreateExpenseScreen> {
 
   int _receiptCount(Map<String, dynamic> item) {
     final v = item['_receiptPaths'] ?? item['receipt_paths'];
-    if (v is! List) return 0;
-    return v.where((e) => e != null && e.toString().trim().isNotEmpty).length;
+    int local = 0;
+    if (v is List) {
+      local = v
+          .where((e) => e != null && e.toString().trim().isNotEmpty)
+          .length;
+    }
+    final ex = item['_existingReceiptFiles'];
+    int kept = 0;
+    if (ex is List) {
+      kept = ex
+          .where((e) => e != null && e.toString().trim().isNotEmpty)
+          .length;
+    }
+    return local + kept;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    final c = widget.editClaim;
+    if (c != null) {
+      titleController.text = c.title;
+      items = [
+        for (final e in c.items)
+          {
+            'category': e.category,
+            'description': e.description ?? '',
+            'amount': e.amount,
+            'expense_date': e.expenseDate ?? formatDate(DateTime.now()),
+            '_receiptPaths': <String>[],
+            '_existingReceiptFiles': List<String>.from(e.receiptFiles),
+          },
+      ];
+    }
   }
 
   /// Deep copy items and attach optional [selectedFile] to the first line (API contract).
@@ -65,15 +104,29 @@ class _CreateExpenseScreenState extends ConsumerState<CreateExpenseScreen> {
     return out;
   }
 
-  /// 🚀 ADD ITEM (BOTTOM SHEET)
-  void openAddItemSheet() {
+  /// 🚀 ADD / EDIT ITEM (BOTTOM SHEET)
+  void openItemSheet({int? index}) {
+    final editingItem = index == null
+        ? null
+        : Map<String, dynamic>.from(items[index]);
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
       builder: (_) => AddItemSheet(
         categories: categories,
+        initialItem: editingItem,
         onAdd: (item) {
-          items.add(item);
+          if (index == null) {
+            items.add(item);
+          } else {
+            items[index] = item;
+          }
           setState(() {});
         },
       ),
@@ -91,35 +144,77 @@ class _CreateExpenseScreenState extends ConsumerState<CreateExpenseScreen> {
 
   Future<void> submit({bool submitForApproval = false}) async {
     if (_isSubmitting) return;
+
+    if (titleController.text.trim().isEmpty) {
+      _show("Title required");
+      return;
+    }
+
+    if (items.isEmpty) {
+      _show("Add at least one item");
+      return;
+    }
+
+    String? submitRemarks;
+    if (submitForApproval) {
+      submitRemarks = await showExpenseRemarksDialog(
+        context,
+        title: 'Submit for approval',
+        confirmLabel: 'Submit',
+        hint: 'Notes for approvers (required)',
+      );
+      if (!mounted || submitRemarks == null || submitRemarks.isEmpty) {
+        return;
+      }
+    }
+
     setState(() => _isSubmitting = true);
 
     try {
-      if (titleController.text.trim().isEmpty) {
-        _show("Title required");
-        return;
-      }
+      final payload = _itemsPayloadForSubmit();
+      final editing = widget.editClaim;
 
-      if (items.isEmpty) {
-        _show("Add at least one item");
-        return;
+      if (editing != null) {
+        await ref
+            .read(createExpenseProvider.notifier)
+            .updateDraft(
+              claimId: editing.id,
+              title: titleController.text.trim(),
+              items: payload,
+              submit: submitForApproval,
+              submitRemarks: submitRemarks,
+            );
+      } else {
+        await ref
+            .read(createExpenseProvider.notifier)
+            .createExpense(
+              title: titleController.text.trim(),
+              items: payload,
+              submit: submitForApproval,
+              submitRemarks: submitRemarks,
+            );
       }
-
-      await ref
-          .read(createExpenseProvider.notifier)
-          .createExpense(
-            title: titleController.text.trim(),
-            items: _itemsPayloadForSubmit(),
-            submit: submitForApproval,
-          );
 
       final state = ref.read(createExpenseProvider);
 
       if (!state.hasError) {
-        Navigator.pop(context);
-
-        _show(submitForApproval ? "Expense Submitted ✅" : "Draft Saved ✅");
+        ref.invalidate(myExpensesProvider);
+        ref.invalidate(expenseDashboardProvider);
+        final overlay = ref.read(globalLoadingProvider.notifier);
+        if (submitForApproval) {
+          overlay.showSuccess('Expense submitted for approval');
+        } else if (editing != null) {
+          overlay.showSuccess('Draft updated');
+        } else {
+          overlay.showSuccess('Draft saved');
+        }
+        Future.delayed(const Duration(seconds: 2), () {
+          if (context.mounted) {
+            Navigator.pop(context, true);
+          }
+        });
       } else {
-        _show("Error: ${state.error}");
+        ref.read(globalLoadingProvider.notifier).showError('${state.error}');
       }
     } finally {
       if (mounted) {
@@ -129,7 +224,8 @@ class _CreateExpenseScreenState extends ConsumerState<CreateExpenseScreen> {
   }
 
   void _show(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+    // Validation / local hints: quick message overlay (not full success flow)
+    ref.read(globalLoadingProvider.notifier).showError(msg);
   }
 
   @override
@@ -137,9 +233,13 @@ class _CreateExpenseScreenState extends ConsumerState<CreateExpenseScreen> {
     final scheme = Theme.of(context).colorScheme;
     final state = ref.watch(createExpenseProvider);
     final canInteract = !state.isLoading && !_isSubmitting;
+    final isEditingDraft = widget.editClaim != null;
 
     return Scaffold(
-      appBar: AppBar(title: const Text("Create Expense"), elevation: 0),
+      appBar: AppBar(
+        title: Text(isEditingDraft ? "Edit draft" : "Create Expense"),
+        elevation: 0,
+      ),
       bottomNavigationBar: SafeArea(
         minimum: const EdgeInsets.fromLTRB(16, 8, 16, 16),
         child: Column(
@@ -155,7 +255,7 @@ class _CreateExpenseScreenState extends ConsumerState<CreateExpenseScreen> {
                         height: 20,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : const Text("Save as Draft"),
+                    : Text(isEditingDraft ? "Update draft" : "Save as Draft"),
               ),
             ),
             const SizedBox(height: 10),
@@ -173,33 +273,12 @@ class _CreateExpenseScreenState extends ConsumerState<CreateExpenseScreen> {
       ),
       body: Column(
         children: [
-          Container(
-            margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [scheme.primaryContainer, scheme.secondaryContainer],
-              ),
-              borderRadius: BorderRadius.circular(18),
-            ),
-            child: Row(
-              children: [
-                CircleAvatar(
-                  backgroundColor: scheme.primary,
-                  child: Icon(Icons.request_quote, color: scheme.onPrimary),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    "Create a clean claim with itemized entries and submit instantly.",
-                    style: TextStyle(
-                      color: scheme.onSurface,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ],
-            ),
+          PremiumFeatureHeader(
+            icon: Icons.request_quote,
+            title: isEditingDraft ? "Edit expense draft" : "Create Expense",
+            subtitle: isEditingDraft
+                ? "Update line items and receipts, then save or submit for approval."
+                : "Add itemized expenses, attach receipts and save a draft or submit for approval.",
           ),
           Expanded(
             child: ListView(
@@ -220,7 +299,7 @@ class _CreateExpenseScreenState extends ConsumerState<CreateExpenseScreen> {
                 ),
                 const SizedBox(height: 12),
                 OutlinedButton.icon(
-                  onPressed: canInteract ? openAddItemSheet : null,
+                  onPressed: canInteract ? () => openItemSheet() : null,
                   icon: const Icon(Icons.add),
                   label: const Text("Add Item"),
                 ),
@@ -229,17 +308,12 @@ class _CreateExpenseScreenState extends ConsumerState<CreateExpenseScreen> {
                   ...items.asMap().entries.map((entry) {
                     final i = entry.key;
                     final item = entry.value;
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 8),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(14),
-                        color: scheme.surfaceContainerLow,
-                        border: Border.all(color: scheme.outlineVariant),
-                      ),
+                    return PremiumCard(
+                      margin: const EdgeInsets.only(bottom: 10),
                       child: ListTile(
                         contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 4,
+                          horizontal: 0,
+                          vertical: 0,
                         ),
                         title: Text(
                           item['category'],
@@ -249,6 +323,51 @@ class _CreateExpenseScreenState extends ConsumerState<CreateExpenseScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(item['description'] ?? ""),
+                            if (isEditingDraft &&
+                                item['_existingReceiptFiles'] is List &&
+                                (item['_existingReceiptFiles'] as List)
+                                    .where(
+                                      (e) =>
+                                          e != null &&
+                                          e.toString().trim().isNotEmpty,
+                                    )
+                                    .isNotEmpty) ...[
+                              const SizedBox(height: 8),
+                              Wrap(
+                                spacing: 6,
+                                runSpacing: 6,
+                                children: [
+                                  for (final name in List<String>.from(
+                                    (item['_existingReceiptFiles'] as List)
+                                        .map((e) => e?.toString().trim() ?? '')
+                                        .where((s) => s.isNotEmpty),
+                                  ))
+                                    InputChip(
+                                      label: Text(
+                                        name.contains('/')
+                                            ? name.split('/').last
+                                            : name,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      onDeleted: !canInteract
+                                          ? null
+                                          : () {
+                                              setState(() {
+                                                final cur = List<String>.from(
+                                                  item['_existingReceiptFiles']
+                                                          as List? ??
+                                                      const [],
+                                                );
+                                                cur.remove(name);
+                                                item['_existingReceiptFiles'] =
+                                                    cur;
+                                              });
+                                            },
+                                    ),
+                                ],
+                              ),
+                            ],
                             if (_receiptCount(item) > 0) ...[
                               const SizedBox(height: 4),
                               Text(
@@ -273,6 +392,14 @@ class _CreateExpenseScreenState extends ConsumerState<CreateExpenseScreen> {
                               ),
                             ),
                             IconButton(
+                              tooltip: "Edit item",
+                              icon: const Icon(Icons.edit_outlined),
+                              color: scheme.primary,
+                              onPressed: !canInteract
+                                  ? null
+                                  : () => openItemSheet(index: i),
+                            ),
+                            IconButton(
                               icon: const Icon(Icons.delete_outline),
                               color: Colors.red,
                               onPressed: !canInteract
@@ -288,13 +415,8 @@ class _CreateExpenseScreenState extends ConsumerState<CreateExpenseScreen> {
                     );
                   }),
                 const SizedBox(height: 4),
-                Container(
+                PremiumCard(
                   padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: scheme.surfaceContainerLow,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: scheme.outlineVariant),
-                  ),
                   child: Row(
                     children: [
                       Icon(Icons.attach_file, color: scheme.primary),

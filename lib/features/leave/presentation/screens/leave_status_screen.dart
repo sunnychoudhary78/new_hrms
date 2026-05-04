@@ -44,8 +44,9 @@ class _LeaveStatusScreenState extends ConsumerState<LeaveStatusScreen> {
 
           onRefresh: () => ref.read(leaveStatusProvider.notifier).refresh(),
 
-          onRevoke: (id, _) =>
-              ref.read(leaveStatusProvider.notifier).revokeLeave(id),
+          onRevoke: (id, _) async {
+            await ref.read(leaveStatusProvider.notifier).revokeLeave(id);
+          },
         ),
       ),
     );
