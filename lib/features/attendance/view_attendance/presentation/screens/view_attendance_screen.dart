@@ -13,8 +13,7 @@ import 'package:lms/shared/widgets/attendance_calender_widget.dart';
 import 'package:lms/shared/widgets/attendance_day_detail_bottom_sheet.dart';
 
 import 'package:lms/features/dashboard/data/models/attendance_day_data.dart';
-import 'package:lms/features/attendance/view_attendance/data/models/attendance_aggregate_model.dart';
-import 'package:lms/features/attendance/view_attendance/data/models/attendance_summary_model.dart';
+import 'package:lms/features/attendance/view_attendance/utils/elapsed_month_summary.dart';
 
 import '../widgets/attendance_summary_grid.dart';
 import '../widgets/attendance_pie_chart.dart';
@@ -69,42 +68,6 @@ class _ViewAttendanceScreenState extends ConsumerState<ViewAttendanceScreen> {
     }
 
     return null;
-  }
-
-  /// Align [AttendanceSummary] with calendar when API still counts today as
-  /// absent but sessions prove the user checked in.
-  AttendanceSummary _adjustedSummary({
-    required AttendanceSummary summary,
-    required List<AttendanceAggregate> aggregates,
-    required Map<String, AttendanceDayData> sessionMap,
-  }) {
-    final today = DateTime.now();
-
-    AttendanceAggregate? todayAgg;
-
-    for (final a in aggregates) {
-      if (DateUtils.isSameDay(a.date, today)) {
-        todayAgg = a;
-        break;
-      }
-    }
-
-    if (todayAgg == null || todayAgg.status != 'absent') return summary;
-
-    final sessions =
-        _sessionDataForDay(todayAgg.date, sessionMap)?.sessions ?? [];
-
-    if (!sessions.any((s) => s.checkIn != null)) return summary;
-
-    return AttendanceSummary(
-      workingDays: summary.workingDays + 1,
-      lateDays: summary.lateDays,
-      totalLeaves: summary.totalLeaves,
-      absentDays: summary.absentDays > 0 ? summary.absentDays - 1 : 0,
-      payableDays: summary.payableDays,
-      totalMinutes: summary.totalMinutes,
-      expectedWorkingHours: summary.expectedWorkingHours,
-    );
   }
 
   Map<String, AttendanceDayData> _buildAttendanceMap(
@@ -172,13 +135,11 @@ class _ViewAttendanceScreenState extends ConsumerState<ViewAttendanceScreen> {
             error: (_, __) => <String, AttendanceDayData>{},
           );
 
-          final displaySummary = attendanceMap.isEmpty
-              ? summary
-              : _adjustedSummary(
-                  summary: summary,
-                  aggregates: state.days,
-                  sessionMap: attendanceMap,
-                );
+          final displaySummary = resolveElapsedMonthSummary(
+            apiSummary: summary,
+            aggregates: state.days,
+            attendanceMap: attendanceMap,
+          );
 
           ////////////////////////////////////////////////////////////
 

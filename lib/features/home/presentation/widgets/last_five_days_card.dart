@@ -33,16 +33,45 @@ class _LastFiveDaysAttendanceCardState
   late List<WeeklyAttendanceBar> visibleList;
   late double maxY;
 
+  /// Window ends at [today] (or the latest working day on/before today), showing
+  /// up to [visibleDays] bars so the user lands on recent days, not month-end.
+  static int initialStartIndexForToday(List<WeeklyAttendanceBar> days) {
+    if (days.isEmpty) return 0;
+
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
+    var endIndex = -1;
+    for (var i = 0; i < days.length; i++) {
+      final d = days[i].date;
+      final dayOnly = DateTime(d.year, d.month, d.day);
+      if (!dayOnly.isAfter(today)) {
+        endIndex = i;
+      }
+    }
+
+    if (endIndex < 0) return 0;
+
+    final maxStart = (days.length - visibleDays).clamp(0, days.length);
+    return (endIndex - (visibleDays - 1)).clamp(0, maxStart);
+  }
+
   @override
   void initState() {
     super.initState();
 
-    startIndex = (widget.days.length - visibleDays).clamp(
-      0,
-      widget.days.length,
-    );
+    startIndex = initialStartIndexForToday(widget.days);
 
     _updateVisibleList();
+  }
+
+  @override
+  void didUpdateWidget(covariant LastFiveDaysAttendanceCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.days != widget.days) {
+      startIndex = initialStartIndexForToday(widget.days);
+      _updateVisibleList();
+    }
   }
 
   void _updateVisibleList() {

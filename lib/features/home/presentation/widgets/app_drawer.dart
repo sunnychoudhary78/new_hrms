@@ -102,18 +102,26 @@ class _AppDrawerState extends ConsumerState<AppDrawer>
                       },
                     ),
 
-                    // ================= TEAM DASHBOARD =================
-                    if (hasLeaveApprove)
-                      DrawerTile(
-                        index: index++,
-                        icon: Icons.dashboard_rounded,
-                        title: "Team Dashboard",
-                        isActive: route == "/team-dashboard",
-                        onTap: () {
-                          Navigator.pop(context);
-                          Navigator.pushNamed(context, "/team-dashboard");
-                        },
+                    // ================= ATTENDANCE =================
+                    _buildExpandable(
+                      index: index++,
+                      title: "Attendance",
+                      icon: Icons.access_time_rounded,
+                      expanded: _isAttendanceExpanded,
+                      onTap: () => setState(
+                        () => _isAttendanceExpanded = !_isAttendanceExpanded,
                       ),
+                      subItems: [
+                        _subItem("Mark Attendance", "/mark-attendance"),
+                        _subItem("View Attendance", "/view-attendance"),
+                        _subItem("View Corrections", "/view-corrections"),
+                        if (hasLeaveApprove)
+                          _subItem(
+                            "Attendance Correction",
+                            "/correct-attendance",
+                          ),
+                      ],
+                    ),
 
                     // ================= LEAVE =================
                     _buildExpandable(
@@ -132,48 +140,18 @@ class _AppDrawerState extends ConsumerState<AppDrawer>
                       ],
                     ),
 
-                    // ================= EXPENSES (FIXED) =================
-                    _buildExpandable(
-                      index: index++,
-                      title: "Expenses",
-                      icon: Icons.receipt_long_rounded,
-                      expanded: _isExpenseExpanded,
-                      onTap: () => setState(
-                        () => _isExpenseExpanded = !_isExpenseExpanded,
+                    // ================= TEAM DASHBOARD =================
+                    if (hasLeaveApprove)
+                      DrawerTile(
+                        index: index++,
+                        icon: Icons.dashboard_rounded,
+                        title: "Team Dashboard",
+                        isActive: route == "/team-dashboard",
+                        onTap: () {
+                          Navigator.pop(context);
+                          Navigator.pushNamed(context, "/team-dashboard");
+                        },
                       ),
-                      subItems: [
-                        // Always visible for every authenticated user
-                        _subItem("My Expenses", "/expenses/my"),
-
-                        // Dashboard is only for approver roles
-                        if (isExpenseManager || isExpenseHod || isAccounts)
-                          _subItem("Expenses Dashboard", "/expenses-dashboard"),
-                      ],
-                    ),
-
-                    // ================= RESIGNATION (NEW) =================
-                    _buildExpandable(
-                      index: index++,
-                      title: "Resignation",
-                      icon: Icons.exit_to_app_rounded,
-                      expanded: _isResignationExpanded,
-                      onTap: () => setState(
-                        () => _isResignationExpanded = !_isResignationExpanded,
-                      ),
-                      subItems: [
-                        // ✅ ALWAYS VISIBLE
-                        _subItem("My Resignation", "/resignation/my"),
-
-                        // ✅ Only for approvers
-                        if (isResignationManager ||
-                            isResignationHod ||
-                            isResignationHr)
-                          _subItem(
-                            "Resignation Dashboard",
-                            "/resignation-dashboard",
-                          ),
-                      ],
-                    ),
 
                     // ================= KRA / KPI =================
                     if (hasAnyKraPermission)
@@ -203,24 +181,22 @@ class _AppDrawerState extends ConsumerState<AppDrawer>
                         ],
                       ),
 
-                    // ================= ATTENDANCE =================
+                    // ================= EXPENSES (FIXED) =================
                     _buildExpandable(
                       index: index++,
-                      title: "Attendance",
-                      icon: Icons.access_time_rounded,
-                      expanded: _isAttendanceExpanded,
+                      title: "Expenses",
+                      icon: Icons.receipt_long_rounded,
+                      expanded: _isExpenseExpanded,
                       onTap: () => setState(
-                        () => _isAttendanceExpanded = !_isAttendanceExpanded,
+                        () => _isExpenseExpanded = !_isExpenseExpanded,
                       ),
                       subItems: [
-                        _subItem("Mark Attendance", "/mark-attendance"),
-                        _subItem("View Attendance", "/view-attendance"),
-                        _subItem("View Corrections", "/view-corrections"),
-                        if (hasLeaveApprove)
-                          _subItem(
-                            "Attendance Correction",
-                            "/correct-attendance",
-                          ),
+                        // Always visible for every authenticated user
+                        _subItem("My Expenses", "/expenses/my"),
+
+                        // Dashboard is only for approver roles
+                        if (isExpenseManager || isExpenseHod || isAccounts)
+                          _subItem("Expenses Dashboard", "/expenses-dashboard"),
                       ],
                     ),
 
@@ -234,6 +210,30 @@ class _AppDrawerState extends ConsumerState<AppDrawer>
                         Navigator.pop(context);
                         Navigator.pushNamed(context, "/payslip");
                       },
+                    ),
+
+                    // ================= RESIGNATION (NEW) =================
+                    _buildExpandable(
+                      index: index++,
+                      title: "Resignation",
+                      icon: Icons.exit_to_app_rounded,
+                      expanded: _isResignationExpanded,
+                      onTap: () => setState(
+                        () => _isResignationExpanded = !_isResignationExpanded,
+                      ),
+                      subItems: [
+                        // ✅ ALWAYS VISIBLE
+                        _subItem("My Resignation", "/resignation/my"),
+
+                        // ✅ Only for approvers
+                        if (isResignationManager ||
+                            isResignationHod ||
+                            isResignationHr)
+                          _subItem(
+                            "Resignation Dashboard",
+                            "/resignation-dashboard",
+                          ),
+                      ],
                     ),
 
                     // ================= SETTINGS =================
