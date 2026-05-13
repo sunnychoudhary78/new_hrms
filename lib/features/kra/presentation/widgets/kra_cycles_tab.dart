@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lms/core/providers/global_loading_provider.dart';
@@ -20,6 +21,9 @@ class _KraCyclesTabState extends ConsumerState<KraCyclesTab> {
     final cyclesAsync = ref.watch(kraCyclesProvider);
     final state = ref.watch(kraActionProvider);
     final scheme = Theme.of(context).colorScheme;
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
+    final fieldRadius = BorderRadius.circular(isIOS ? 12 : 16);
+    final tileRadius = BorderRadius.circular(isIOS ? 12 : 18);
 
     return Column(
       children: [
@@ -28,6 +32,11 @@ class _KraCyclesTabState extends ConsumerState<KraCyclesTab> {
           title: 'Review Cycles',
           subtitle: 'Start monthly KRA reviews and track active cycles.',
           trailing: FilledButton(
+            style: FilledButton.styleFrom(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(isIOS ? 12 : 20),
+              ),
+            ),
             onPressed: state.isLoading ? null : _initiate,
             child: state.isLoading
                 ? const SizedBox(
@@ -50,7 +59,7 @@ class _KraCyclesTabState extends ConsumerState<KraCyclesTab> {
                     filled: true,
                     fillColor: scheme.surfaceContainerLow,
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: fieldRadius,
                     ),
                   ),
                   items: List.generate(
@@ -70,7 +79,7 @@ class _KraCyclesTabState extends ConsumerState<KraCyclesTab> {
                     filled: true,
                     fillColor: scheme.surfaceContainerLow,
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: fieldRadius,
                     ),
                   ),
                   keyboardType: TextInputType.number,
@@ -92,13 +101,17 @@ class _KraCyclesTabState extends ConsumerState<KraCyclesTab> {
                   return const KraEmptyList(text: 'No review cycles yet');
                 }
                 return ListView.separated(
-                  physics: const AlwaysScrollableScrollPhysics(),
+                  physics: isIOS
+                      ? const AlwaysScrollableScrollPhysics(
+                          parent: BouncingScrollPhysics(),
+                        )
+                      : const AlwaysScrollableScrollPhysics(),
                   padding: const EdgeInsets.all(12),
                   itemBuilder: (_, i) {
                     final cycle = cycles[i];
                     return ListTile(
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(18),
+                        borderRadius: tileRadius,
                         side: BorderSide(color: scheme.outlineVariant),
                       ),
                       tileColor: scheme.surfaceContainerLow,

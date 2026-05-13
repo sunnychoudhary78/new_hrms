@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:lms/features/attendance/view_attendance/data/models/attendance_aggregate_model.dart';
 import 'package:lms/features/attendance/view_attendance/utils/attendance_status_color.dart';
@@ -26,6 +27,7 @@ class AttendanceCalendar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
 
     /// ✅ O(1) lookup instead of O(n)
     final Map<String, AttendanceAggregate> map = {
@@ -45,7 +47,9 @@ class AttendanceCalendar extends StatelessWidget {
 
     return Card(
       elevation: 0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(isIOS ? 14 : 18),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: TableCalendar(
@@ -98,6 +102,7 @@ class AttendanceCalendar extends StatelessWidget {
     bool isSelected = false,
   }) {
     final scheme = Theme.of(context).colorScheme;
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
@@ -105,7 +110,7 @@ class AttendanceCalendar extends StatelessWidget {
       alignment: Alignment.center,
       decoration: BoxDecoration(
         color: color.withOpacity(.15),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(isIOS ? 10 : 12),
         border: isSelected
             ? Border.all(color: scheme.primary, width: 2)
             : isToday

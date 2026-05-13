@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:lms/features/leave/data/models/leave_balance_model.dart';
 import 'package:lms/features/leave/presentation/screens/leave_apply_screen.dart';
@@ -11,6 +12,7 @@ class LeaveBalanceTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
 
     final name = balance.name;
     final available = balance.available < 0 ? 0.0 : balance.available;
@@ -20,14 +22,14 @@ class LeaveBalanceTile extends StatelessWidget {
     final Color accentColor = LeaveColorMapper.colorFor(name);
 
     return InkWell(
-      borderRadius: BorderRadius.circular(18),
+      borderRadius: BorderRadius.circular(isIOS ? 14 : 18),
       onTap: () {
         if (available <= 0 && !balance.allowNegativeBalance) {
           showDialog(
             context: context,
             builder: (_) => AlertDialog(
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(isIOS ? 12 : 16),
               ),
               title: const Text("Cannot Apply"),
               content: Text("You don't have any $name leave available."),
@@ -53,12 +55,15 @@ class LeaveBalanceTile extends StatelessWidget {
         padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
           color: scheme.surface,
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(isIOS ? 14 : 18),
+          border: isIOS
+              ? Border.all(color: scheme.outline.withOpacity(0.1))
+              : null,
           boxShadow: [
             BoxShadow(
-              color: scheme.shadow.withOpacity(0.06),
-              blurRadius: 14,
-              offset: const Offset(0, 8),
+              color: scheme.shadow.withOpacity(isIOS ? 0.04 : 0.06),
+              blurRadius: isIOS ? 10 : 14,
+              offset: Offset(0, isIOS ? 5 : 8),
             ),
           ],
         ),

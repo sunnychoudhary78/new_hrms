@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
@@ -124,13 +125,19 @@ class _LastFiveDaysAttendanceCardState
   Widget build(BuildContext context) {
     if (widget.days.isEmpty) return const SizedBox();
 
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
+    final scheme = Theme.of(context).colorScheme;
+
     final chartWidth = visibleList.length * groupWidth;
 
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(16),
+        color: scheme.surface,
+        borderRadius: BorderRadius.circular(isIOS ? 14 : 16),
+        border: isIOS
+            ? Border.all(color: scheme.outline.withOpacity(0.12))
+            : null,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -164,6 +171,11 @@ class _LastFiveDaysAttendanceCardState
                         icon: const Icon(Icons.chevron_left),
                         onPressed: startIndex == 0 ? null : _goPrevious,
                         visualDensity: VisualDensity.compact,
+                        style: IconButton.styleFrom(
+                          splashFactory: isIOS
+                              ? NoSplash.splashFactory
+                              : InkSplash.splashFactory,
+                        ),
                       ),
 
                       IconButton(
@@ -173,6 +185,11 @@ class _LastFiveDaysAttendanceCardState
                             ? null
                             : _goNext,
                         visualDensity: VisualDensity.compact,
+                        style: IconButton.styleFrom(
+                          splashFactory: isIOS
+                              ? NoSplash.splashFactory
+                              : InkSplash.splashFactory,
+                        ),
                       ),
                     ],
                   ),

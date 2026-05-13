@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lms/features/auth/presentation/providers/auth_provider.dart';
@@ -29,12 +30,17 @@ class LeaveBalanceScreen extends ConsumerWidget {
         error: (e, _) => Center(child: Text(e.toString())),
         data: (leaves) {
           final notifier = ref.read(leaveBalanceProvider.notifier);
+          final scrollPhysics = defaultTargetPlatform == TargetPlatform.iOS
+              ? const AlwaysScrollableScrollPhysics(
+                  parent: BouncingScrollPhysics(),
+                )
+              : const AlwaysScrollableScrollPhysics();
 
           if (leaves.isEmpty) {
             return RefreshIndicator(
               onRefresh: notifier.refresh,
               child: ListView(
-                physics: const AlwaysScrollableScrollPhysics(),
+                physics: scrollPhysics,
                 children: const [
                   SizedBox(height: 260),
                   Center(child: Text("No leave data found")),
@@ -46,7 +52,8 @@ class LeaveBalanceScreen extends ConsumerWidget {
           return RefreshIndicator(
             onRefresh: notifier.refresh,
             child: SingleChildScrollView(
-              physics: const AlwaysScrollableScrollPhysics(),
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+              physics: scrollPhysics,
               padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,

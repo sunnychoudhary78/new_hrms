@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:lms/features/home/data/models/home_dashboard_model.dart';
@@ -19,10 +20,13 @@ class AttendanceOverviewCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
 
     return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      elevation: isIOS ? 0.5 : 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(isIOS ? 14 : 16),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(

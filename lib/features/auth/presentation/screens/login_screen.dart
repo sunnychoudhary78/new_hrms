@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -13,16 +14,24 @@ class LoginScreen extends ConsumerStatefulWidget {
 class _LoginScreenState extends ConsumerState<LoginScreen> {
   late final TextEditingController _emailController;
   late final TextEditingController _passwordController;
+  late final FocusNode _emailFocus;
+  late final FocusNode _passwordFocus;
+
+  bool get _isIOS => defaultTargetPlatform == TargetPlatform.iOS;
 
   @override
   void initState() {
     super.initState();
     _emailController = TextEditingController();
     _passwordController = TextEditingController();
+    _emailFocus = FocusNode();
+    _passwordFocus = FocusNode();
   }
 
   @override
   void dispose() {
+    _emailFocus.dispose();
+    _passwordFocus.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
@@ -42,10 +51,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
     return Scaffold(
       backgroundColor: scheme.surface,
-      body: Center(
-        child: SingleChildScrollView(
-          child:
-              Container(
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+            physics: _isIOS
+                ? const BouncingScrollPhysics(
+                    parent: AlwaysScrollableScrollPhysics(),
+                  )
+                : const ClampingScrollPhysics(),
+            child: Container(
                     width: cardWidth,
                     padding: const EdgeInsets.symmetric(
                       horizontal: 28,
@@ -53,12 +68,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ),
                     decoration: BoxDecoration(
                       color: scheme.surface,
-                      borderRadius: BorderRadius.circular(24),
+                      borderRadius: BorderRadius.circular(_isIOS ? 16 : 24),
                       boxShadow: [
                         BoxShadow(
-                          color: scheme.shadow.withOpacity(0.08),
-                          blurRadius: 30,
-                          offset: const Offset(0, 15),
+                          color: scheme.shadow.withOpacity(_isIOS ? 0.05 : 0.08),
+                          blurRadius: _isIOS ? 18 : 30,
+                          offset: Offset(0, _isIOS ? 10 : 15),
                         ),
                       ],
                       border: Border.all(
@@ -109,53 +124,81 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
                         const SizedBox(height: 36),
 
-                        /// Email / Employee ID
-                        _label(context, "EMAIL OR EMPLOYEE ID"),
-                        const SizedBox(height: 8),
-                        TextField(
-                              controller: _emailController,
-                              keyboardType: TextInputType.text,
-                              decoration: _input(
-                                context,
-                                hint: "Enter email or employee ID",
-                                icon: Icons.person_outline,
-                              ),
-                            )
-                            .animate()
-                            .fadeIn(delay: 300.ms)
-                            .slideX(begin: -0.1, end: 0),
-
-                        const SizedBox(height: 20),
-
-                        /// Password
-                        _label(context, "PASSWORD"),
-                        const SizedBox(height: 8),
-                        TextField(
-                              controller: _passwordController,
-                              obscureText: _obscurePassword,
-                              decoration:
-                                  _input(
-                                    context,
-                                    hint: "Enter password",
-                                    icon: Icons.lock_outline,
-                                  ).copyWith(
-                                    suffixIcon: IconButton(
-                                      icon: Icon(
-                                        _obscurePassword
-                                            ? Icons.visibility_off
-                                            : Icons.visibility,
-                                      ),
-                                      onPressed: () {
-                                        setState(() {
-                                          _obscurePassword = !_obscurePassword;
-                                        });
-                                      },
+                        AutofillGroup(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              /// Email / Employee ID
+                              _label(context, "EMAIL OR EMPLOYEE ID"),
+                              const SizedBox(height: 8),
+                              TextField(
+                                    controller: _emailController,
+                                    focusNode: _emailFocus,
+                                    keyboardType: TextInputType.text,
+                                    textInputAction: TextInputAction.next,
+                                    autofillHints: const [
+                                      AutofillHints.username,
+                                    ],
+                                    autocorrect: false,
+                                    textCapitalization: TextCapitalization.none,
+                                    onSubmitted: (_) => _passwordFocus
+                                        .requestFocus(),
+                                    decoration: _input(
+                                      context,
+                                      hint: "Enter email or employee ID",
+                                      icon: Icons.person_outline,
                                     ),
-                                  ),
-                            )
-                            .animate()
-                            .fadeIn(delay: 400.ms)
-                            .slideX(begin: 0.1, end: 0),
+                                  )
+                                  .animate()
+                                  .fadeIn(delay: 300.ms)
+                                  .slideX(begin: -0.1, end: 0),
+
+                              const SizedBox(height: 20),
+
+                              /// Password
+                              _label(context, "PASSWORD"),
+                              const SizedBox(height: 8),
+                              TextField(
+                                    controller: _passwordController,
+                                    focusNode: _passwordFocus,
+                                    obscureText: _obscurePassword,
+                                    textInputAction: TextInputAction.done,
+                                    autofillHints: const [
+                                      AutofillHints.password,
+                                    ],
+                                    onSubmitted: (_) {
+                                      if (!authState.isLoading) {
+                                        _handleLogin();
+                                      }
+                                    },
+                                    decoration:
+                                        _input(
+                                          context,
+                                          hint: "Enter password",
+                                          icon: Icons.lock_outline,
+                                        ).copyWith(
+                                          suffixIcon: IconButton(
+                                            icon: Icon(
+                                              _obscurePassword
+                                                  ? Icons.visibility_off
+                                                  : Icons.visibility,
+                                            ),
+                                            onPressed: () {
+                                              setState(() {
+                                                _obscurePassword =
+                                                    !_obscurePassword;
+                                              });
+                                            },
+                                          ),
+                                        ),
+                                  )
+                                  .animate()
+                                  .fadeIn(delay: 400.ms)
+                                  .slideX(begin: 0.1, end: 0),
+                            ],
+                          ),
+                        ),
 
                         SizedBox(height: 25),
 
@@ -245,6 +288,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     end: const Offset(1, 1),
                     curve: Curves.easeOutCubic,
                   ),
+          ),
         ),
       ),
     );
@@ -280,6 +324,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     required IconData icon,
   }) {
     final scheme = Theme.of(context).colorScheme;
+    final double radius = _isIOS ? 12 : 14;
 
     return InputDecoration(
       hintText: hint,
@@ -288,16 +333,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       fillColor: scheme.surfaceVariant.withOpacity(0.3),
       contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(radius),
         borderSide: BorderSide(color: scheme.outline.withOpacity(0.3)),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(radius),
         borderSide: BorderSide(color: scheme.outline.withOpacity(0.2)),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: BorderSide(color: scheme.primary, width: 1.5),
+        borderRadius: BorderRadius.circular(radius),
+        borderSide: BorderSide(color: scheme.primary, width: _isIOS ? 1 : 1.5),
       ),
     );
   }

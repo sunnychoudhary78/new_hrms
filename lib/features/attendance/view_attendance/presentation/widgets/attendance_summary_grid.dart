@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:lms/features/attendance/view_attendance/data/models/attendance_summary_model.dart';
 import 'package:lms/features/attendance/view_attendance/utils/attendance_status_color.dart';
@@ -9,12 +10,13 @@ class AttendanceSummaryGrid extends StatelessWidget {
 
   Widget _tile(BuildContext context, String title, String value, Color color) {
     final scheme = Theme.of(context).colorScheme;
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
 
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: color.withOpacity(.12),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(isIOS ? 12 : 16),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

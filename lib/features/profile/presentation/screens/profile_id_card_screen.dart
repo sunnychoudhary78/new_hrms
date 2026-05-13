@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lms/features/auth/presentation/providers/auth_provider.dart';
 import 'package:lms/features/profile/data/models/user_details_model.dart';
+import 'package:lms/shared/widgets/app_bar.dart';
 
 class ProfileIdCardScreen extends ConsumerStatefulWidget {
   const ProfileIdCardScreen({super.key});
@@ -59,7 +60,7 @@ class _ProfileIdCardScreenState extends ConsumerState<ProfileIdCardScreen>
 
     return Scaffold(
       backgroundColor: scheme.surfaceContainerLowest,
-      appBar: AppBar(title: const Text("Employee ID Card"), centerTitle: true),
+      appBar: const AppAppBar(title: "Employee ID Card"),
       body: Center(
         child: GestureDetector(
           onTap: flipCard,

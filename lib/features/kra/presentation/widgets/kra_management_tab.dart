@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -36,6 +37,13 @@ class KraManagementTab extends ConsumerWidget {
               title: 'KRA Setup',
               subtitle: 'Create KRA records and add KPI targets for employees.',
               trailing: FilledButton.icon(
+                style: FilledButton.styleFrom(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(
+                      defaultTargetPlatform == TargetPlatform.iOS ? 12 : 20,
+                    ),
+                  ),
+                ),
                 onPressed: () => openKraFormBottomSheet(context, ref),
                 icon: const Icon(Icons.add),
                 label: const Text('Create KRA'),
@@ -81,7 +89,9 @@ class _KraList extends StatelessWidget {
     if (items.isEmpty) return KraEmptyList(text: emptyText);
 
     return ListView.separated(
-      physics: const AlwaysScrollableScrollPhysics(),
+      physics: defaultTargetPlatform == TargetPlatform.iOS
+          ? const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics())
+          : const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 110),
       itemBuilder: (_, i) => _KraCard(kra: items[i], canManage: true),
       separatorBuilder: (_, __) => const SizedBox(height: 10),
@@ -99,11 +109,13 @@ class _KraCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
+    final cardRadius = BorderRadius.circular(isIOS ? 12 : 16);
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: scheme.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: cardRadius,
         border: Border.all(color: scheme.outlineVariant),
       ),
       child: Column(
@@ -205,9 +217,13 @@ class _KraCard extends ConsumerWidget {
   }
 
   Future<bool?> _confirmDelete(BuildContext context) {
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
     return showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(isIOS ? 14 : 24),
+        ),
         title: const Text('Delete KRA?'),
         content: const Text('This KRA and its KPI targets will be removed.'),
         actions: [
@@ -216,6 +232,11 @@ class _KraCard extends ConsumerWidget {
             child: const Text('Cancel'),
           ),
           FilledButton(
+            style: FilledButton.styleFrom(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(isIOS ? 12 : 20),
+              ),
+            ),
             onPressed: () => Navigator.pop(context, true),
             child: const Text('Delete'),
           ),
@@ -272,6 +293,11 @@ class _KraFormSheetState extends ConsumerState<KraFormSheet> {
     final membersAsync = ref.watch(kraTeamMembersProvider);
     final action = ref.watch(kraActionProvider);
     final scheme = Theme.of(context).colorScheme;
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
+    final fieldRadius = BorderRadius.circular(isIOS ? 12 : 16);
+    final saveShape = RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(isIOS ? 12 : 20),
+    );
 
     return Material(
       color: scheme.surface,
@@ -284,26 +310,36 @@ class _KraFormSheetState extends ConsumerState<KraFormSheet> {
             bottom: MediaQuery.viewInsetsOf(context).bottom + 16,
           ),
           child: SingleChildScrollView(
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+            physics: isIOS
+                ? const BouncingScrollPhysics()
+                : const ClampingScrollPhysics(),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Center(
-                  child: Container(
-                    width: 44,
-                    height: 4,
-                    margin: const EdgeInsets.only(bottom: 14),
-                    decoration: BoxDecoration(
-                      color: scheme.outlineVariant,
-                      borderRadius: BorderRadius.circular(999),
+                if (!isIOS)
+                  Center(
+                    child: Container(
+                      width: 44,
+                      height: 4,
+                      margin: const EdgeInsets.only(bottom: 14),
+                      decoration: BoxDecoration(
+                        color: scheme.outlineVariant,
+                        borderRadius: BorderRadius.circular(999),
+                      ),
                     ),
                   ),
-                ),
                 PremiumSectionTitle(
                   title: widget.kra == null ? 'Create KRA & KPI' : 'Edit KRA',
                   subtitle:
                       'Assign an employee, define KPI targets, and keep total weightage at 100%.',
                   trailing: FilledButton.icon(
+                    style: FilledButton.styleFrom(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(isIOS ? 12 : 20),
+                      ),
+                    ),
                     onPressed: () => setState(() => _kpis.add(_KpiDraft())),
                     icon: const Icon(Icons.add),
                     label: const Text('Add KPI'),
@@ -318,6 +354,7 @@ class _KraFormSheetState extends ConsumerState<KraFormSheet> {
                   membersAsync: membersAsync,
                   onEmployeeChanged: (value) =>
                       setState(() => _employeeId = value),
+                  fieldBorderRadius: fieldRadius,
                 ),
                 const SizedBox(height: 16),
                 _KpiSection(
@@ -328,11 +365,14 @@ class _KraFormSheetState extends ConsumerState<KraFormSheet> {
                     final removed = _kpis.removeAt(index);
                     removed.dispose();
                   }),
+                  fieldBorderRadius: fieldRadius,
+                  isIOS: isIOS,
                 ),
                 const SizedBox(height: 16),
                 SizedBox(
                   width: double.infinity,
                   child: FilledButton(
+                    style: FilledButton.styleFrom(shape: saveShape),
                     onPressed: action.isLoading ? null : _save,
                     child: action.isLoading
                         ? const SizedBox(
@@ -412,6 +452,7 @@ class _KraDetailsForm extends ConsumerWidget {
   final String? employeeId;
   final AsyncValue<List<KraPerson>> membersAsync;
   final ValueChanged<String?> onEmployeeChanged;
+  final BorderRadius fieldBorderRadius;
 
   const _KraDetailsForm({
     required this.name,
@@ -420,6 +461,7 @@ class _KraDetailsForm extends ConsumerWidget {
     required this.employeeId,
     required this.membersAsync,
     required this.onEmployeeChanged,
+    required this.fieldBorderRadius,
   });
 
   @override
@@ -527,7 +569,7 @@ class _KraDetailsForm extends ConsumerWidget {
       helperText: helperText,
       filled: true,
       fillColor: scheme.surfaceContainerLow,
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+      border: OutlineInputBorder(borderRadius: fieldBorderRadius),
     );
   }
 }
@@ -537,12 +579,16 @@ class _KpiSection extends StatelessWidget {
   final VoidCallback onAdd;
   final VoidCallback onChanged;
   final ValueChanged<int> onRemove;
+  final BorderRadius fieldBorderRadius;
+  final bool isIOS;
 
   const _KpiSection({
     required this.kpis,
     required this.onAdd,
     required this.onChanged,
     required this.onRemove,
+    required this.fieldBorderRadius,
+    required this.isIOS,
   });
 
   double _namedWeightTotal() {
@@ -574,6 +620,11 @@ class _KpiSection extends StatelessWidget {
                 style: TextStyle(fontWeight: FontWeight.w800),
               ),
               FilledButton.tonalIcon(
+                style: FilledButton.styleFrom(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(isIOS ? 12 : 20),
+                  ),
+                ),
                 onPressed: onAdd,
                 icon: const Icon(Icons.add),
                 label: const Text('Add KPI'),
@@ -596,6 +647,8 @@ class _KpiSection extends StatelessWidget {
               draft: entry.value,
               onFieldChanged: onChanged,
               onRemove: kpis.length == 1 ? null : () => onRemove(entry.key),
+              fieldBorderRadius: fieldBorderRadius,
+              isIOS: isIOS,
             ),
         ],
       ),
@@ -638,10 +691,14 @@ class _KpiDraftTile extends StatelessWidget {
   final _KpiDraft draft;
   final VoidCallback? onRemove;
   final VoidCallback onFieldChanged;
+  final BorderRadius fieldBorderRadius;
+  final bool isIOS;
 
   const _KpiDraftTile({
     required this.draft,
     required this.onFieldChanged,
+    required this.fieldBorderRadius,
+    required this.isIOS,
     this.onRemove,
   });
 
@@ -651,7 +708,9 @@ class _KpiDraftTile extends StatelessWidget {
     return Card(
       elevation: 0,
       color: scheme.surfaceContainerLowest,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(isIOS ? 12 : 18),
+      ),
       margin: const EdgeInsets.only(bottom: 10),
       child: Padding(
         padding: const EdgeInsets.all(12),
@@ -667,6 +726,11 @@ class _KpiDraftTile extends StatelessWidget {
                   ),
                 ),
                 IconButton(
+                  style: IconButton.styleFrom(
+                    splashFactory: isIOS
+                        ? NoSplash.splashFactory
+                        : InkSplash.splashFactory,
+                  ),
                   onPressed: onRemove,
                   icon: const Icon(Icons.delete_outline),
                 ),
@@ -709,7 +773,7 @@ class _KpiDraftTile extends StatelessWidget {
       helperText: helperText,
       filled: true,
       fillColor: scheme.surfaceContainerLow,
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+      border: OutlineInputBorder(borderRadius: fieldBorderRadius),
     );
   }
 }
@@ -724,14 +788,18 @@ void openKraFormBottomSheet(
   KraModel? kra,
 }) {
   ref.read(kraActionProvider.notifier).resetActionState();
+  final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
   showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
     useRootNavigator: true,
     useSafeArea: true,
+    showDragHandle: isIOS,
     backgroundColor: Theme.of(context).colorScheme.surface,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(
+        top: Radius.circular(isIOS ? 14 : 28),
+      ),
     ),
     builder: (_) =>
         FractionallySizedBox(heightFactor: 0.92, child: KraFormSheet(kra: kra)),

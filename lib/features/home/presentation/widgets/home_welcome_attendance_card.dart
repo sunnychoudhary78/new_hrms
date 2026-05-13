@@ -1,4 +1,6 @@
 import 'dart:ui';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -71,6 +73,9 @@ class _HomeWelcomeAttendanceCardState
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
+    final welcomeRadius = isIOS ? 20.0 : 24.0;
+    final glassBlur = isIOS ? 12.0 : 16.0;
 
     final attendanceAsync = ref.watch(markAttendanceProvider);
 
@@ -97,19 +102,22 @@ class _HomeWelcomeAttendanceCardState
               offset: Offset(0, floatOffset),
 
               child: ClipRRect(
-                borderRadius: BorderRadius.circular(24),
+                borderRadius: BorderRadius.circular(welcomeRadius),
 
                 child: Stack(
                   children: [
                     /// GLASS BASE
                     BackdropFilter(
-                      filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+                      filter: ImageFilter.blur(
+                        sigmaX: glassBlur,
+                        sigmaY: glassBlur,
+                      ),
 
                       child: Container(
                         padding: const EdgeInsets.all(20),
 
                         decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(24),
+                          borderRadius: BorderRadius.circular(welcomeRadius),
 
                           color: scheme.surface.withOpacity(0.55),
 
@@ -120,9 +128,11 @@ class _HomeWelcomeAttendanceCardState
 
                           boxShadow: [
                             BoxShadow(
-                              color: scheme.shadow.withOpacity(0.15),
-                              blurRadius: 30,
-                              offset: const Offset(0, 10),
+                              color: scheme.shadow.withOpacity(
+                                isIOS ? 0.08 : 0.15,
+                              ),
+                              blurRadius: isIOS ? 18 : 30,
+                              offset: Offset(0, isIOS ? 8 : 10),
                             ),
                           ],
                         ),

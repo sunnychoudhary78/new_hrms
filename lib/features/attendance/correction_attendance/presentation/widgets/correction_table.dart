@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../../data/models/attendance_request_model.dart';
 import '../dialogs/review_request_dialog.dart';
@@ -11,9 +12,13 @@ class CorrectionTable extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isCorrection = items.first.isCorrection;
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
 
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
+      physics: isIOS
+          ? const BouncingScrollPhysics()
+          : const ClampingScrollPhysics(),
       child: DataTable(
         columnSpacing: 28,
         horizontalMargin: 24,

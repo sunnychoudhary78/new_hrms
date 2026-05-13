@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lms/features/attendance/correction_attendance/presentation/providers/attendance_requests_provider.dart';
@@ -7,7 +8,6 @@ class AttendanceFilterTabs extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final scheme = Theme.of(context).colorScheme;
     final state = ref.watch(attendanceRequestsProvider).value;
 
     final current = state?.statusFilter ?? "PENDING";
@@ -20,6 +20,9 @@ class AttendanceFilterTabs extends ConsumerWidget {
 
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
+      physics: defaultTargetPlatform == TargetPlatform.iOS
+          ? const BouncingScrollPhysics()
+          : const ClampingScrollPhysics(),
       child: Row(
         children: [
           _TabItem(
@@ -86,6 +89,8 @@ class _TabItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
+    final pillRadius = BorderRadius.circular(isIOS ? 22 : 30);
 
     return GestureDetector(
       onTap: onTap,
@@ -96,7 +101,7 @@ class _TabItem extends StatelessWidget {
           color: selected
               ? color.withOpacity(.15)
               : scheme.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(30),
+          borderRadius: pillRadius,
           border: Border.all(
             color: selected
                 ? color.withOpacity(.5)
@@ -123,7 +128,7 @@ class _TabItem extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               decoration: BoxDecoration(
                 color: selected ? color.withOpacity(.25) : scheme.surface,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(isIOS ? 10 : 12),
               ),
               child: Text(
                 count.toString(),

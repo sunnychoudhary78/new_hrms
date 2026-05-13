@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -26,9 +27,11 @@ class TimePickerCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
+    final r = BorderRadius.circular(isIOS ? 12 : 16);
 
     return InkWell(
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: r,
       onTap: () async {
         final picked = await showTimePicker(
           context: context,
@@ -54,7 +57,7 @@ class TimePickerCard extends StatelessWidget {
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: scheme.surface,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: r,
           border: Border.all(
             color: time != null
                 ? scheme.primary
@@ -110,7 +113,7 @@ class TimePickerCard extends StatelessWidget {
                     ),
                     decoration: BoxDecoration(
                       color: scheme.primaryContainer,
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(isIOS ? 6 : 8),
                     ),
                     child: Text(
                       _format(time!).split(' ')[1], // AM / PM badge

@@ -1,8 +1,10 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lms/core/providers/global_loading_provider.dart';
 import 'package:lms/features/resignation/data/models/resignation_model.dart';
 import 'package:lms/features/resignation/presentation/providers/resignation_providers.dart';
+import 'package:lms/shared/widgets/app_bar.dart';
 import 'package:lms/shared/widgets/premium_feature_components.dart';
 
 class MyResignationScreen extends ConsumerStatefulWidget {
@@ -110,13 +112,17 @@ class _MyResignationScreenState extends ConsumerState<MyResignationScreen> {
   /// 📦 OPEN FORM
   void openForm() {
     final screenHeight = MediaQuery.of(context).size.height;
-    showModalBottomSheet(
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
+    showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
+      showDragHandle: isIOS,
       backgroundColor: Theme.of(context).colorScheme.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(isIOS ? 14 : 24),
+        ),
       ),
       builder: (sheetContext) => Padding(
         padding: EdgeInsets.only(
@@ -138,14 +144,25 @@ class _MyResignationScreenState extends ConsumerState<MyResignationScreen> {
   @override
   Widget build(BuildContext context) {
     final resignationAsync = ref.watch(myResignationProvider);
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
+    final scrollPhysics = isIOS
+        ? const AlwaysScrollableScrollPhysics(
+            parent: BouncingScrollPhysics(),
+          )
+        : const AlwaysScrollableScrollPhysics();
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("My Resignation"),
+      appBar: AppAppBar(
+        title: "My Resignation",
         actions: [
           IconButton(
             tooltip: 'Refresh status',
             icon: const Icon(Icons.refresh_rounded),
+            style: IconButton.styleFrom(
+              splashFactory: isIOS
+                  ? NoSplash.splashFactory
+                  : InkSplash.splashFactory,
+            ),
             onPressed: _refreshMyResignation,
           ),
         ],
@@ -154,7 +171,8 @@ class _MyResignationScreenState extends ConsumerState<MyResignationScreen> {
       body: RefreshIndicator(
         onRefresh: _refreshMyResignation,
         child: CustomScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+          physics: scrollPhysics,
           slivers: [
             SliverFillRemaining(
               hasScrollBody: false,
@@ -204,6 +222,13 @@ class _MyResignationScreenState extends ConsumerState<MyResignationScreen> {
                               ),
                               const SizedBox(height: 16),
                               FilledButton.icon(
+                                style: FilledButton.styleFrom(
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(
+                                      isIOS ? 12 : 14,
+                                    ),
+                                  ),
+                                ),
                                 onPressed: openForm,
                                 icon: const Icon(Icons.edit_note_rounded),
                                 label: const Text("Apply Resignation"),
@@ -227,7 +252,17 @@ class _MyResignationScreenState extends ConsumerState<MyResignationScreen> {
 
   /// ================= FORM =================
   Widget _buildForm() {
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
+    final fieldRadius = isIOS ? 12.0 : 16.0;
+    final btnShape = RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(isIOS ? 12 : 14),
+    );
+
     return SingleChildScrollView(
+      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+      physics: isIOS
+          ? const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics())
+          : const ClampingScrollPhysics(),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -317,6 +352,8 @@ class _MyResignationScreenState extends ConsumerState<MyResignationScreen> {
                   controller: reasonController,
                   minLines: 6,
                   maxLines: 10,
+                  textCapitalization: TextCapitalization.sentences,
+                  textInputAction: TextInputAction.done,
                   decoration: InputDecoration(
                     labelText: "Reason / remarks *",
                     alignLabelWithHint: true,
@@ -327,7 +364,7 @@ class _MyResignationScreenState extends ConsumerState<MyResignationScreen> {
                       context,
                     ).colorScheme.surfaceContainerLow,
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(fieldRadius),
                     ),
                   ),
                 ),
@@ -335,6 +372,7 @@ class _MyResignationScreenState extends ConsumerState<MyResignationScreen> {
                 TextField(
                   controller: dateController,
                   readOnly: true,
+                  textInputAction: TextInputAction.done,
                   decoration: InputDecoration(
                     labelText: "Last Working Date",
                     hintText: "Select expected last working day",
@@ -344,7 +382,7 @@ class _MyResignationScreenState extends ConsumerState<MyResignationScreen> {
                       context,
                     ).colorScheme.surfaceContainerLow,
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(fieldRadius),
                     ),
                   ),
                   onTap: pickDate,
@@ -356,6 +394,7 @@ class _MyResignationScreenState extends ConsumerState<MyResignationScreen> {
           SizedBox(
             width: double.infinity,
             child: FilledButton.icon(
+              style: FilledButton.styleFrom(shape: btnShape),
               onPressed: _isSubmitting ? null : submit,
               icon: const Icon(Icons.send_rounded),
               label: const Text("Submit Request"),
@@ -369,6 +408,10 @@ class _MyResignationScreenState extends ConsumerState<MyResignationScreen> {
   Widget _buildStatus(ResignationModel resignation) {
     final status = resignation.status;
     bool canApplyAgain = status == "Rejected" || status == "Withdrawn";
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
+    final filledShape = RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(isIOS ? 12 : 14),
+    );
 
     Color badgeColor() {
       switch (status) {
@@ -475,6 +518,7 @@ class _MyResignationScreenState extends ConsumerState<MyResignationScreen> {
             SizedBox(
               width: double.infinity,
               child: FilledButton.tonalIcon(
+                style: FilledButton.styleFrom(shape: filledShape),
                 onPressed: () => withdraw(resignation.id),
                 icon: const Icon(Icons.undo_rounded),
                 label: const Text("Withdraw Request"),
@@ -485,6 +529,7 @@ class _MyResignationScreenState extends ConsumerState<MyResignationScreen> {
             SizedBox(
               width: double.infinity,
               child: FilledButton.icon(
+                style: FilledButton.styleFrom(shape: filledShape),
                 onPressed: openForm,
                 icon: const Icon(Icons.refresh_rounded),
                 label: const Text("Apply Again"),
@@ -529,6 +574,7 @@ class _WorkflowStepper extends StatelessWidget {
     final isClosed = status == "Rejected" || status == "Withdrawn";
 
     if (isClosed) {
+      final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
       return Container(
         width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -536,7 +582,7 @@ class _WorkflowStepper extends StatelessWidget {
           color: Theme.of(
             context,
           ).colorScheme.errorContainer.withValues(alpha: 0.6),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(isIOS ? 10 : 12),
         ),
         child: Row(
           children: [

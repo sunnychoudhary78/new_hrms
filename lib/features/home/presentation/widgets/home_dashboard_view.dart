@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lms/features/attendance/mark_attendance/presentation/providers/mark_attendance_provider.dart';
@@ -41,12 +42,19 @@ class _HomeDashboardViewState extends ConsumerState<HomeDashboardView> {
       error: (e, _) => Center(child: Text('Error: $e')),
 
       data: (dashboard) {
+        final scrollPhysics = defaultTargetPlatform == TargetPlatform.iOS
+            ? const AlwaysScrollableScrollPhysics(
+                parent: BouncingScrollPhysics(),
+              )
+            : const AlwaysScrollableScrollPhysics();
+
         return RefreshIndicator(
           onRefresh: () async {
             _refreshAll();
             await Future.delayed(const Duration(milliseconds: 300));
           },
           child: ListView(
+            physics: scrollPhysics,
             padding: const EdgeInsets.all(16),
             children: [
               HomeWelcomeAttendanceCard(

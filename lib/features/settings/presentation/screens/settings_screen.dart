@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
@@ -13,6 +14,7 @@ class ThemeSettingsScreen extends ConsumerWidget {
     final selectedColor = ref.watch(appThemeProvider);
     final themeMode = ref.watch(themeModeProvider);
     final scheme = Theme.of(context).colorScheme;
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
 
     final isDark = themeMode == ThemeMode.dark;
 
@@ -28,13 +30,19 @@ class ThemeSettingsScreen extends ConsumerWidget {
     ];
 
     return Scaffold(
+      backgroundColor: scheme.surfaceContainerLowest,
       appBar: AppAppBar(title: "Theme Settings"),
       body: ListView(
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+        physics: isIOS
+            ? const BouncingScrollPhysics()
+            : const ClampingScrollPhysics(),
         padding: const EdgeInsets.all(20),
         children: [
           /// 🌗 THEME MODE SECTION
           _SectionCard(
             title: "Appearance",
+            isIOS: isIOS,
             child: Column(
               children: [
                 const SizedBox(height: 10),
@@ -43,7 +51,7 @@ class ThemeSettingsScreen extends ConsumerWidget {
                 Container(
                   decoration: BoxDecoration(
                     color: scheme.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(30),
+                    borderRadius: BorderRadius.circular(isIOS ? 22 : 30),
                   ),
                   padding: const EdgeInsets.all(4),
                   child: Row(
@@ -52,6 +60,7 @@ class ThemeSettingsScreen extends ConsumerWidget {
                         label: "Light",
                         icon: Icons.light_mode,
                         selected: !isDark,
+                        isIOS: isIOS,
                         onTap: () => ref
                             .read(themeModeProvider.notifier)
                             .changeMode(ThemeMode.light),
@@ -60,6 +69,7 @@ class ThemeSettingsScreen extends ConsumerWidget {
                         label: "Dark",
                         icon: Icons.dark_mode,
                         selected: isDark,
+                        isIOS: isIOS,
                         onTap: () => ref
                             .read(themeModeProvider.notifier)
                             .changeMode(ThemeMode.dark),
@@ -76,6 +86,7 @@ class ThemeSettingsScreen extends ConsumerWidget {
           /// 🎨 COLOR SECTION
           _SectionCard(
             title: "Primary Color",
+            isIOS: isIOS,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -105,8 +116,8 @@ class ThemeSettingsScreen extends ConsumerWidget {
                           boxShadow: isSelected
                               ? [
                                   BoxShadow(
-                                    color: color.withOpacity(.5),
-                                    blurRadius: 12,
+                                    color: color.withValues(alpha: 0.5),
+                                    blurRadius: isIOS ? 8 : 12,
                                   ),
                                 ]
                               : null,
@@ -123,6 +134,15 @@ class ThemeSettingsScreen extends ConsumerWidget {
 
                 /// 🌈 Advanced Picker Button
                 ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(isIOS ? 12 : 20),
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                  ),
                   icon: const Icon(Icons.palette),
                   label: const Text("Pick Custom Color"),
                   onPressed: () {
@@ -132,8 +152,18 @@ class ThemeSettingsScreen extends ConsumerWidget {
                         Color tempColor = selectedColor;
 
                         return AlertDialog(
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(
+                              isIOS ? 14 : 24,
+                            ),
+                          ),
                           title: const Text("Select Color"),
                           content: SingleChildScrollView(
+                            keyboardDismissBehavior:
+                                ScrollViewKeyboardDismissBehavior.onDrag,
+                            physics: isIOS
+                                ? const BouncingScrollPhysics()
+                                : const ClampingScrollPhysics(),
                             child: ColorPicker(
                               pickerColor: selectedColor,
                               onColorChanged: (color) {
@@ -150,6 +180,13 @@ class ThemeSettingsScreen extends ConsumerWidget {
                               child: const Text("Cancel"),
                             ),
                             ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(
+                                    isIOS ? 12 : 20,
+                                  ),
+                                ),
+                              ),
                               onPressed: () {
                                 ref
                                     .read(appThemeProvider.notifier)
@@ -172,6 +209,7 @@ class ThemeSettingsScreen extends ConsumerWidget {
           /// RESET BUTTON
           _SectionCard(
             title: "Reset",
+            isIOS: isIOS,
             child: Column(
               children: [
                 const SizedBox(height: 10),
@@ -179,6 +217,15 @@ class ThemeSettingsScreen extends ConsumerWidget {
                 SizedBox(
                   width: double.infinity,
                   child: OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(isIOS ? 12 : 20),
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                    ),
                     icon: const Icon(Icons.restart_alt),
                     label: const Text("Reset to Defaults"),
                     onPressed: () {
@@ -203,8 +250,13 @@ class ThemeSettingsScreen extends ConsumerWidget {
 class _SectionCard extends StatelessWidget {
   final String title;
   final Widget child;
+  final bool isIOS;
 
-  const _SectionCard({required this.title, required this.child});
+  const _SectionCard({
+    required this.title,
+    required this.child,
+    required this.isIOS,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -214,7 +266,7 @@ class _SectionCard extends StatelessWidget {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: scheme.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(isIOS ? 14 : 20),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -235,18 +287,21 @@ class _ModeButton extends StatelessWidget {
   final String label;
   final IconData icon;
   final bool selected;
+  final bool isIOS;
   final VoidCallback onTap;
 
   const _ModeButton({
     required this.label,
     required this.icon,
     required this.selected,
+    required this.isIOS,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final innerRadius = BorderRadius.circular(isIOS ? 18 : 26);
 
     return Expanded(
       child: GestureDetector(
@@ -256,7 +311,7 @@ class _ModeButton extends StatelessWidget {
           padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
             color: selected ? scheme.primary : Colors.transparent,
-            borderRadius: BorderRadius.circular(26),
+            borderRadius: innerRadius,
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,

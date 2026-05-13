@@ -1,5 +1,7 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lms/shared/widgets/app_bar.dart';
 import 'package:lms/shared/widgets/premium_feature_components.dart';
 import '../../data/models/expense_model.dart';
 import '../providers/expense_provider.dart';
@@ -25,9 +27,15 @@ class _MyExpensesScreenState extends ConsumerState<MyExpensesScreen> {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final expensesAsync = ref.watch(myExpensesProvider);
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
+    final scrollPhysics = isIOS
+        ? const AlwaysScrollableScrollPhysics(
+            parent: BouncingScrollPhysics(),
+          )
+        : const AlwaysScrollableScrollPhysics();
 
     return Scaffold(
-      appBar: AppBar(title: const Text("My Expenses"), elevation: 0),
+      appBar: const AppAppBar(title: "My Expenses"),
 
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
@@ -45,6 +53,9 @@ class _MyExpensesScreenState extends ConsumerState<MyExpensesScreen> {
             child: ListView.builder(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               scrollDirection: Axis.horizontal,
+              physics: isIOS
+                  ? const BouncingScrollPhysics()
+                  : const ClampingScrollPhysics(),
               itemCount: tabs.length,
               itemBuilder: (_, i) {
                 final tab = tabs[i];
@@ -64,7 +75,7 @@ class _MyExpensesScreenState extends ConsumerState<MyExpensesScreen> {
                     selectedColor: scheme.primary,
                     backgroundColor: scheme.surfaceContainerHighest,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(isIOS ? 12 : 14),
                     ),
                   ),
                 );
@@ -77,14 +88,14 @@ class _MyExpensesScreenState extends ConsumerState<MyExpensesScreen> {
               onRefresh: _refreshMyExpenses,
               child: expensesAsync.when(
                 loading: () => ListView(
-                  physics: const AlwaysScrollableScrollPhysics(),
+                  physics: scrollPhysics,
                   children: const [
                     SizedBox(height: 120),
                     Center(child: CircularProgressIndicator()),
                   ],
                 ),
                 error: (e, _) => ListView(
-                  physics: const AlwaysScrollableScrollPhysics(),
+                  physics: scrollPhysics,
                   padding: const EdgeInsets.all(16),
                   children: [Text("Error: $e", textAlign: TextAlign.center)],
                 ),
@@ -107,7 +118,7 @@ class _MyExpensesScreenState extends ConsumerState<MyExpensesScreen> {
 
                   if (filtered.isEmpty) {
                     return ListView(
-                      physics: const AlwaysScrollableScrollPhysics(),
+                      physics: scrollPhysics,
                       padding: const EdgeInsets.fromLTRB(12, 8, 12, 100),
                       children: const [
                         SizedBox(height: 80),
@@ -122,7 +133,9 @@ class _MyExpensesScreenState extends ConsumerState<MyExpensesScreen> {
                   }
 
                   return ListView.separated(
-                    physics: const AlwaysScrollableScrollPhysics(),
+                    physics: scrollPhysics,
+                    keyboardDismissBehavior:
+                        ScrollViewKeyboardDismissBehavior.onDrag,
                     padding: const EdgeInsets.fromLTRB(12, 8, 12, 100),
                     itemCount: filtered.length,
                     separatorBuilder: (_, __) => const SizedBox(height: 8),
@@ -187,8 +200,10 @@ class _MyExpensesScreenState extends ConsumerState<MyExpensesScreen> {
 
   Widget _buildExpenseTile(ExpenseClaim exp) {
     final scheme = Theme.of(context).colorScheme;
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
+    final tileRadius = isIOS ? 14.0 : 16.0;
     return InkWell(
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(tileRadius),
       onTap: () async {
         await Navigator.pushNamed(context, "/expenses/detail", arguments: exp);
         ref.invalidate(myExpensesProvider);
@@ -200,7 +215,7 @@ class _MyExpensesScreenState extends ConsumerState<MyExpensesScreen> {
               width: 44,
               height: 44,
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(isIOS ? 10 : 12),
                 color: scheme.primaryContainer,
               ),
               child: Icon(Icons.payments_outlined, color: scheme.primary),
@@ -229,6 +244,11 @@ class _MyExpensesScreenState extends ConsumerState<MyExpensesScreen> {
               IconButton(
                 tooltip: "Edit draft",
                 icon: const Icon(Icons.edit_outlined),
+                style: IconButton.styleFrom(
+                  splashFactory: isIOS
+                      ? NoSplash.splashFactory
+                      : InkSplash.splashFactory,
+                ),
                 onPressed: () async {
                   await Navigator.pushNamed(
                     context,

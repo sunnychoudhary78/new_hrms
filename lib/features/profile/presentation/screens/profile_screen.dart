@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
@@ -32,9 +33,16 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   /// SHOW IMAGE SOURCE OPTIONS
   Future<void> _showImageSourceOptions() async {
     final scheme = Theme.of(context).colorScheme;
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
 
-    await showModalBottomSheet(
+    await showModalBottomSheet<void>(
       context: context,
+      showDragHandle: isIOS,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(isIOS ? 12 : 20),
+        ),
+      ),
       builder: (_) {
         return SafeArea(
           child: Column(
@@ -137,6 +145,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
 
     final state = ref.watch(authProvider);
 
@@ -195,7 +204,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         onRefresh: _refreshUser,
 
         child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+          physics: isIOS
+              ? const AlwaysScrollableScrollPhysics(
+                  parent: BouncingScrollPhysics(),
+                )
+              : const AlwaysScrollableScrollPhysics(),
 
           child: Column(
             children: [
@@ -230,6 +244,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           label: const Text(
                             "View as ID Card",
                             style: TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(
+                                isIOS ? 12 : 16,
+                              ),
+                            ),
                           ),
                           onPressed: () {
                             Navigator.push(

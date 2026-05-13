@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -143,6 +144,7 @@ class _ViewAttendanceScreenState extends ConsumerState<ViewAttendanceScreen> {
 
           ////////////////////////////////////////////////////////////
 
+          final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
           return RefreshIndicator(
             onRefresh: () async {
               await ref
@@ -157,8 +159,13 @@ class _ViewAttendanceScreenState extends ConsumerState<ViewAttendanceScreen> {
             },
 
             child: SingleChildScrollView(
-              physics: const AlwaysScrollableScrollPhysics(),
-
+              keyboardDismissBehavior:
+                  ScrollViewKeyboardDismissBehavior.onDrag,
+              physics: isIOS
+                  ? const AlwaysScrollableScrollPhysics(
+                      parent: BouncingScrollPhysics(),
+                    )
+                  : const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
 
               child: Column(
@@ -269,7 +276,7 @@ class _ViewAttendanceScreenState extends ConsumerState<ViewAttendanceScreen> {
                         padding: const EdgeInsets.symmetric(vertical: 14),
 
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
+                          borderRadius: BorderRadius.circular(isIOS ? 12 : 14),
                         ),
                       ),
 
@@ -335,13 +342,16 @@ class _Section extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
 
     return Card(
       elevation: 0,
 
       color: scheme.surface,
 
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(isIOS ? 14 : 18),
+      ),
 
       child: Padding(
         padding: const EdgeInsets.all(16),

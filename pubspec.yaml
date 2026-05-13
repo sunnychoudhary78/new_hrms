@@ -69,6 +69,7 @@ dependencies:
   printing: ^5.14.3
   open_filex: ^4.7.0
   encrypt: ^5.0.3
+  upgrader: ^13.2.0
 
 dev_dependencies:
   flutter_test:

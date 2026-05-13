@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lms/features/auth/presentation/providers/auth_provider.dart';
@@ -10,6 +11,7 @@ class MarkAttendanceHeader extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
 
     final authState = ref.watch(authProvider);
     final profile = authState.profile;
@@ -26,7 +28,7 @@ class MarkAttendanceHeader extends ConsumerWidget {
         gradient: LinearGradient(
           colors: [scheme.primary, scheme.primaryContainer],
         ),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(isIOS ? 16 : 20),
       ),
       child: Row(
         children: [

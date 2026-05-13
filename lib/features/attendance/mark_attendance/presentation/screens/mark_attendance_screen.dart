@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -81,7 +82,13 @@ class _MarkAttendanceScreenState extends ConsumerState<MarkAttendanceScreen> {
 
               final progress = _workProgressFromPunchIn(punchInTime, officeEnd);
 
+              final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
               return SingleChildScrollView(
+                keyboardDismissBehavior:
+                    ScrollViewKeyboardDismissBehavior.onDrag,
+                physics: isIOS
+                    ? const BouncingScrollPhysics()
+                    : const ClampingScrollPhysics(),
                 padding: const EdgeInsets.all(20),
                 child: Column(
                   children: [

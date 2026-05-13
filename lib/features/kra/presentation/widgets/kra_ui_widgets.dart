@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:lms/features/kra/data/models/kra_model.dart';
 import 'package:lms/shared/widgets/premium_feature_components.dart';
@@ -55,11 +56,12 @@ class KraMetaPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         color: scheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(isIOS ? 14 : 20),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -80,8 +82,11 @@ class KraEmptyList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
     return ListView(
-      physics: const AlwaysScrollableScrollPhysics(),
+      physics: isIOS
+          ? const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics())
+          : const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.all(24),
       children: [
         SizedBox(height: MediaQuery.sizeOf(context).height * 0.22),
@@ -104,8 +109,11 @@ class KraErrorList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
     return ListView(
-      physics: const AlwaysScrollableScrollPhysics(),
+      physics: isIOS
+          ? const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics())
+          : const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.all(16),
       children: [Text(message, textAlign: TextAlign.center)],
     );
@@ -122,6 +130,8 @@ class KraAssignmentCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
+    final innerRadius = BorderRadius.circular(isIOS ? 12 : 16);
     return PremiumCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -188,7 +198,7 @@ class KraAssignmentCard extends StatelessWidget {
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: scheme.surfaceContainerLowest,
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: innerRadius,
               border: Border.all(color: scheme.outlineVariant),
             ),
             child: Column(
@@ -257,6 +267,7 @@ class KraStarRatingPicker extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
     final selected = value.clamp(0, 5);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -278,6 +289,11 @@ class KraStarRatingPicker extends StatelessWidget {
               visualDensity: VisualDensity.compact,
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+              style: IconButton.styleFrom(
+                splashFactory: isIOS
+                    ? NoSplash.splashFactory
+                    : InkSplash.splashFactory,
+              ),
               onPressed: () => onChanged(starIndex),
               icon: Icon(
                 filled ? Icons.star_rounded : Icons.star_outline_rounded,

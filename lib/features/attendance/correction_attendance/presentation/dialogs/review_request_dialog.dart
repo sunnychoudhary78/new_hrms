@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lms/core/providers/global_loading_provider.dart';
@@ -8,9 +9,12 @@ void showReviewDialog({
   required BuildContext context,
   required AttendanceRequest req,
 }) {
+  final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
   showModalBottomSheet(
     context: context,
     isScrollControlled: true,
+    useSafeArea: true,
+    showDragHandle: isIOS,
     backgroundColor: Colors.transparent,
     builder: (_) => _ReviewDialog(req: req),
   );
@@ -69,6 +73,11 @@ class _ReviewDialogState extends ConsumerState<_ReviewDialog> {
     final scheme = Theme.of(context).colorScheme;
     final req = widget.req;
     final isSubmitting = _submittingAction != null;
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
+    final topRadius = isIOS ? 14.0 : 20.0;
+    final btnShape = RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(isIOS ? 12 : 20),
+    );
 
     return SafeArea(
       child: AnimatedPadding(
@@ -79,9 +88,13 @@ class _ReviewDialogState extends ConsumerState<_ReviewDialog> {
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
             color: scheme.surface,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(topRadius)),
           ),
           child: SingleChildScrollView(
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+            physics: isIOS
+                ? const BouncingScrollPhysics()
+                : const ClampingScrollPhysics(),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -89,7 +102,7 @@ class _ReviewDialogState extends ConsumerState<_ReviewDialog> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(isIOS ? 12 : 14),
                   color: scheme.primaryContainer,
                 ),
                 child: Row(
@@ -122,6 +135,11 @@ class _ReviewDialogState extends ConsumerState<_ReviewDialog> {
                     ),
                   ),
                   IconButton(
+                    style: IconButton.styleFrom(
+                      splashFactory: isIOS
+                          ? NoSplash.splashFactory
+                          : InkSplash.splashFactory,
+                    ),
                     icon: Icon(Icons.close, color: scheme.onSurface),
                     onPressed: isSubmitting
                         ? null
@@ -152,8 +170,13 @@ class _ReviewDialogState extends ConsumerState<_ReviewDialog> {
                 maxLines: 3,
                 decoration: InputDecoration(
                   labelText: "Manager Note (optional)",
-                  border: const OutlineInputBorder(),
+                  filled: true,
+                  fillColor: scheme.surfaceContainerLow,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(isIOS ? 12 : 16),
+                  ),
                   focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(isIOS ? 12 : 16),
                     borderSide: BorderSide(color: scheme.primary),
                   ),
                 ),
@@ -165,6 +188,7 @@ class _ReviewDialogState extends ConsumerState<_ReviewDialog> {
                 children: [
                   Expanded(
                     child: FilledButton.tonalIcon(
+                      style: FilledButton.styleFrom(shape: btnShape),
                       onPressed: isSubmitting ? null : () => _update('reject'),
                       icon: const Icon(Icons.close_rounded),
                       label: _submittingAction == 'reject'
@@ -179,6 +203,7 @@ class _ReviewDialogState extends ConsumerState<_ReviewDialog> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: FilledButton.icon(
+                      style: FilledButton.styleFrom(shape: btnShape),
                       onPressed: isSubmitting ? null : () => _update('approve'),
                       icon: const Icon(Icons.check_rounded),
                       label: _submittingAction == 'approve'

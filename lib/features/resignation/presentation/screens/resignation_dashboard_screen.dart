@@ -1,8 +1,10 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lms/core/providers/global_loading_provider.dart';
 import 'package:lms/features/resignation/data/resignation_list_query.dart';
 import 'package:lms/features/resignation/presentation/providers/resignation_providers.dart';
+import 'package:lms/shared/widgets/app_bar.dart';
 import 'package:lms/shared/widgets/premium_feature_components.dart';
 
 class ResignationDashboardScreen extends ConsumerStatefulWidget {
@@ -97,9 +99,18 @@ class _ResignationDashboardScreenState
       ResignationRole.hr => "HR",
       ResignationRole.employee => "Employee",
     };
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
+    final scrollPhysics = isIOS
+        ? const AlwaysScrollableScrollPhysics(
+            parent: BouncingScrollPhysics(),
+          )
+        : const AlwaysScrollableScrollPhysics();
+    final actionBtnShape = RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(isIOS ? 12 : 14),
+    );
 
     return Scaffold(
-      appBar: AppBar(title: const Text("Resignation Dashboard")),
+      appBar: const AppAppBar(title: "Resignation Dashboard"),
 
       body: Column(
         children: [
@@ -118,6 +129,9 @@ class _ResignationDashboardScreenState
                     return ChoiceChip(
                       label: Text(q.label),
                       selected: selected,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(isIOS ? 12 : 14),
+                      ),
                       onSelected: (sel) {
                         if (sel) {
                           ref
@@ -136,7 +150,7 @@ class _ResignationDashboardScreenState
               onRefresh: _onRefresh,
               child: resignationsAsync.when(
                 loading: () => ListView(
-                  physics: const AlwaysScrollableScrollPhysics(),
+                  physics: scrollPhysics,
                   children: const [
                     SizedBox(
                       height: 280,
@@ -146,7 +160,7 @@ class _ResignationDashboardScreenState
                 ),
 
                 error: (e, _) => ListView(
-                  physics: const AlwaysScrollableScrollPhysics(),
+                  physics: scrollPhysics,
                   children: [
                     SizedBox(
                       height: 280,
@@ -158,7 +172,7 @@ class _ResignationDashboardScreenState
                 data: (list) {
                   if (role == ResignationRole.employee) {
                     return ListView(
-                      physics: const AlwaysScrollableScrollPhysics(),
+                      physics: scrollPhysics,
                       children: const [
                         SizedBox(
                           height: 280,
@@ -174,7 +188,7 @@ class _ResignationDashboardScreenState
 
                   if (list.isEmpty) {
                     return ListView(
-                      physics: const AlwaysScrollableScrollPhysics(),
+                      physics: scrollPhysics,
                       children: [
                         SizedBox(
                           height: 280,
@@ -191,7 +205,9 @@ class _ResignationDashboardScreenState
                   }
 
                   return ListView.builder(
-                    physics: const AlwaysScrollableScrollPhysics(),
+                    physics: scrollPhysics,
+                    keyboardDismissBehavior:
+                        ScrollViewKeyboardDismissBehavior.onDrag,
                     itemCount: list.length,
                     itemBuilder: (_, i) {
                       final r = list[i];
@@ -255,6 +271,9 @@ class _ResignationDashboardScreenState
                                   children: [
                                     Expanded(
                                       child: FilledButton.tonalIcon(
+                                        style: FilledButton.styleFrom(
+                                          shape: actionBtnShape,
+                                        ),
                                         onPressed: _isActionLoading
                                             ? null
                                             : () => showActionDialog(
@@ -268,6 +287,9 @@ class _ResignationDashboardScreenState
                                     const SizedBox(width: 10),
                                     Expanded(
                                       child: FilledButton.icon(
+                                        style: FilledButton.styleFrom(
+                                          shape: actionBtnShape,
+                                        ),
                                         onPressed: _isActionLoading
                                             ? null
                                             : () => showActionDialog(
@@ -352,9 +374,12 @@ class _ResignationActionDialogState extends State<_ResignationActionDialog> {
   @override
   Widget build(BuildContext context) {
     final canProceed = _controller.text.trim().isNotEmpty;
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
 
     return AlertDialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(isIOS ? 14 : 24),
+      ),
       title: Text(
         widget.isApprove ? "Approve Resignation" : "Reject Resignation",
       ),
@@ -366,12 +391,15 @@ class _ResignationActionDialogState extends State<_ResignationActionDialog> {
           maxLines: 5,
           onChanged: (_) => setState(() {}),
           textCapitalization: TextCapitalization.sentences,
+          textInputAction: TextInputAction.done,
           decoration: InputDecoration(
             labelText: "Remarks *",
             helperText: "Required - visible to the employee and on record",
             filled: true,
             fillColor: Theme.of(context).colorScheme.surfaceContainerLow,
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(isIOS ? 12 : 16),
+            ),
           ),
         ),
       ),
@@ -434,11 +462,12 @@ class _MetaPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(isIOS ? 16 : 20),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,

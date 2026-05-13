@@ -1,5 +1,7 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lms/shared/widgets/app_bar.dart';
 import 'package:lms/shared/widgets/premium_feature_components.dart';
 import '../../data/models/expense_model.dart';
 import '../providers/expense_provider.dart';
@@ -39,6 +41,9 @@ class _ExpensesDashboardScreenState
         const SizedBox(height: 8),
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
+          physics: defaultTargetPlatform == TargetPlatform.iOS
+              ? const BouncingScrollPhysics()
+              : const ClampingScrollPhysics(),
           child: Row(
             children: [
               for (final s in choices) ...[
@@ -66,6 +71,12 @@ class _ExpensesDashboardScreenState
     final scheme = Theme.of(context).colorScheme;
     final expensesAsync = ref.watch(expenseDashboardProvider);
     final role = ref.watch(expenseDashboardRoleProvider);
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
+    final scrollPhysics = isIOS
+        ? const AlwaysScrollableScrollPhysics(
+            parent: BouncingScrollPhysics(),
+          )
+        : const AlwaysScrollableScrollPhysics();
 
     final roleTitle = switch (role) {
       ExpenseDashboardRole.manager => "Manager",
@@ -75,26 +86,26 @@ class _ExpensesDashboardScreenState
     };
 
     return Scaffold(
-      appBar: AppBar(title: const Text("Expenses Dashboard"), elevation: 0),
+      appBar: const AppAppBar(title: "Expenses Dashboard"),
       body: RefreshIndicator(
         onRefresh: _refreshDashboard,
         child: expensesAsync.when(
           loading: () => ListView(
-            physics: const AlwaysScrollableScrollPhysics(),
+            physics: scrollPhysics,
             children: const [
               SizedBox(height: 200),
               Center(child: CircularProgressIndicator()),
             ],
           ),
           error: (e, _) => ListView(
-            physics: const AlwaysScrollableScrollPhysics(),
+            physics: scrollPhysics,
             padding: const EdgeInsets.all(16),
             children: [
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   color: scheme.errorContainer,
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(isIOS ? 12 : 14),
                 ),
                 child: Text(
                   "Unable to load expenses dashboard.\n$e",
@@ -106,7 +117,7 @@ class _ExpensesDashboardScreenState
           data: (expenses) {
             if (role == ExpenseDashboardRole.employee) {
               return ListView(
-                physics: const AlwaysScrollableScrollPhysics(),
+                physics: scrollPhysics,
                 children: const [
                   SizedBox(height: 200),
                   Center(child: Text("No dashboard access for employee role")),
@@ -124,7 +135,8 @@ class _ExpensesDashboardScreenState
             );
 
             return ListView(
-              physics: const AlwaysScrollableScrollPhysics(),
+              physics: scrollPhysics,
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
               padding: const EdgeInsets.all(16),
               children: [
                 PremiumFeatureHeader(
@@ -182,9 +194,11 @@ class _ExpensesDashboardScreenState
 
   Widget _buildExpenseTile(ExpenseClaim expense) {
     final scheme = Theme.of(context).colorScheme;
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
+    final tileRadius = isIOS ? 14.0 : 16.0;
 
     return InkWell(
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(tileRadius),
       onTap: () async {
         await Navigator.pushNamed(
           context,
@@ -202,7 +216,7 @@ class _ExpensesDashboardScreenState
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(isIOS ? 10 : 12),
                   color: scheme.primaryContainer,
                 ),
                 child: Icon(Icons.receipt_long_outlined, color: scheme.primary),
@@ -259,10 +273,11 @@ class _MetricCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(isIOS ? 12 : 14),
         color: scheme.surfaceContainerLow,
         border: Border.all(color: scheme.outlineVariant),
       ),

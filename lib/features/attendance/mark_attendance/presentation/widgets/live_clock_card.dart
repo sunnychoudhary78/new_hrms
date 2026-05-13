@@ -1,4 +1,6 @@
 import 'dart:math' as math;
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 class LiveClockCard extends StatelessWidget {
@@ -20,16 +22,17 @@ class LiveClockCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
 
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: scheme.surface,
-        borderRadius: BorderRadius.circular(30),
+        borderRadius: BorderRadius.circular(isIOS ? 22 : 30),
         boxShadow: [
           BoxShadow(
-            color: scheme.shadow.withOpacity(.08),
-            blurRadius: 24,
+            color: scheme.shadow.withValues(alpha: isIOS ? 0.05 : 0.08),
+            blurRadius: isIOS ? 14 : 24,
             offset: const Offset(0, 8),
           ),
         ],

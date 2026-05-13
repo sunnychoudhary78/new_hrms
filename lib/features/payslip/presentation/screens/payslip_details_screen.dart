@@ -1,7 +1,9 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:lms/core/network/api_constants.dart';
 import 'package:lms/core/services/pdf_service.dart';
 import 'package:lms/features/payslip/data/models/payslip_model.dart';
+import 'package:lms/shared/widgets/app_bar.dart';
 
 class PayslipDetailScreen extends StatelessWidget {
   final Payslip payslip;
@@ -14,21 +16,33 @@ class PayslipDetailScreen extends StatelessWidget {
         ? "${ApiConstants.companyLogoBaseUrl}${payslip.company.logo}"
         : null;
 
+    final scheme = Theme.of(context).colorScheme;
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
+    final outerRadius = BorderRadius.circular(isIOS ? 12 : 16);
+    final innerRadius = BorderRadius.circular(isIOS ? 10 : 12);
+    final logoRadius = BorderRadius.circular(isIOS ? 6 : 8);
+
     return Scaffold(
-      appBar: AppBar(title: const Text("Payslip")),
+      appBar: const AppAppBar(title: "Payslip"),
       body: SingleChildScrollView(
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+        physics: isIOS
+            ? const BouncingScrollPhysics()
+            : const ClampingScrollPhysics(),
         padding: const EdgeInsets.all(16),
         child: Card(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: outerRadius),
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 /// HEADER
-                _HeaderSection(logoUrl: logoUrl, payslip: payslip),
+                _HeaderSection(
+                  logoUrl: logoUrl,
+                  payslip: payslip,
+                  logoRadius: logoRadius,
+                ),
 
                 const Divider(height: 24),
 
@@ -38,12 +52,20 @@ class PayslipDetailScreen extends StatelessWidget {
                 const Divider(height: 24),
 
                 /// SALARY SUMMARY
-                _SalarySummary(payslip: payslip),
+                _SalarySummary(
+                  payslip: payslip,
+                  borderRadius: innerRadius,
+                  fillColor: scheme.surfaceContainerHighest,
+                ),
 
                 const Divider(height: 24),
 
                 /// BREAKDOWN
-                _BreakdownSection(payslip: payslip),
+                _BreakdownSection(
+                  payslip: payslip,
+                  borderRadius: innerRadius,
+                  borderColor: scheme.outlineVariant,
+                ),
 
                 const SizedBox(height: 24),
 
@@ -51,6 +73,12 @@ class PayslipDetailScreen extends StatelessWidget {
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(isIOS ? 12 : 20),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
                     icon: const Icon(Icons.download),
                     label: const Text("Download Payslip"),
                     onPressed: () async {
@@ -74,16 +102,22 @@ class PayslipDetailScreen extends StatelessWidget {
 class _HeaderSection extends StatelessWidget {
   final String? logoUrl;
   final Payslip payslip;
+  final BorderRadius logoRadius;
 
-  const _HeaderSection({this.logoUrl, required this.payslip});
+  const _HeaderSection({
+    this.logoUrl,
+    required this.payslip,
+    required this.logoRadius,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Row(
       children: [
         if (logoUrl != null)
           ClipRRect(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: logoRadius,
             child: Image.network(logoUrl!, height: 50, width: 50),
           )
         else
@@ -102,7 +136,7 @@ class _HeaderSection extends StatelessWidget {
               ),
               Text(
                 payslip.company.address,
-                style: const TextStyle(fontSize: 12, color: Colors.grey),
+                style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
               ),
             ],
           ),
@@ -139,16 +173,22 @@ class _InfoSection extends StatelessWidget {
 
 class _SalarySummary extends StatelessWidget {
   final Payslip payslip;
+  final BorderRadius borderRadius;
+  final Color fillColor;
 
-  const _SalarySummary({required this.payslip});
+  const _SalarySummary({
+    required this.payslip,
+    required this.borderRadius,
+    required this.fillColor,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        color: Colors.grey.shade100,
+        borderRadius: borderRadius,
+        color: fillColor,
       ),
       child: Column(
         children: [
@@ -167,8 +207,14 @@ class _SalarySummary extends StatelessWidget {
 
 class _BreakdownSection extends StatelessWidget {
   final Payslip payslip;
+  final BorderRadius borderRadius;
+  final Color borderColor;
 
-  const _BreakdownSection({required this.payslip});
+  const _BreakdownSection({
+    required this.payslip,
+    required this.borderRadius,
+    required this.borderColor,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -178,6 +224,8 @@ class _BreakdownSection extends StatelessWidget {
         /// EARNINGS
         _sectionCard(
           title: "Earnings",
+          borderRadius: borderRadius,
+          borderColor: borderColor,
           children: payslip.earnings.entries
               .map((e) => _amountRow(_formatKey(e.key), _toDouble(e.value)))
               .toList(),
@@ -188,6 +236,8 @@ class _BreakdownSection extends StatelessWidget {
         /// DEDUCTIONS
         _sectionCard(
           title: "Deductions",
+          borderRadius: borderRadius,
+          borderColor: borderColor,
           children: payslip.deductions.entries
               .map((e) => _amountRow(_formatKey(e.key), _toDouble(e.value)))
               .toList(),
@@ -197,13 +247,18 @@ class _BreakdownSection extends StatelessWidget {
   }
 }
 
-Widget _sectionCard({required String title, required List<Widget> children}) {
+Widget _sectionCard({
+  required String title,
+  required BorderRadius borderRadius,
+  required Color borderColor,
+  required List<Widget> children,
+}) {
   return Container(
     width: double.infinity,
     padding: const EdgeInsets.all(12),
     decoration: BoxDecoration(
-      borderRadius: BorderRadius.circular(12),
-      border: Border.all(color: Colors.grey.shade300),
+      borderRadius: borderRadius,
+      border: Border.all(color: borderColor),
     ),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,

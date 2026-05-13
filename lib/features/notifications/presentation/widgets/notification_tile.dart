@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lms/core/theme/app_theme_provider.dart'; // adjust path if different
@@ -23,35 +24,42 @@ class NotificationTile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
+    final outerRadius = BorderRadius.circular(isIOS ? 14 : 18);
+    final iconBoxRadius = BorderRadius.circular(isIOS ? 12 : 14);
+    final stripeRadius = BorderRadius.only(
+      topLeft: Radius.circular(isIOS ? 14 : 18),
+      bottomLeft: Radius.circular(isIOS ? 14 : 18),
+    );
 
     /// dynamic app theme color
     final primaryColor = ref.watch(appThemeProvider);
 
     final iconColor = _getIconColor(icon, primaryColor);
     final bgColor = _getBackgroundColor(icon, primaryColor, scheme);
-    final iconBg = iconColor.withOpacity(.12);
+    final iconBg = iconColor.withValues(alpha: 0.12);
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 180),
       curve: Curves.easeOut,
       decoration: BoxDecoration(
         color: isUnread ? bgColor : scheme.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: outerRadius,
         border: Border.all(
           color: isUnread
-              ? iconColor.withOpacity(.15)
-              : scheme.outlineVariant.withOpacity(.35),
+              ? iconColor.withValues(alpha: 0.15)
+              : scheme.outlineVariant.withValues(alpha: 0.35),
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(.04),
-            blurRadius: 14,
+            color: Colors.black.withValues(alpha: isIOS ? 0.03 : 0.04),
+            blurRadius: isIOS ? 8 : 14,
             offset: const Offset(0, 6),
           ),
         ],
       ),
       child: InkWell(
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: outerRadius,
         onTap: onTap,
         child: IntrinsicHeight(
           child: Row(
@@ -62,10 +70,7 @@ class NotificationTile extends ConsumerWidget {
                   width: 4,
                   decoration: BoxDecoration(
                     color: iconColor,
-                    borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(18),
-                      bottomLeft: Radius.circular(18),
-                    ),
+                    borderRadius: stripeRadius,
                   ),
                 ),
 
@@ -81,7 +86,7 @@ class NotificationTile extends ConsumerWidget {
                         height: 46,
                         decoration: BoxDecoration(
                           color: iconBg,
-                          borderRadius: BorderRadius.circular(14),
+                          borderRadius: iconBoxRadius,
                         ),
                         child: Icon(icon, color: iconColor, size: 22),
                       ),
@@ -132,8 +137,8 @@ class NotificationTile extends ConsumerWidget {
                                 style: TextStyle(
                                   fontSize: 11.5,
                                   fontWeight: FontWeight.w500,
-                                  color: scheme.onSurfaceVariant.withOpacity(
-                                    .8,
+                                  color: scheme.onSurfaceVariant.withValues(
+                                    alpha: 0.8,
                                   ),
                                 ),
                               ),
@@ -182,37 +187,37 @@ class NotificationTile extends ConsumerWidget {
     ColorScheme scheme,
   ) {
     if (icon == Icons.login) {
-      return const Color(0xFF16A34A).withOpacity(.08);
+      return const Color(0xFF16A34A).withValues(alpha: 0.08);
     }
 
     if (icon == Icons.logout) {
-      return const Color(0xFFF59E0B).withOpacity(.08);
+      return const Color(0xFFF59E0B).withValues(alpha: 0.08);
     }
 
     if (icon == Icons.timer_off) {
-      return const Color(0xFFDC2626).withOpacity(.08);
+      return const Color(0xFFDC2626).withValues(alpha: 0.08);
     }
 
     if (icon == Icons.edit_calendar) {
-      return const Color(0xFF7C3AED).withOpacity(.08);
+      return const Color(0xFF7C3AED).withValues(alpha: 0.08);
     }
 
     if (icon == Icons.event_note) {
-      return const Color(0xFF2563EB).withOpacity(.08);
+      return const Color(0xFF2563EB).withValues(alpha: 0.08);
     }
 
     if (icon == Icons.check_circle) {
-      return const Color(0xFF059669).withOpacity(.08);
+      return const Color(0xFF059669).withValues(alpha: 0.08);
     }
 
     if (icon == Icons.warning) {
-      return const Color(0xFFEA580C).withOpacity(.08);
+      return const Color(0xFFEA580C).withValues(alpha: 0.08);
     }
 
     if (icon == Icons.home_work) {
-      return const Color(0xFF4F46E5).withOpacity(.08);
+      return const Color(0xFF4F46E5).withValues(alpha: 0.08);
     }
 
-    return primaryColor.withOpacity(.06);
+    return primaryColor.withValues(alpha: 0.06);
   }
 }

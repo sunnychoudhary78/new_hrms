@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 class LeaveApproveAppBar extends StatelessWidget
@@ -10,6 +11,7 @@ class LeaveApproveAppBar extends StatelessWidget
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
 
     return AppBar(
       elevation: 0,
@@ -19,7 +21,7 @@ class LeaveApproveAppBar extends StatelessWidget
         "Leave Requests",
         style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18),
       ),
-      centerTitle: false,
+      centerTitle: isIOS,
     );
   }
 }

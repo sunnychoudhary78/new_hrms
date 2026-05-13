@@ -1,8 +1,11 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lms/core/services/pdf_service.dart';
 import 'package:lms/features/payslip/data/models/payslip_model.dart';
 import 'package:lms/features/payslip/presentation/screens/payslip_details_screen.dart';
+import 'package:lms/shared/widgets/app_bar.dart';
+
 import '../providers/payslip_provider.dart';
 
 class PayslipListScreen extends ConsumerStatefulWidget {
@@ -28,10 +31,11 @@ class _PayslipListScreenState extends ConsumerState<PayslipListScreen> {
   Widget build(BuildContext context) {
     final payslipsAsync = ref.watch(payslipsProvider);
     final scheme = Theme.of(context).colorScheme;
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
 
     return Scaffold(
       backgroundColor: scheme.surfaceContainerLowest,
-      appBar: AppBar(title: const Text("My Payslips")),
+      appBar: const AppAppBar(title: "My Payslips"),
       body: payslipsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Padding(
@@ -40,7 +44,7 @@ class _PayslipListScreenState extends ConsumerState<PayslipListScreen> {
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: scheme.errorContainer,
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(isIOS ? 12 : 14),
             ),
             child: Text(
               "Unable to load payslips.\n$e",
@@ -55,7 +59,7 @@ class _PayslipListScreenState extends ConsumerState<PayslipListScreen> {
               child: Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(isIOS ? 12 : 16),
                   color: scheme.surfaceContainerLow,
                   border: Border.all(color: scheme.outlineVariant),
                 ),
@@ -83,7 +87,7 @@ class _PayslipListScreenState extends ConsumerState<PayslipListScreen> {
                 margin: const EdgeInsets.fromLTRB(16, 14, 16, 10),
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(18),
+                  borderRadius: BorderRadius.circular(isIOS ? 14 : 18),
                   gradient: LinearGradient(
                     colors: [
                       scheme.primaryContainer,
@@ -103,6 +107,7 @@ class _PayslipListScreenState extends ConsumerState<PayslipListScreen> {
               _MonthFilter(
                 payslips: payslips,
                 selectedMonth: selectedMonth,
+                isIOS: isIOS,
                 onChanged: (m) => setState(() => selectedMonth = m),
               ),
 
@@ -114,10 +119,17 @@ class _PayslipListScreenState extends ConsumerState<PayslipListScreen> {
                   child: filtered.isEmpty
                       ? const Center(child: Text("No data for selected month"))
                       : ListView.builder(
+                          physics: isIOS
+                              ? const AlwaysScrollableScrollPhysics(
+                                  parent: BouncingScrollPhysics(),
+                                )
+                              : const AlwaysScrollableScrollPhysics(),
                           padding: const EdgeInsets.all(16),
                           itemCount: filtered.length,
-                          itemBuilder: (_, i) =>
-                              _PayslipCard(payslip: filtered[i]),
+                          itemBuilder: (_, i) => _PayslipCard(
+                            payslip: filtered[i],
+                            isIOS: isIOS,
+                          ),
                         ),
                 ),
               ),
@@ -132,11 +144,13 @@ class _PayslipListScreenState extends ConsumerState<PayslipListScreen> {
 class _MonthFilter extends StatelessWidget {
   final List<Payslip> payslips;
   final int? selectedMonth;
+  final bool isIOS;
   final Function(int?) onChanged;
 
   const _MonthFilter({
     required this.payslips,
     required this.selectedMonth,
+    required this.isIOS,
     required this.onChanged,
   });
 
@@ -148,6 +162,9 @@ class _MonthFilter extends StatelessWidget {
       height: 60,
       child: ListView(
         scrollDirection: Axis.horizontal,
+        physics: isIOS
+            ? const BouncingScrollPhysics()
+            : const ClampingScrollPhysics(),
         padding: const EdgeInsets.symmetric(horizontal: 12),
         children: [
           _chip("All", selectedMonth == null, () => onChanged(null)),
@@ -174,18 +191,21 @@ class _MonthFilter extends StatelessWidget {
 
 class _PayslipCard extends StatelessWidget {
   final Payslip payslip;
+  final bool isIOS;
 
-  const _PayslipCard({required this.payslip});
+  const _PayslipCard({required this.payslip, required this.isIOS});
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final isPublished = payslip.status.toLowerCase() == 'published';
+    final cardRadius = BorderRadius.circular(isIOS ? 12 : 16);
+    final pillRadius = BorderRadius.circular(isIOS ? 14 : 20);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: cardRadius,
         color: scheme.surfaceContainerLow,
         border: Border.all(color: scheme.outlineVariant),
       ),
@@ -214,7 +234,7 @@ class _PayslipCard extends StatelessWidget {
                     color: isPublished
                         ? Colors.green.withValues(alpha: 0.14)
                         : Colors.orange.withValues(alpha: 0.14),
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: pillRadius,
                   ),
                   child: Text(
                     payslip.status.toUpperCase(),

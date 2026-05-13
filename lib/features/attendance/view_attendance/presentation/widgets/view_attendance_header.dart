@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../auth/presentation/providers/auth_provider.dart';
@@ -8,6 +9,11 @@ class ViewAttendanceHeader extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
+    final headerRadius = BorderRadius.circular(isIOS ? 18 : 22);
+    final blur = isIOS ? 10.0 : 16.0;
+    final shadowAlpha = isIOS ? 0.12 : 0.2;
+
     final auth = ref.watch(authProvider);
 
     final profile = auth.profile;
@@ -22,14 +28,14 @@ class ViewAttendanceHeader extends ConsumerWidget {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: headerRadius,
         gradient: LinearGradient(
           colors: [scheme.primary, scheme.primaryContainer],
         ),
         boxShadow: [
           BoxShadow(
-            color: scheme.shadow.withOpacity(.2),
-            blurRadius: 16,
+            color: scheme.shadow.withValues(alpha: shadowAlpha),
+            blurRadius: blur,
             offset: const Offset(0, 8),
           ),
         ],

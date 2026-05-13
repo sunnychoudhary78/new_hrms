@@ -1,7 +1,8 @@
+import 'dart:ui';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:lms/features/profile/presentation/widgets/curve_clipper.dart';
-
-import 'dart:ui';
 
 class CurvedProfileHeader extends StatelessWidget {
   final String name;
@@ -20,6 +21,8 @@ class CurvedProfileHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
+    final blurSigma = isIOS ? 10.0 : 12.0;
 
     return Stack(
       children: [
@@ -27,7 +30,7 @@ class CurvedProfileHeader extends StatelessWidget {
         ClipPath(
           clipper: BottomCurveClipper(),
           child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+            filter: ImageFilter.blur(sigmaX: blurSigma, sigmaY: blurSigma),
             child: Container(
               height: 300,
               decoration: BoxDecoration(
@@ -64,9 +67,9 @@ class CurvedProfileHeader extends StatelessWidget {
 
                         boxShadow: [
                           BoxShadow(
-                            color: scheme.shadow.withOpacity(.25),
-                            blurRadius: 24,
-                            offset: const Offset(0, 10),
+                            color: scheme.shadow.withOpacity(isIOS ? .14 : .25),
+                            blurRadius: isIOS ? 16 : 24,
+                            offset: Offset(0, isIOS ? 8 : 10),
                           ),
                         ],
                       ),
@@ -99,8 +102,10 @@ class CurvedProfileHeader extends StatelessWidget {
 
                           boxShadow: [
                             BoxShadow(
-                              color: scheme.shadow.withOpacity(.2),
-                              blurRadius: 10,
+                              color: scheme.shadow.withOpacity(
+                                isIOS ? .12 : .2,
+                              ),
+                              blurRadius: isIOS ? 8 : 10,
                             ),
                           ],
                         ),

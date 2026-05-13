@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lms/features/home/presentation/widgets/app_drawer.dart';
@@ -35,9 +36,10 @@ class _NotificationIcon extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final unreadCount = ref.watch(unreadCountProvider);
     final scheme = Theme.of(context).colorScheme;
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
 
     return Padding(
-      padding: const EdgeInsets.only(right: 8),
+      padding: EdgeInsets.only(right: isIOS ? 4 : 8),
       child: Stack(
         clipBehavior: Clip.none,
         children: [
@@ -46,6 +48,10 @@ class _NotificationIcon extends ConsumerWidget {
             iconSize: 26,
             splashRadius: 26,
             padding: const EdgeInsets.all(12),
+            style: IconButton.styleFrom(
+              splashFactory:
+                  isIOS ? NoSplash.splashFactory : InkSplash.splashFactory,
+            ),
             icon: const Icon(Icons.notifications_outlined),
             onPressed: () {
               Navigator.push(

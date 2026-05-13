@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lms/core/theme/app_design.dart';
@@ -31,6 +32,7 @@ class _MyCorrectionsScreenState extends ConsumerState<MyCorrectionsScreen> {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final stateAsync = ref.watch(myCorrectionsProvider);
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
 
     return Scaffold(
       backgroundColor: scheme.surfaceContainerLowest,
@@ -44,7 +46,7 @@ class _MyCorrectionsScreenState extends ConsumerState<MyCorrectionsScreen> {
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: scheme.errorContainer,
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(isIOS ? 12 : 14),
             ),
             child: Text(
               "Unable to load correction requests.\n$e",
@@ -60,7 +62,11 @@ class _MyCorrectionsScreenState extends ConsumerState<MyCorrectionsScreen> {
               await ref.read(myCorrectionsProvider.notifier).fetchCorrections();
             },
             child: ListView(
-              physics: const AlwaysScrollableScrollPhysics(),
+              physics: isIOS
+                  ? const AlwaysScrollableScrollPhysics(
+                      parent: BouncingScrollPhysics(),
+                    )
+                  : const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.fromLTRB(
                 AppSpacing.md,
                 AppSpacing.md,
@@ -71,7 +77,7 @@ class _MyCorrectionsScreenState extends ConsumerState<MyCorrectionsScreen> {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(18),
+                    borderRadius: BorderRadius.circular(isIOS ? 14 : 18),
                     gradient: LinearGradient(
                       colors: [
                         scheme.primaryContainer,
@@ -170,7 +176,7 @@ class _MyCorrectionsScreenState extends ConsumerState<MyCorrectionsScreen> {
                       width: double.infinity,
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(isIOS ? 12 : 16),
                         color: scheme.surfaceContainerLow,
                         border: Border.all(color: scheme.outlineVariant),
                       ),

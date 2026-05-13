@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lms/core/network/api_constants.dart';
@@ -45,7 +46,11 @@ class KraReviewTab extends ConsumerWidget {
                 }
 
                 return ListView.separated(
-                  physics: const AlwaysScrollableScrollPhysics(),
+                  physics: defaultTargetPlatform == TargetPlatform.iOS
+                      ? const AlwaysScrollableScrollPhysics(
+                          parent: BouncingScrollPhysics(),
+                        )
+                      : const AlwaysScrollableScrollPhysics(),
                   padding: const EdgeInsets.fromLTRB(12, 8, 12, 100),
                   itemBuilder: (_, i) {
                     final evaluation = items[i];
@@ -127,6 +132,8 @@ class _EvaluationCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
+    final cardRadius = BorderRadius.circular(isIOS ? 12 : 16);
     final assignedKrasAsync = mode == KraReviewMode.self && canSubmit
         ? ref.watch(myKrasProvider)
         : null;
@@ -144,7 +151,7 @@ class _EvaluationCard extends StatelessWidget {
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: scheme.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: cardRadius,
         border: Border.all(color: scheme.outlineVariant),
       ),
       child: Column(
@@ -226,6 +233,11 @@ class _EvaluationCard extends StatelessWidget {
             SizedBox(
               width: double.infinity,
               child: FilledButton.icon(
+                style: FilledButton.styleFrom(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(isIOS ? 12 : 20),
+                  ),
+                ),
                 icon: const Icon(Icons.rate_review_rounded),
                 label: Text(_submitLabel(mode)),
                 onPressed: () {
@@ -234,7 +246,14 @@ class _EvaluationCard extends StatelessWidget {
                     context: context,
                     isScrollControlled: true,
                     useRootNavigator: true,
+                    useSafeArea: true,
+                    showDragHandle: isIOS,
                     backgroundColor: Theme.of(context).colorScheme.surface,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.vertical(
+                        top: Radius.circular(isIOS ? 14 : 28),
+                      ),
+                    ),
                     builder: (_) => _RatingSheet(
                       evaluation: evaluation,
                       mode: mode,
@@ -299,13 +318,14 @@ class _PendingSelfKpiPreview extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
     final visible = ratings.take(4).toList();
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: scheme.primaryContainer.withValues(alpha: 0.35),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(isIOS ? 12 : 14),
         border: Border.all(color: scheme.primary.withValues(alpha: 0.16)),
       ),
       child: Column(
@@ -478,6 +498,11 @@ class _EvaluationRatingsSummary extends StatelessWidget {
               visualDensity: VisualDensity.compact,
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+              style: IconButton.styleFrom(
+                splashFactory: defaultTargetPlatform == TargetPlatform.iOS
+                    ? NoSplash.splashFactory
+                    : InkSplash.splashFactory,
+              ),
               tooltip: 'View evidence',
               onPressed: () => _openKraDocument(context, doc),
               icon: Icon(
@@ -555,6 +580,10 @@ class _RatingSheetState extends ConsumerState<_RatingSheet> {
   Widget build(BuildContext context) {
     final action = ref.watch(kraActionProvider);
     final scheme = Theme.of(context).colorScheme;
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
+    final saveShape = RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(isIOS ? 12 : 20),
+    );
 
     return Material(
       color: scheme.surface,
@@ -567,6 +596,10 @@ class _RatingSheetState extends ConsumerState<_RatingSheet> {
             bottom: MediaQuery.viewInsetsOf(context).bottom + 16,
           ),
           child: SingleChildScrollView(
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+            physics: isIOS
+                ? const BouncingScrollPhysics()
+                : const ClampingScrollPhysics(),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -618,6 +651,7 @@ class _RatingSheetState extends ConsumerState<_RatingSheet> {
                 SizedBox(
                   width: double.infinity,
                   child: FilledButton(
+                    style: FilledButton.styleFrom(shape: saveShape),
                     onPressed: action.isLoading || !_isFormComplete
                         ? null
                         : _submit,
@@ -773,12 +807,13 @@ class _SelfAssessmentNotice extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: scheme.secondaryContainer.withValues(alpha: 0.45),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(isIOS ? 12 : 14),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -821,11 +856,14 @@ class _RatingInputTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
+    final cardRadius = BorderRadius.circular(isIOS ? 12 : 14);
+    final docBoxRadius = BorderRadius.circular(isIOS ? 10 : 12);
     return Card(
       elevation: 0,
       margin: const EdgeInsets.only(bottom: 12),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: cardRadius,
         side: BorderSide(color: scheme.outlineVariant),
       ),
       child: Padding(
@@ -876,6 +914,11 @@ class _RatingInputTile extends StatelessWidget {
                   KraReviewMode.all => 'Remarks (required) *',
                 },
                 alignLabelWithHint: true,
+                filled: true,
+                fillColor: scheme.surfaceContainerLow,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(isIOS ? 12 : 16),
+                ),
               ),
             ),
             const SizedBox(height: 8),
@@ -886,7 +929,7 @@ class _RatingInputTile extends StatelessWidget {
                 color: documentPath == null
                     ? scheme.surfaceContainerHighest.withValues(alpha: 0.35)
                     : scheme.primaryContainer.withValues(alpha: 0.35),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: docBoxRadius,
                 border: Border.all(
                   color: documentPath == null
                       ? scheme.outlineVariant
@@ -970,7 +1013,9 @@ class _RatingInputTile extends StatelessWidget {
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(
+          defaultTargetPlatform == TargetPlatform.iOS ? 8 : 10,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1026,9 +1071,13 @@ class _RatingInputTile extends StatelessWidget {
 }
 
 Future<bool?> _confirmSubmit(BuildContext context, KraReviewMode mode) {
+  final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
   return showDialog<bool>(
     context: context,
     builder: (_) => AlertDialog(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(isIOS ? 14 : 24),
+      ),
       title: Text(switch (mode) {
         KraReviewMode.self => 'Submit self-assessment?',
         KraReviewMode.team => 'Submit manager review?',
@@ -1050,6 +1099,11 @@ Future<bool?> _confirmSubmit(BuildContext context, KraReviewMode mode) {
           child: const Text('Review again'),
         ),
         FilledButton(
+          style: FilledButton.styleFrom(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(isIOS ? 12 : 20),
+            ),
+          ),
           onPressed: () => Navigator.pop(context, true),
           child: const Text('Submit'),
         ),
@@ -1116,7 +1170,12 @@ class KraMyKraUnifiedTab extends ConsumerWidget {
               ref.invalidate(kraActiveCycleProvider);
             },
             child: ListView(
-              physics: const AlwaysScrollableScrollPhysics(),
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+              physics: defaultTargetPlatform == TargetPlatform.iOS
+                  ? const AlwaysScrollableScrollPhysics(
+                      parent: BouncingScrollPhysics(),
+                    )
+                  : const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.fromLTRB(12, 0, 12, 100),
               children: [
                 Text(
@@ -1267,9 +1326,13 @@ class _KraMyKraAssignmentRow extends ConsumerWidget {
 }
 
 Future<bool?> _confirmKraDelete(BuildContext context) {
+  final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
   return showDialog<bool>(
     context: context,
     builder: (_) => AlertDialog(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(isIOS ? 14 : 24),
+      ),
       title: const Text('Delete KRA?'),
       content: const Text('This KRA and its KPI targets will be removed.'),
       actions: [
@@ -1278,6 +1341,11 @@ Future<bool?> _confirmKraDelete(BuildContext context) {
           child: const Text('Cancel'),
         ),
         FilledButton(
+          style: FilledButton.styleFrom(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(isIOS ? 12 : 20),
+            ),
+          ),
           onPressed: () => Navigator.pop(context, true),
           child: const Text('Delete'),
         ),

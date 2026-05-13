@@ -1,3 +1,6 @@
+import 'dart:ui';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lms/features/kra/presentation/kra_route_args.dart';
@@ -76,7 +79,12 @@ class _KraDashboardScreenState extends ConsumerState<KraDashboardScreen> {
           children: [
             const _ActiveCycleBanner(),
             Expanded(
-              child: TabBarView(children: [for (final tab in tabs) tab.child]),
+              child: TabBarView(
+                physics: defaultTargetPlatform == TargetPlatform.iOS
+                    ? const BouncingScrollPhysics()
+                    : const ClampingScrollPhysics(),
+                children: [for (final tab in tabs) tab.child],
+              ),
             ),
           ],
         ),
@@ -103,7 +111,29 @@ class _KraAppBar extends StatelessWidget implements PreferredSizeWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AppBar(title: const Text('KRA / KPI'), bottom: bottom);
+    final scheme = Theme.of(context).colorScheme;
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
+    final blurSigma = isIOS ? 10.0 : 12.0;
+
+    return ClipRect(
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: blurSigma, sigmaY: blurSigma),
+        child: AppBar(
+          elevation: 0,
+          centerTitle: isIOS,
+          backgroundColor: scheme.surface.withValues(alpha: 0.55),
+          foregroundColor: scheme.onSurface,
+          scrolledUnderElevation: 0,
+          surfaceTintColor: Colors.transparent,
+          shadowColor: Colors.transparent,
+          title: const Text(
+            'KRA / KPI',
+            style: TextStyle(fontWeight: FontWeight.w600, letterSpacing: -0.2),
+          ),
+          bottom: bottom,
+        ),
+      ),
+    );
   }
 }
 

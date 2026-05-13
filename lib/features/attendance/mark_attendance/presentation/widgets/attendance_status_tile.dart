@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -55,6 +56,7 @@ class _StatusTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
 
     final formattedTime = time != null
         ? DateFormat('hh:mm a').format(time!)
@@ -64,7 +66,7 @@ class _StatusTile extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
       decoration: BoxDecoration(
         color: color.withOpacity(.08),
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(isIOS ? 18 : 24),
         border: Border.all(color: color.withOpacity(.18)),
       ),
       child: Column(

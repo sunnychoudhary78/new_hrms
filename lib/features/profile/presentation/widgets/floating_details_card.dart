@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 class ProfileDetailsCard extends StatelessWidget {
@@ -8,13 +9,20 @@ class ProfileDetailsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
+    final radius = isIOS ? 14.0 : 18.0;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Card(
-        elevation: 10,
+        elevation: isIOS ? 0.5 : 10,
         color: scheme.surface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(radius),
+          side: isIOS
+              ? BorderSide(color: scheme.outline.withOpacity(0.1))
+              : BorderSide.none,
+        ),
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 20),
           child: Column(

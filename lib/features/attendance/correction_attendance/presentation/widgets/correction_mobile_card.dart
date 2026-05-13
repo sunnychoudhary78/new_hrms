@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:lms/features/attendance/correction_attendance/presentation/dialogs/review_request_dialog.dart';
 import '../../data/models/attendance_request_model.dart';
@@ -43,12 +44,15 @@ class RequestCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final statusColor = _statusColor();
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
+    final outerR = BorderRadius.circular(isIOS ? 14 : 18);
+    final innerR = BorderRadius.circular(isIOS ? 10 : 12);
 
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: scheme.surface,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: outerR,
         border: Border.all(color: scheme.outline.withOpacity(.15)),
       ),
       child: Column(
@@ -88,7 +92,7 @@ class RequestCard extends StatelessWidget {
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: scheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: innerR,
               ),
               child: Column(
                 children: [
@@ -144,6 +148,11 @@ class RequestCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: FilledButton.tonalIcon(
+                    style: FilledButton.styleFrom(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(isIOS ? 12 : 20),
+                      ),
+                    ),
                     onPressed: () {
                       showReviewDialog(context: context, req: item);
                     },
@@ -156,6 +165,11 @@ class RequestCard extends StatelessWidget {
 
                 Expanded(
                   child: FilledButton.icon(
+                    style: FilledButton.styleFrom(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(isIOS ? 12 : 20),
+                      ),
+                    ),
                     onPressed: () {
                       showReviewDialog(context: context, req: item);
                     },
@@ -196,11 +210,12 @@ class _Chip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
         color: isFilled ? color.withValues(alpha: 0.15) : Colors.transparent,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(isIOS ? 14 : 20),
         border: Border.all(
           color: isFilled
               ? color.withValues(alpha: 0.45)

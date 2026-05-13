@@ -1,6 +1,8 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lms/core/widgets/status_badge.dart';
+import 'package:lms/shared/widgets/app_bar.dart';
 
 import '../providers/leave_details_provider.dart';
 import '../../data/models/leave_details_model.dart';
@@ -18,7 +20,7 @@ class LeaveDetailsScreen extends ConsumerWidget {
     final leaveAsync = ref.watch(leaveDetailsProvider(leaveRequestId));
 
     return Scaffold(
-      appBar: AppBar(title: const Text("Leave Details")),
+      appBar: const AppAppBar(title: "Leave Details"),
 
       body: leaveAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
@@ -26,14 +28,27 @@ class LeaveDetailsScreen extends ConsumerWidget {
         error: (e, _) => Center(child: Text("Failed to load leave\n$e")),
 
         data: (LeaveDetails leave) {
+          final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
+          final scrollPhysics = isIOS
+              ? const BouncingScrollPhysics(
+                  parent: AlwaysScrollableScrollPhysics(),
+                )
+              : const ClampingScrollPhysics();
+
           return SingleChildScrollView(
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+            physics: scrollPhysics,
             padding: const EdgeInsets.all(20),
 
             child: Card(
+              elevation: isIOS ? 0.5 : 1,
               color: scheme.surfaceContainerLow,
 
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(isIOS ? 14 : 16),
+                side: isIOS
+                    ? BorderSide(color: scheme.outline.withOpacity(0.12))
+                    : BorderSide.none,
               ),
 
               child: Padding(
@@ -102,24 +117,5 @@ class LeaveDetailsScreen extends ConsumerWidget {
         },
       ),
     );
-  }
-
-  Color _statusColor(String status) {
-    switch (status.toLowerCase()) {
-      case "approved":
-        return Colors.green;
-
-      case "rejected":
-        return Colors.red;
-
-      case "pending":
-        return Colors.orange;
-
-      case "revoked":
-        return Colors.grey;
-
-      default:
-        return Colors.grey;
-    }
   }
 }

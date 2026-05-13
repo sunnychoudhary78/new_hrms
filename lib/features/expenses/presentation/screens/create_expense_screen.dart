@@ -1,8 +1,11 @@
 import 'dart:io';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lms/core/providers/global_loading_provider.dart';
 import 'package:lms/features/expenses/data/models/expense_model.dart';
+import 'package:lms/shared/widgets/app_bar.dart';
 import 'package:lms/shared/widgets/premium_feature_components.dart';
 import '../providers/expense_provider.dart';
 import 'package:image_picker/image_picker.dart';
@@ -110,13 +113,18 @@ class _CreateExpenseScreenState extends ConsumerState<CreateExpenseScreen> {
         ? null
         : Map<String, dynamic>.from(items[index]);
 
-    showModalBottomSheet(
+    showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
+      showDragHandle: defaultTargetPlatform == TargetPlatform.iOS,
       backgroundColor: Theme.of(context).colorScheme.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(
+            defaultTargetPlatform == TargetPlatform.iOS ? 14 : 28,
+          ),
+        ),
       ),
       builder: (_) => AddItemSheet(
         categories: categories,
@@ -234,11 +242,18 @@ class _CreateExpenseScreenState extends ConsumerState<CreateExpenseScreen> {
     final state = ref.watch(createExpenseProvider);
     final canInteract = !state.isLoading && !_isSubmitting;
     final isEditingDraft = widget.editClaim != null;
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
+    final scrollPhysics = isIOS
+        ? const AlwaysScrollableScrollPhysics(
+            parent: BouncingScrollPhysics(),
+          )
+        : const AlwaysScrollableScrollPhysics();
+    final fieldRadius = isIOS ? 12.0 : 14.0;
+    final btnRadius = BorderRadius.circular(isIOS ? 12 : 14);
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(isEditingDraft ? "Edit draft" : "Create Expense"),
-        elevation: 0,
+      appBar: AppAppBar(
+        title: isEditingDraft ? "Edit draft" : "Create Expense",
       ),
       bottomNavigationBar: SafeArea(
         minimum: const EdgeInsets.fromLTRB(16, 8, 16, 16),
@@ -248,6 +263,9 @@ class _CreateExpenseScreenState extends ConsumerState<CreateExpenseScreen> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  shape: RoundedRectangleBorder(borderRadius: btnRadius),
+                ),
                 onPressed: canInteract ? () => submit() : null,
                 child: (state.isLoading || _isSubmitting)
                     ? const SizedBox(
@@ -262,6 +280,9 @@ class _CreateExpenseScreenState extends ConsumerState<CreateExpenseScreen> {
             SizedBox(
               width: double.infinity,
               child: OutlinedButton(
+                style: OutlinedButton.styleFrom(
+                  shape: RoundedRectangleBorder(borderRadius: btnRadius),
+                ),
                 onPressed: canInteract
                     ? () => submit(submitForApproval: true)
                     : null,
@@ -282,6 +303,7 @@ class _CreateExpenseScreenState extends ConsumerState<CreateExpenseScreen> {
           ),
           Expanded(
             child: ListView(
+              physics: scrollPhysics,
               keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
               children: [
@@ -293,7 +315,7 @@ class _CreateExpenseScreenState extends ConsumerState<CreateExpenseScreen> {
                     filled: true,
                     fillColor: scheme.surfaceContainerLow,
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(fieldRadius),
                     ),
                   ),
                 ),
@@ -395,6 +417,11 @@ class _CreateExpenseScreenState extends ConsumerState<CreateExpenseScreen> {
                               tooltip: "Edit item",
                               icon: const Icon(Icons.edit_outlined),
                               color: scheme.primary,
+                              style: IconButton.styleFrom(
+                                splashFactory: isIOS
+                                    ? NoSplash.splashFactory
+                                    : InkSplash.splashFactory,
+                              ),
                               onPressed: !canInteract
                                   ? null
                                   : () => openItemSheet(index: i),
@@ -402,6 +429,11 @@ class _CreateExpenseScreenState extends ConsumerState<CreateExpenseScreen> {
                             IconButton(
                               icon: const Icon(Icons.delete_outline),
                               color: Colors.red,
+                              style: IconButton.styleFrom(
+                                splashFactory: isIOS
+                                    ? NoSplash.splashFactory
+                                    : InkSplash.splashFactory,
+                              ),
                               onPressed: !canInteract
                                   ? null
                                   : () {

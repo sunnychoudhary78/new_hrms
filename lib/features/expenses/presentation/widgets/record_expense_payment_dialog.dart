@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -49,8 +50,6 @@ class _RecordExpensePaymentDialogState
   final _reference = TextEditingController();
   String _mode = kExpensePaymentModeOptions.first;
 
-  static const _dialogRadius = 28.0;
-  static const _fieldRadius = 18.0;
   static const _fieldPadding = EdgeInsets.symmetric(
     horizontal: 16,
     vertical: 16,
@@ -63,29 +62,32 @@ class _RecordExpensePaymentDialogState
     super.dispose();
   }
 
-  InputDecoration _outlineFieldDecoration(ColorScheme scheme) {
+  InputDecoration _outlineFieldDecoration(
+    ColorScheme scheme,
+    double fieldRadius,
+  ) {
     return InputDecoration(
       filled: true,
       fillColor: scheme.surfaceContainerLow,
       contentPadding: _fieldPadding,
       floatingLabelBehavior: FloatingLabelBehavior.auto,
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(_fieldRadius),
+        borderRadius: BorderRadius.circular(fieldRadius),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(_fieldRadius),
+        borderRadius: BorderRadius.circular(fieldRadius),
         borderSide: BorderSide(color: scheme.outlineVariant),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(_fieldRadius),
+        borderRadius: BorderRadius.circular(fieldRadius),
         borderSide: BorderSide(color: scheme.primary, width: 1.6),
       ),
       errorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(_fieldRadius),
+        borderRadius: BorderRadius.circular(fieldRadius),
         borderSide: BorderSide(color: scheme.error),
       ),
       focusedErrorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(_fieldRadius),
+        borderRadius: BorderRadius.circular(fieldRadius),
         borderSide: BorderSide(color: scheme.error, width: 1.6),
       ),
     );
@@ -141,13 +143,16 @@ class _RecordExpensePaymentDialogState
     final canConfirm =
         rTrim.isNotEmpty && refTrim.isNotEmpty && remarkErr == null;
 
-    final fieldDeco = _outlineFieldDecoration(scheme);
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
+    final dialogRadius = isIOS ? 20.0 : 28.0;
+    final fieldRadius = isIOS ? 14.0 : 18.0;
+    final fieldDeco = _outlineFieldDecoration(scheme, fieldRadius);
 
     return Dialog(
       backgroundColor: Colors.transparent,
       elevation: 0,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(_dialogRadius),
+        borderRadius: BorderRadius.circular(dialogRadius),
       ),
       clipBehavior: Clip.none,
       insetPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 24),
@@ -156,20 +161,20 @@ class _RecordExpensePaymentDialogState
         child: DecoratedBox(
           decoration: BoxDecoration(
             color: scheme.surface,
-            borderRadius: BorderRadius.circular(_dialogRadius),
+            borderRadius: BorderRadius.circular(dialogRadius),
             border: Border.all(
               color: scheme.outlineVariant.withValues(alpha: 0.72),
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.18),
-                blurRadius: 36,
-                offset: const Offset(0, 18),
+                color: Colors.black.withValues(alpha: isIOS ? 0.1 : 0.18),
+                blurRadius: isIOS ? 22 : 36,
+                offset: Offset(0, isIOS ? 10 : 18),
               ),
             ],
           ),
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(_dialogRadius),
+            borderRadius: BorderRadius.circular(dialogRadius),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -195,7 +200,7 @@ class _RecordExpensePaymentDialogState
                         height: 48,
                         decoration: BoxDecoration(
                           color: scheme.primary,
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(isIOS ? 14 : 16),
                           boxShadow: [
                             BoxShadow(
                               color: scheme.primary.withValues(alpha: 0.24),
@@ -254,6 +259,11 @@ class _RecordExpensePaymentDialogState
                 ),
                 Flexible(
                   child: SingleChildScrollView(
+                    physics: isIOS
+                        ? const BouncingScrollPhysics(
+                            parent: AlwaysScrollableScrollPhysics(),
+                          )
+                        : const ClampingScrollPhysics(),
                     padding: const EdgeInsets.fromLTRB(22, 20, 22, 12),
                     keyboardDismissBehavior:
                         ScrollViewKeyboardDismissBehavior.onDrag,
@@ -347,7 +357,9 @@ class _RecordExpensePaymentDialogState
                               fontWeight: FontWeight.w700,
                             ),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
+                              borderRadius: BorderRadius.circular(
+                                isIOS ? 12 : 16,
+                              ),
                             ),
                           ),
                         ),
@@ -384,6 +396,7 @@ class _PaymentModeSelector extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
 
     return PopupMenuButton<String>(
       initialValue: value,
@@ -393,7 +406,9 @@ class _PaymentModeSelector extends StatelessWidget {
       elevation: 10,
       color: scheme.surface,
       surfaceTintColor: scheme.surfaceTint,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(isIOS ? 14 : 18),
+      ),
       constraints: const BoxConstraints(minWidth: 260),
       onSelected: onChanged,
       itemBuilder: (context) => [
@@ -428,7 +443,7 @@ class _PaymentModeSelector extends StatelessWidget {
       child: DecoratedBox(
         decoration: BoxDecoration(
           color: scheme.primary.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(isIOS ? 16 : 20),
           border: Border.all(color: scheme.primary.withValues(alpha: 0.22)),
         ),
         child: Padding(
@@ -440,7 +455,7 @@ class _PaymentModeSelector extends StatelessWidget {
                 height: 42,
                 decoration: BoxDecoration(
                   color: scheme.primary,
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(isIOS ? 12 : 14),
                 ),
                 child: Icon(_iconForMode(value), color: scheme.onPrimary),
               ),

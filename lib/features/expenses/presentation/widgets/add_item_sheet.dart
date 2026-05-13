@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
@@ -152,9 +153,15 @@ class _AddItemSheetState extends State<AddItemSheet> {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
+    final fieldRadius = isIOS ? 10.0 : 12.0;
+    final scrollPhysics = isIOS
+        ? const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics())
+        : const ClampingScrollPhysics();
 
     return SafeArea(
       child: SingleChildScrollView(
+        physics: scrollPhysics,
         keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
         padding: EdgeInsets.fromLTRB(16, 20, 16, bottomInset + 20),
         child: Column(
@@ -198,7 +205,7 @@ class _AddItemSheetState extends State<AddItemSheet> {
                       filled: true,
                       fillColor: scheme.surfaceContainerLow,
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(fieldRadius),
                       ),
                     ),
                   ),
@@ -210,7 +217,7 @@ class _AddItemSheetState extends State<AddItemSheet> {
                       filled: true,
                       fillColor: scheme.surfaceContainerLow,
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(fieldRadius),
                       ),
                     ),
                   ),
@@ -224,7 +231,7 @@ class _AddItemSheetState extends State<AddItemSheet> {
                       filled: true,
                       fillColor: scheme.surfaceContainerLow,
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(fieldRadius),
                       ),
                     ),
                   ),
@@ -273,6 +280,9 @@ class _AddItemSheetState extends State<AddItemSheet> {
                       height: 72,
                       child: ListView.separated(
                         scrollDirection: Axis.horizontal,
+                        physics: isIOS
+                            ? const BouncingScrollPhysics()
+                            : const ClampingScrollPhysics(),
                         itemCount: _receiptPaths.length,
                         separatorBuilder: (_, __) => const SizedBox(width: 8),
                         itemBuilder: (_, i) {
@@ -336,6 +346,11 @@ class _AddItemSheetState extends State<AddItemSheet> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(isIOS ? 12 : 14),
+                  ),
+                ),
                 onPressed: submit,
                 child: Text(_isEditing ? "Update Item" : "Add Item"),
               ),

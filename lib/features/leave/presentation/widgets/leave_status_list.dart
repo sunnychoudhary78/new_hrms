@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:lms/features/leave/data/models/leave_status_model.dart';
 import 'leave_status_card.dart';
@@ -57,14 +58,31 @@ class _LeaveStatusListState extends State<LeaveStatusList> {
 
   @override
   Widget build(BuildContext context) {
+    final scrollPhysics = defaultTargetPlatform == TargetPlatform.iOS
+        ? const AlwaysScrollableScrollPhysics(
+            parent: BouncingScrollPhysics(),
+          )
+        : const AlwaysScrollableScrollPhysics();
+
     if (widget.leaves.isEmpty) {
-      return const Center(child: Text("No leave requests found"));
+      return RefreshIndicator(
+        onRefresh: widget.onRefresh,
+        child: ListView(
+          physics: scrollPhysics,
+          padding: const EdgeInsets.all(16),
+          children: const [
+            SizedBox(height: 120),
+            Center(child: Text("No leave requests found")),
+          ],
+        ),
+      );
     }
 
     return RefreshIndicator(
       onRefresh: widget.onRefresh,
       child: ListView.builder(
         controller: _scrollController,
+        physics: scrollPhysics,
         padding: const EdgeInsets.all(16),
         itemCount: widget.leaves.length,
         itemBuilder: (context, index) {

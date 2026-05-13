@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:intl/intl.dart';
@@ -32,10 +33,13 @@ class AttendanceDayDetailBottomSheet extends StatefulWidget {
     required DateTime date,
     required AttendanceDayData? data,
   }) {
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
+      useSafeArea: true,
+      showDragHandle: isIOS,
       builder: (_) => AttendanceDayDetailBottomSheet(date: date, data: data),
     );
   }
@@ -109,6 +113,8 @@ class _AttendanceDayDetailBottomSheetState
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
+    final topSheetRadius = isIOS ? 14.0 : 28.0;
 
     final formattedDate = DateFormat('EEEE, dd MMM yyyy').format(widget.date);
 
@@ -117,10 +123,10 @@ class _AttendanceDayDetailBottomSheetState
     final hours = widget.data?.totalHours ?? 0;
 
     return Container(
-      padding: const EdgeInsets.only(top: 12),
+      padding: EdgeInsets.only(top: isIOS ? 4 : 12),
       decoration: BoxDecoration(
         color: scheme.surface,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(topSheetRadius)),
       ),
       child: SafeArea(
         child: Padding(
@@ -130,20 +136,23 @@ class _AttendanceDayDetailBottomSheetState
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               //////////////////////////////////////////////////////
-              // HANDLE
+              // HANDLE (Android — iOS uses modal drag handle)
               //////////////////////////////////////////////////////
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: scheme.outlineVariant,
-                    borderRadius: BorderRadius.circular(10),
+              if (!isIOS)
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: scheme.outlineVariant,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
                 ),
-              ),
 
-              const SizedBox(height: 24),
+              if (!isIOS) const SizedBox(height: 24),
+
+              if (isIOS) const SizedBox(height: 8),
 
               //////////////////////////////////////////////////////
               // DATE

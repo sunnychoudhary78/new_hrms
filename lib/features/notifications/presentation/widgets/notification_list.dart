@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lms/features/attendance/correction_attendance/presentation/providers/my_corrections_provider.dart';
@@ -14,11 +15,18 @@ import 'package:lms/features/dashboard/data/models/team_dashboard_model.dart';
 
 class NotificationList extends ConsumerWidget {
   final List<dynamic> notifications;
+  final ScrollPhysics scrollPhysics;
 
-  const NotificationList({super.key, required this.notifications});
+  const NotificationList({
+    super.key,
+    required this.notifications,
+    required this.scrollPhysics,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
+    final dismissRadius = BorderRadius.circular(isIOS ? 12 : 16);
     /// ✅ GET AUTH STATE
     final authState = ref.watch(authProvider);
 
@@ -38,6 +46,7 @@ class NotificationList extends ConsumerWidget {
     print("Can view team attendance: $canViewTeamAttendance");
 
     return ListView.separated(
+      physics: scrollPhysics,
       padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
       itemCount: notifications.length,
       separatorBuilder: (_, __) => const SizedBox(height: 12),
@@ -62,7 +71,7 @@ class NotificationList extends ConsumerWidget {
             padding: const EdgeInsets.symmetric(horizontal: 20),
             decoration: BoxDecoration(
               color: Colors.red,
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: dismissRadius,
             ),
             child: const Icon(Icons.delete, color: Colors.white, size: 26),
           ),
@@ -72,7 +81,14 @@ class NotificationList extends ConsumerWidget {
             final confirm = await showDialog<bool>(
               context: context,
               builder: (context) {
+                final dialogIsIOS =
+                    defaultTargetPlatform == TargetPlatform.iOS;
                 return AlertDialog(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(
+                      dialogIsIOS ? 14 : 24,
+                    ),
+                  ),
                   title: const Text("Delete notification"),
                   content: const Text(
                     "Are you sure you want to delete this notification?",
@@ -82,12 +98,18 @@ class NotificationList extends ConsumerWidget {
                       onPressed: () => Navigator.pop(context, false),
                       child: const Text("Cancel"),
                     ),
-                    TextButton(
-                      onPressed: () => Navigator.pop(context, true),
-                      child: const Text(
-                        "Delete",
-                        style: TextStyle(color: Colors.red),
+                    FilledButton(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(
+                            dialogIsIOS ? 12 : 20,
+                          ),
+                        ),
                       ),
+                      onPressed: () => Navigator.pop(context, true),
+                      child: const Text("Delete"),
                     ),
                   ],
                 );

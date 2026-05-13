@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -98,20 +99,27 @@ class _RequestCorrectionDialogState
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
 
     return Dialog(
       insetPadding: const EdgeInsets.all(16),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(isIOS ? 14 : 20),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: SingleChildScrollView(
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+          physics: isIOS
+              ? const BouncingScrollPhysics()
+              : const ClampingScrollPhysics(),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(isIOS ? 12 : 14),
                   color: scheme.primaryContainer,
                 ),
                 child: Row(
@@ -144,6 +152,11 @@ class _RequestCorrectionDialogState
                     ),
                   ),
                   IconButton(
+                    style: IconButton.styleFrom(
+                      splashFactory: isIOS
+                          ? NoSplash.splashFactory
+                          : InkSplash.splashFactory,
+                    ),
                     icon: Icon(Icons.close, color: scheme.onSurface),
                     onPressed: () => Navigator.pop(context),
                   ),
@@ -166,7 +179,7 @@ class _RequestCorrectionDialogState
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
                     color: scheme.surfaceContainerLow,
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(isIOS ? 10 : 12),
                     border: Border.all(color: scheme.outlineVariant),
                   ),
                   child: Text(
@@ -215,8 +228,13 @@ class _RequestCorrectionDialogState
                 maxLines: 3,
                 decoration: InputDecoration(
                   labelText: "Reason",
-                  border: const OutlineInputBorder(),
+                  filled: true,
+                  fillColor: scheme.surfaceContainerLow,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(isIOS ? 12 : 16),
+                  ),
                   focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(isIOS ? 12 : 16),
                     borderSide: BorderSide(color: scheme.primary),
                   ),
                 ),
@@ -231,6 +249,9 @@ class _RequestCorrectionDialogState
                   style: ElevatedButton.styleFrom(
                     backgroundColor: scheme.primary,
                     foregroundColor: scheme.onPrimary,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(isIOS ? 12 : 20),
+                    ),
                   ),
                   child: isSubmitting
                       ? CircularProgressIndicator(color: scheme.onPrimary)

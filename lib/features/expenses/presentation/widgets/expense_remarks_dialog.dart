@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -68,8 +69,11 @@ class _ExpenseRemarksDialogState extends State<_ExpenseRemarksDialog> {
         : expenseRemarksValidationError(text, required: true);
     final canSubmit = err == null && t.isNotEmpty;
     final scheme = Theme.of(context).colorScheme;
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
     return AlertDialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(isIOS ? 14 : 24),
+      ),
       title: Text(widget.title),
       content: SingleChildScrollView(
         child: SizedBox(
@@ -78,6 +82,7 @@ class _ExpenseRemarksDialogState extends State<_ExpenseRemarksDialog> {
             controller: _controller,
             maxLines: 5,
             textCapitalization: TextCapitalization.sentences,
+            textInputAction: TextInputAction.done,
             onChanged: (_) => setState(() {}),
             decoration: InputDecoration(
               labelText: 'Remarks *',
@@ -89,7 +94,7 @@ class _ExpenseRemarksDialogState extends State<_ExpenseRemarksDialog> {
               filled: true,
               fillColor: scheme.surfaceContainerLow,
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(isIOS ? 12 : 16),
               ),
             ),
           ),

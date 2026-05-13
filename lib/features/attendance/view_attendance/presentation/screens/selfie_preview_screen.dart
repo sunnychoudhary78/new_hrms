@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 class SelfiePreviewScreen extends StatelessWidget {
@@ -8,11 +9,31 @@ class SelfiePreviewScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
         backgroundColor: Colors.black,
+        foregroundColor: Colors.white,
         iconTheme: const IconThemeData(color: Colors.white),
+        centerTitle: isIOS,
+        elevation: 0,
+        title: const Text(
+          'Preview',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+        ),
+        leading: IconButton(
+          style: IconButton.styleFrom(
+            foregroundColor: Colors.white,
+            splashFactory: isIOS
+                ? NoSplash.splashFactory
+                : InkSplash.splashFactory,
+          ),
+          icon: Icon(
+            isIOS ? Icons.arrow_back_ios_new_rounded : Icons.arrow_back_rounded,
+          ),
+          onPressed: () => Navigator.of(context).maybePop(),
+        ),
       ),
       body: Center(
         child: InteractiveViewer(

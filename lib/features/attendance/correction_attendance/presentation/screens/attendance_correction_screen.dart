@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lms/core/theme/app_design.dart';
@@ -45,6 +46,7 @@ class _AttendanceCorrectionScreenState
               : state.requests
                     .where((e) => e.status == state.statusFilter)
                     .toList();
+          final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
 
           return RefreshIndicator(
             onRefresh: () async {
@@ -53,7 +55,11 @@ class _AttendanceCorrectionScreenState
                   .fetchRequests();
             },
             child: ListView(
-              physics: const AlwaysScrollableScrollPhysics(),
+              physics: isIOS
+                  ? const AlwaysScrollableScrollPhysics(
+                      parent: BouncingScrollPhysics(),
+                    )
+                  : const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.fromLTRB(
                 AppSpacing.md,
                 AppSpacing.md,
@@ -64,7 +70,7 @@ class _AttendanceCorrectionScreenState
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(18),
+                    borderRadius: BorderRadius.circular(isIOS ? 14 : 18),
                     gradient: LinearGradient(
                       colors: [
                         scheme.primaryContainer,
@@ -134,6 +140,7 @@ class _EmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
 
     String message;
 
@@ -157,7 +164,7 @@ class _EmptyState extends StatelessWidget {
         width: double.infinity,
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(isIOS ? 12 : 16),
           color: scheme.surfaceContainerLow,
           border: Border.all(color: scheme.outlineVariant),
         ),

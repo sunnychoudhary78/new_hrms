@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:lms/core/theme/app_design.dart';
 import '../../data/models/attendance_request_model.dart';
@@ -63,12 +64,13 @@ class _StatCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
 
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
         color: bgColor,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(isIOS ? 14 : 18),
         border: Border.all(color: scheme.outline.withOpacity(.15)),
       ),
       child: Column(
@@ -81,7 +83,7 @@ class _StatCard extends StatelessWidget {
                 padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
                   color: baseColor.withOpacity(.15),
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(isIOS ? 8 : 10),
                 ),
                 child: Icon(icon, size: 16, color: baseColor),
               ),

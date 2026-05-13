@@ -1,4 +1,6 @@
 import 'dart:ui';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 class AppAppBar extends StatelessWidget implements PreferredSizeWidget {
@@ -16,12 +18,15 @@ class AppAppBar extends StatelessWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
+    final blurSigma = isIOS ? 10.0 : 12.0;
 
     return ClipRect(
       child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+        filter: ImageFilter.blur(sigmaX: blurSigma, sigmaY: blurSigma),
         child: AppBar(
           elevation: 0,
+          centerTitle: isIOS,
 
           /// TRUE glass background
           backgroundColor: scheme.surface.withOpacity(0.55),
@@ -44,7 +49,14 @@ class AppAppBar extends StatelessWidget implements PreferredSizeWidget {
 
           leading: showBack
               ? IconButton(
-                  icon: const Icon(Icons.arrow_back_rounded),
+                  icon: Icon(
+                    isIOS
+                        ? Icons.arrow_back_ios_new_rounded
+                        : Icons.arrow_back_rounded,
+                  ),
+                  padding: isIOS
+                      ? const EdgeInsetsDirectional.only(start: 10)
+                      : null,
                   onPressed: () => Navigator.of(context).maybePop(),
                 )
               : null,

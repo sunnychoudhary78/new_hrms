@@ -1,5 +1,7 @@
 import 'dart:io';
+
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -200,13 +202,23 @@ class _LeaveApplyScreenState extends ConsumerState<LeaveApplyScreen> {
       body: balanceAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text(e.toString())),
-        data: (leaves) => ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
+        data: (leaves) {
+          final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
+          final scrollPhysics = isIOS
+              ? const AlwaysScrollableScrollPhysics(
+                  parent: BouncingScrollPhysics(),
+                )
+              : const AlwaysScrollableScrollPhysics();
+
+          return ListView(
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+            physics: scrollPhysics,
+            padding: const EdgeInsets.all(16),
+            children: [
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(18),
+                borderRadius: BorderRadius.circular(isIOS ? 14 : 18),
                 gradient: LinearGradient(
                   colors: [scheme.primaryContainer, scheme.secondaryContainer],
                 ),
@@ -347,11 +359,11 @@ class _LeaveApplyScreenState extends ConsumerState<LeaveApplyScreen> {
 
                     InkWell(
                       onTap: _pickDocument,
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(isIOS ? 12 : 16),
                       child: Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(isIOS ? 12 : 16),
                           color: scheme.surfaceContainerHighest,
                         ),
                         child: Row(
@@ -370,6 +382,11 @@ class _LeaveApplyScreenState extends ConsumerState<LeaveApplyScreen> {
                             if (document != null)
                               IconButton(
                                 icon: const Icon(Icons.close),
+                                style: IconButton.styleFrom(
+                                  splashFactory: isIOS
+                                      ? NoSplash.splashFactory
+                                      : InkSplash.splashFactory,
+                                ),
                                 onPressed: () {
                                   setState(() {
                                     document = null;
@@ -394,7 +411,8 @@ class _LeaveApplyScreenState extends ConsumerState<LeaveApplyScreen> {
 
             const SizedBox(height: 20),
           ],
-        ),
+          );
+        },
       ),
     );
   }
@@ -507,13 +525,14 @@ class _BalanceCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
     final isZero = leave.available <= 0;
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 300),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(isIOS ? 12 : 16),
         gradient: LinearGradient(
           colors: isZero
               ? [scheme.errorContainer, scheme.errorContainer.withOpacity(0.8)]
@@ -550,69 +569,6 @@ class _BalanceCard extends StatelessWidget {
   }
 }
 
-class _LeaveSummaryCard extends StatelessWidget {
-  final double available;
-  final double requested;
-
-  const _LeaveSummaryCard({required this.available, required this.requested});
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final remaining = available - requested;
-    final exceeds = requested > available;
-
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 250),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        color: exceeds ? scheme.errorContainer : scheme.surfaceContainerHighest,
-      ),
-      child: Column(
-        children: [
-          _row("Available", available),
-          const SizedBox(height: 6),
-          _row("Requested", requested),
-          const Divider(height: 20),
-          _row(
-            "Remaining",
-            remaining < 0 ? 0 : remaining,
-            highlight: true,
-            isError: exceeds,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _row(
-    String label,
-    double value, {
-    bool highlight = false,
-    bool isError = false,
-  }) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontWeight: highlight ? FontWeight.w600 : FontWeight.w400,
-          ),
-        ),
-        Text(
-          "$value days",
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: isError ? Colors.red : null,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
 class SectionCard extends StatelessWidget {
   final Widget child;
 
@@ -620,7 +576,18 @@ class SectionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
+
     return Card(
+      elevation: isIOS ? 0.5 : 2,
+      surfaceTintColor: Colors.transparent,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(isIOS ? 14 : 16),
+        side: isIOS
+            ? BorderSide(color: scheme.outline.withOpacity(0.08))
+            : BorderSide.none,
+      ),
       child: Padding(padding: const EdgeInsets.all(16), child: child),
     );
   }

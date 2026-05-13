@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
 
@@ -54,16 +55,20 @@ class AttendanceCalendarWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
+    final outerRadius = BorderRadius.circular(isIOS ? 16 : 24);
+    final blur = isIOS ? 12.0 : 24.0;
+    final shadowAlpha = isIOS ? 0.04 : 0.06;
 
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
       decoration: BoxDecoration(
         color: scheme.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: outerRadius,
         boxShadow: [
           BoxShadow(
-            color: scheme.shadow.withOpacity(.06),
-            blurRadius: 24,
+            color: scheme.shadow.withValues(alpha: shadowAlpha),
+            blurRadius: blur,
             offset: const Offset(0, 10),
           ),
         ],

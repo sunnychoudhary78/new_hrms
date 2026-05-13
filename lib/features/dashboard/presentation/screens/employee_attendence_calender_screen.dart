@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -40,56 +41,6 @@ class _EmployeeAttendanceCalendarScreenState
     _selectedDay = widget.highlightDate;
     final initial = widget.highlightDate ?? DateTime.now();
     _focusedDay = DateTime(initial.year, initial.month);
-  }
-
-  ////////////////////////////////////////////////////////////////
-
-  Widget _legendItem(String label, Color color, ColorScheme scheme) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: scheme.surfaceContainerHigh,
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 10,
-            height: 10,
-            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-          ),
-          const SizedBox(width: 8),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-              color: scheme.onSurface,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  ////////////////////////////////////////////////////////////////
-
-  Color _statusColor(String status) {
-    switch (status) {
-      case "On-Time":
-        return const Color(0xFF22C55E);
-      case "Late":
-        return const Color(0xFFF59E0B);
-      case "Absent":
-        return const Color(0xFFEF4444);
-      case "Holiday":
-        return const Color(0xFF3B82F6);
-      case "On-Leave":
-        return const Color(0xFFA855F7);
-      default:
-        return Colors.grey;
-    }
   }
 
   bool _isFutureMonth(DateTime day) {
@@ -147,6 +98,10 @@ class _EmployeeAttendanceCalendarScreenState
           ////////////////////////////////////////////////////////////
 
           return SingleChildScrollView(
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+            physics: defaultTargetPlatform == TargetPlatform.iOS
+                ? const BouncingScrollPhysics()
+                : const ClampingScrollPhysics(),
             padding: const EdgeInsets.all(20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -249,12 +204,13 @@ class _EmployeeHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
 
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: scheme.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(isIOS ? 16 : 20),
       ),
       child: Row(
         children: [

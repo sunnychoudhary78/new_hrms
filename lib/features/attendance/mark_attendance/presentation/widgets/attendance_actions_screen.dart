@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -181,7 +182,9 @@ class AttendanceActionsSection extends ConsumerWidget {
 
             decoration: BoxDecoration(
               color: scheme.tertiaryContainer,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(
+                defaultTargetPlatform == TargetPlatform.iOS ? 10 : 12,
+              ),
             ),
 
             child: Text(
@@ -202,6 +205,7 @@ class AttendanceActionsSection extends ConsumerWidget {
   /// REMOTE DIALOG
   Future<void> _openRemoteDialog(BuildContext context) async {
     final scheme = Theme.of(context).colorScheme;
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
 
     final ctrl = TextEditingController();
 
@@ -209,8 +213,10 @@ class AttendanceActionsSection extends ConsumerWidget {
       context: context,
 
       isDismissible: false,
-      enableDrag: false,
+      enableDrag: isIOS,
       isScrollControlled: true,
+      useSafeArea: true,
+      showDragHandle: isIOS,
 
       backgroundColor: Colors.transparent,
 
@@ -229,8 +235,8 @@ class AttendanceActionsSection extends ConsumerWidget {
               decoration: BoxDecoration(
                 color: scheme.surface,
 
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(24),
+                borderRadius: BorderRadius.vertical(
+                  top: Radius.circular(isIOS ? 14 : 24),
                 ),
               ),
 
@@ -238,6 +244,18 @@ class AttendanceActionsSection extends ConsumerWidget {
                 mainAxisSize: MainAxisSize.min,
 
                 children: [
+                  if (!isIOS)
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        margin: const EdgeInsets.only(bottom: 12),
+                        decoration: BoxDecoration(
+                          color: scheme.outlineVariant,
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                      ),
+                    ),
                   Text(
                     "Remote Mode",
                     style: const TextStyle(
@@ -260,7 +278,7 @@ class AttendanceActionsSection extends ConsumerWidget {
                       fillColor: scheme.surfaceContainerHighest,
 
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(isIOS ? 12 : 12),
 
                         borderSide: BorderSide.none,
                       ),
@@ -273,6 +291,13 @@ class AttendanceActionsSection extends ConsumerWidget {
                     children: [
                       Expanded(
                         child: OutlinedButton(
+                          style: OutlinedButton.styleFrom(
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(
+                                isIOS ? 12 : 12,
+                              ),
+                            ),
+                          ),
                           onPressed: () => Navigator.pop(context),
 
                           child: const Text("Cancel"),
@@ -283,6 +308,13 @@ class AttendanceActionsSection extends ConsumerWidget {
 
                       Expanded(
                         child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(
+                                isIOS ? 12 : 12,
+                              ),
+                            ),
+                          ),
                           onPressed: () {
                             final reason = ctrl.text.trim();
 

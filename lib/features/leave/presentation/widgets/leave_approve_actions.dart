@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -20,13 +21,18 @@ class LeaveApproveActions extends StatelessWidget {
     required this.onReject,
   });
 
-  static ShapeBorder _dialogShape() => RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(24),
-      );
+  ShapeBorder _dialogShape() {
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
+    return RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(isIOS ? 14 : 24),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
+    final actionRadius = BorderRadius.circular(isIOS ? 12 : 14);
 
     return Row(
       children: [
@@ -39,7 +45,7 @@ class LeaveApproveActions extends StatelessWidget {
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(vertical: 14),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: actionRadius,
               ),
             ),
             onPressed: () async {
@@ -116,7 +122,7 @@ class LeaveApproveActions extends StatelessWidget {
               foregroundColor: scheme.onError,
               padding: const EdgeInsets.symmetric(vertical: 14),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: actionRadius,
               ),
             ),
             onPressed: () async {

@@ -1,4 +1,6 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:lms/shared/widgets/app_bar.dart';
 
 class NotificationDetailsScreen extends StatelessWidget {
   final Map<String, dynamic> notification;
@@ -8,6 +10,8 @@ class NotificationDetailsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
+    final cardRadius = BorderRadius.circular(isIOS ? 12 : 16);
 
     final title = notification["title"] ?? "Notification";
     final message = notification["message"] ?? "";
@@ -15,8 +19,13 @@ class NotificationDetailsScreen extends StatelessWidget {
     final createdAt = DateTime.tryParse(notification["createdAt"] ?? "");
 
     return Scaffold(
-      appBar: AppBar(title: const Text("Notification Details")),
-      body: Padding(
+      backgroundColor: scheme.surfaceContainerLowest,
+      appBar: const AppAppBar(title: "Notification Details"),
+      body: SingleChildScrollView(
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+        physics: isIOS
+            ? const BouncingScrollPhysics()
+            : const ClampingScrollPhysics(),
         padding: const EdgeInsets.all(20),
 
         /// 👇 This ensures card takes only needed height
@@ -25,7 +34,7 @@ class NotificationDetailsScreen extends StatelessWidget {
           child: Card(
             color: scheme.surfaceContainerLow,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: cardRadius,
             ),
             child: Padding(
               padding: const EdgeInsets.all(20),

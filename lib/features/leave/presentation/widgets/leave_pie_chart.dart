@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../../data/models/leave_balance_model.dart';
@@ -11,6 +12,8 @@ class LeavePieChart extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
+    final pieRadius = isIOS ? 18.0 : 24.0;
 
     // 🔥 Clamp negative values to 0 for display
     final sanitizedLeaves = leaves
@@ -21,9 +24,15 @@ class LeavePieChart extends StatelessWidget {
 
     if (totalAvailable <= 0) {
       return Card(
-        elevation: 6,
+        elevation: isIOS ? 0.5 : 6,
+        surfaceTintColor: Colors.transparent,
         color: scheme.surface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(pieRadius),
+          side: isIOS
+              ? BorderSide(color: scheme.outline.withOpacity(0.1))
+              : BorderSide.none,
+        ),
         child: const SizedBox(
           height: 280,
           child: Center(child: Text("No leave balance available")),
@@ -32,9 +41,15 @@ class LeavePieChart extends StatelessWidget {
     }
 
     return Card(
-      elevation: 6,
+      elevation: isIOS ? 0.5 : 6,
+      surfaceTintColor: Colors.transparent,
       color: scheme.surface,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(pieRadius),
+        side: isIOS
+            ? BorderSide(color: scheme.outline.withOpacity(0.1))
+            : BorderSide.none,
+      ),
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: SizedBox(

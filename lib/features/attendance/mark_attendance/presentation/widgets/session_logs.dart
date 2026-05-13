@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../data/models/attendance_session_model.dart';
@@ -10,6 +11,8 @@ class SessionLogs extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
+    final cardRadius = BorderRadius.circular(isIOS ? 14 : 20);
 
     if (sessions.isEmpty) {
       return Center(
@@ -40,7 +43,7 @@ class SessionLogs extends StatelessWidget {
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: scheme.surface,
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: cardRadius,
             border: Border.all(color: scheme.outlineVariant),
           ),
           child: Row(

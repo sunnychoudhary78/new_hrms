@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:lms/core/theme/app_design.dart';
@@ -39,13 +40,15 @@ class _LeaveApproveCardState extends State<LeaveApproveCard> {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final r = widget.request;
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
+    final cardRadius = isIOS ? 14.0 : AppRadius.lg;
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
         color: scheme.surface,
-        borderRadius: BorderRadius.circular(AppRadius.lg),
+        borderRadius: BorderRadius.circular(cardRadius),
         border: Border.all(
           color: expanded
               ? scheme.primary.withOpacity(0.4)
@@ -53,9 +56,9 @@ class _LeaveApproveCardState extends State<LeaveApproveCard> {
         ),
         boxShadow: [
           BoxShadow(
-            color: scheme.shadow.withOpacity(0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 3),
+            color: scheme.shadow.withOpacity(isIOS ? 0.035 : 0.05),
+            blurRadius: isIOS ? 6 : 8,
+            offset: Offset(0, isIOS ? 2 : 3),
           ),
         ],
       ),

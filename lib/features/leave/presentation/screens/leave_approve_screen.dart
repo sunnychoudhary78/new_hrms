@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -30,6 +31,10 @@ class _LeaveApproveScreenState extends ConsumerState<LeaveApproveScreen>
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
+    final bannerRadius = isIOS ? 14.0 : 18.0;
+    final tabShellRadius = isIOS ? 12.0 : 14.0;
+    final errRadius = isIOS ? 12.0 : 14.0;
 
     final async = ref.watch(leaveApproveProvider);
 
@@ -49,7 +54,7 @@ class _LeaveApproveScreenState extends ConsumerState<LeaveApproveScreen>
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: scheme.errorContainer,
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(errRadius),
             ),
             child: Text(
               "Unable to load leave approvals.\n$e",
@@ -87,7 +92,7 @@ class _LeaveApproveScreenState extends ConsumerState<LeaveApproveScreen>
                 margin: const EdgeInsets.fromLTRB(16, 14, 16, 10),
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(18),
+                  borderRadius: BorderRadius.circular(bannerRadius),
                   gradient: LinearGradient(
                     colors: [
                       scheme.primaryContainer,
@@ -145,7 +150,7 @@ class _LeaveApproveScreenState extends ConsumerState<LeaveApproveScreen>
                 margin: const EdgeInsets.symmetric(horizontal: 16),
                 decoration: BoxDecoration(
                   color: scheme.surfaceContainerLow,
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(tabShellRadius),
                   border: Border.all(color: scheme.outlineVariant),
                 ),
 
@@ -218,6 +223,9 @@ class _LeaveApproveScreenState extends ConsumerState<LeaveApproveScreen>
               /// TAB CONTENT
               Expanded(
                 child: TabBarView(
+                  physics: isIOS
+                      ? const BouncingScrollPhysics()
+                      : const ClampingScrollPhysics(),
                   controller: tabController,
 
                   children: [
@@ -291,11 +299,12 @@ class _MetricChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
         color: scheme.surface.withValues(alpha: 0.65),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(isIOS ? 10 : 12),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

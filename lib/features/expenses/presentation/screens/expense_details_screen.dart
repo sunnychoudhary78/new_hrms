@@ -1,7 +1,9 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lms/core/providers/global_loading_provider.dart';
 import 'package:lms/features/expenses/presentation/screens/expense_receipt_preview_screen.dart';
+import 'package:lms/shared/widgets/app_bar.dart';
 import '../../data/models/expense_model.dart';
 import '../providers/expense_provider.dart';
 import '../widgets/expense_remarks_dialog.dart';
@@ -29,20 +31,31 @@ class _ExpenseDetailScreenState extends ConsumerState<ExpenseDetailScreen> {
     final canApprove = _canApprove(role, normalizedStatus);
     final canProcess = _canProcess(role, normalizedStatus);
     final canReject = _canReject(role, normalizedStatus);
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
+    final itemRadius = isIOS ? 12.0 : 14.0;
+    final btnRadius = BorderRadius.circular(isIOS ? 12 : 14);
 
     return Scaffold(
-      appBar: AppBar(title: const Text("Expense Details"), elevation: 0),
+      appBar: const AppAppBar(title: "Expense Details"),
 
       body: Column(
         children: [
           Expanded(
             child: ListView(
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+              physics: defaultTargetPlatform == TargetPlatform.iOS
+                  ? const BouncingScrollPhysics(
+                      parent: AlwaysScrollableScrollPhysics(),
+                    )
+                  : const ClampingScrollPhysics(),
               padding: const EdgeInsets.all(16),
               children: [
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(18),
+                    borderRadius: BorderRadius.circular(
+                      isIOS ? 14 : 18,
+                    ),
                     gradient: LinearGradient(
                       colors: [
                         scheme.primaryContainer,
@@ -101,7 +114,7 @@ class _ExpenseDetailScreenState extends ConsumerState<ExpenseDetailScreen> {
                     margin: const EdgeInsets.only(bottom: 12),
                     decoration: BoxDecoration(
                       color: scheme.surfaceContainerLow,
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(itemRadius),
                       border: Border.all(color: scheme.outlineVariant),
                     ),
                     child: Padding(
@@ -216,6 +229,9 @@ class _ExpenseDetailScreenState extends ConsumerState<ExpenseDetailScreen> {
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          shape: RoundedRectangleBorder(borderRadius: btnRadius),
+                        ),
                         onPressed: _isSubmitting
                             ? null
                             : () => _submitExpense(expense.id),
@@ -249,6 +265,7 @@ class _ExpenseDetailScreenState extends ConsumerState<ExpenseDetailScreen> {
                           style: ElevatedButton.styleFrom(
                             backgroundColor: scheme.errorContainer,
                             foregroundColor: scheme.onErrorContainer,
+                            shape: RoundedRectangleBorder(borderRadius: btnRadius),
                           ),
                           onPressed: _isActionLoading
                               ? null
@@ -270,6 +287,9 @@ class _ExpenseDetailScreenState extends ConsumerState<ExpenseDetailScreen> {
                     if (canApprove || canProcess)
                       Expanded(
                         child: ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            shape: RoundedRectangleBorder(borderRadius: btnRadius),
+                          ),
                           onPressed: _isActionLoading
                               ? null
                               : () => canApprove
@@ -537,9 +557,10 @@ class _ExpenseDetailScreenState extends ConsumerState<ExpenseDetailScreen> {
     required String title,
     required String subtitle,
   }) {
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
     return Material(
       color: scheme.surface,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(isIOS ? 10 : 12),
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
         leading: Icon(_docIconForName(subtitle), color: scheme.primary),

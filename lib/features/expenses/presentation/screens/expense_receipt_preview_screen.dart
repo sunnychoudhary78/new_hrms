@@ -1,7 +1,7 @@
 import 'dart:convert';
-import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lms/core/providers/network_providers.dart';
@@ -227,6 +227,7 @@ class _ExpenseReceiptPreviewScreenState
       appBar: AppBar(
         backgroundColor: Colors.black,
         iconTheme: const IconThemeData(color: Colors.white),
+        centerTitle: defaultTargetPlatform == TargetPlatform.iOS,
         title: const Text('Receipt', style: TextStyle(color: Colors.white)),
       ),
       body: _loading

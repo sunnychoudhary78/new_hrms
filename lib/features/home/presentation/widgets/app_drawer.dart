@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -5,6 +6,7 @@ import 'package:lms/core/providers/user_data_invalidation.dart';
 import 'package:lms/features/auth/presentation/providers/auth_provider.dart';
 import 'package:lms/features/home/presentation/widgets/drawer_item_tile.dart';
 import 'package:lms/features/kra/presentation/kra_route_args.dart';
+
 class AppDrawer extends ConsumerStatefulWidget {
   const AppDrawer({super.key});
 
@@ -26,6 +28,7 @@ class _AppDrawerState extends ConsumerState<AppDrawer>
     final authState = ref.watch(authProvider);
 
     final permissions = authState.permissions;
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
 
     // ================= ROLE DETECTION =================
 
@@ -51,15 +54,17 @@ class _AppDrawerState extends ConsumerState<AppDrawer>
     final scheme = Theme.of(context).colorScheme;
     final companyLogo = authState.companyLogoUrl;
 
+    final drawerRadius = Radius.circular(isIOS ? 16 : 24);
+
     int index = 0;
 
     return Drawer(
       backgroundColor: scheme.surface,
-      elevation: 12,
-      shape: const RoundedRectangleBorder(
+      elevation: isIOS ? 6 : 12,
+      shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.only(
-          topRight: Radius.circular(24),
-          bottomRight: Radius.circular(24),
+          topRight: drawerRadius,
+          bottomRight: drawerRadius,
         ),
       ),
       child: SafeArea(
@@ -67,7 +72,11 @@ class _AppDrawerState extends ConsumerState<AppDrawer>
           children: [
             Expanded(
               child: SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
+                keyboardDismissBehavior:
+                    ScrollViewKeyboardDismissBehavior.onDrag,
+                physics: isIOS
+                    ? const BouncingScrollPhysics()
+                    : const ClampingScrollPhysics(),
                 child: Column(
                   children: [
                     _buildHeader(companyLogo),
@@ -312,6 +321,7 @@ class _AppDrawerState extends ConsumerState<AppDrawer>
     required VoidCallback onTap,
     required List<Widget> subItems,
   }) {
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
     return Column(
       children: [
         DrawerTile(
@@ -322,7 +332,10 @@ class _AppDrawerState extends ConsumerState<AppDrawer>
           trailing: AnimatedRotation(
             turns: expanded ? .5 : 0,
             duration: const Duration(milliseconds: 250),
-            child: const Icon(Icons.keyboard_arrow_down),
+            child: Icon(
+              Icons.keyboard_arrow_down,
+              size: isIOS ? 22 : 24,
+            ),
           ),
         ),
         AnimatedSize(
@@ -346,9 +359,14 @@ class _AppDrawerState extends ConsumerState<AppDrawer>
   /// KRA / KPI: same route, different [KraRouteArgs] — stay on one `/kra` if already there.
   Widget _kraSubItem(String title, KraRouteArgs args) {
     final scheme = Theme.of(context).colorScheme;
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
     return Padding(
       padding: const EdgeInsets.only(left: 48, right: 14, top: 4, bottom: 4),
       child: InkWell(
+        borderRadius: BorderRadius.circular(isIOS ? 8 : 10),
+        splashFactory: isIOS
+            ? NoSplash.splashFactory
+            : InkSplash.splashFactory,
         onTap: () => _goToKra(args),
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 8),
@@ -373,10 +391,15 @@ class _AppDrawerState extends ConsumerState<AppDrawer>
 
   Widget _subItem(String title, String route) {
     final scheme = Theme.of(context).colorScheme;
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
 
     return Padding(
       padding: const EdgeInsets.only(left: 48, right: 14, top: 4, bottom: 4),
       child: InkWell(
+        borderRadius: BorderRadius.circular(isIOS ? 8 : 10),
+        splashFactory: isIOS
+            ? NoSplash.splashFactory
+            : InkSplash.splashFactory,
         onTap: () {
           Navigator.pop(context);
           Navigator.pushNamed(context, route);

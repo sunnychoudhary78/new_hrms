@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
@@ -22,9 +23,11 @@ class DrawerTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
+    final tileRadius = BorderRadius.circular(isIOS ? 12 : 14);
 
     final bgColor = isActive
-        ? scheme.primary.withOpacity(.08)
+        ? scheme.primary.withValues(alpha: 0.08)
         : scheme.surfaceContainerLow;
 
     final iconColor = isActive ? scheme.primary : scheme.onSurfaceVariant;
@@ -35,9 +38,12 @@ class DrawerTile extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
           child: Material(
             color: bgColor,
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: tileRadius,
             child: InkWell(
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: tileRadius,
+              splashFactory: isIOS
+                  ? NoSplash.splashFactory
+                  : InkSplash.splashFactory,
               onTap: onTap,
               child: Padding(
                 padding: const EdgeInsets.symmetric(
