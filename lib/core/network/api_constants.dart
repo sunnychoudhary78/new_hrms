@@ -1,7 +1,7 @@
 enum Environment { uat, prod }
 
 class ApiConstants {
-  static Environment current = Environment.uat; // 👈 change only here
+  static Environment current = Environment.prod; // 👈 change only here
 
   static String get baseUrl {
     switch (current) {
