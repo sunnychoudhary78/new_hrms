@@ -27,8 +27,8 @@ class DrawerTile extends StatelessWidget {
     final tileRadius = BorderRadius.circular(isIOS ? 12 : 14);
 
     final bgColor = isActive
-        ? scheme.primary.withValues(alpha: 0.08)
-        : scheme.surfaceContainerLow;
+        ? scheme.primary.withValues(alpha: 0.10)
+        : Colors.transparent;
 
     final iconColor = isActive ? scheme.primary : scheme.onSurfaceVariant;
 
@@ -48,7 +48,7 @@ class DrawerTile extends StatelessWidget {
               child: Padding(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 16,
-                  vertical: 13,
+                  vertical: 12,
                 ),
                 child: Row(
                   children: [

@@ -79,11 +79,16 @@ class _AppDrawerState extends ConsumerState<AppDrawer>
                     : const ClampingScrollPhysics(),
                 child: Column(
                   children: [
-                    _buildHeader(companyLogo),
+                    _buildHeader(
+                      companyLogo: companyLogo,
+                      employeeName: authState.profile?.associatesName ?? 'HRMS',
+                      designation: authState.profile?.designation,
+                    ),
 
                     const SizedBox(height: 10),
 
-                    // ================= HOME =================
+                    _sectionLabel('Main'),
+
                     DrawerTile(
                       index: index++,
                       icon: Icons.home_rounded,
@@ -99,7 +104,6 @@ class _AppDrawerState extends ConsumerState<AppDrawer>
                       },
                     ),
 
-                    // ================= PROFILE =================
                     DrawerTile(
                       index: index++,
                       icon: Icons.person,
@@ -111,12 +115,18 @@ class _AppDrawerState extends ConsumerState<AppDrawer>
                       },
                     ),
 
-                    // ================= ATTENDANCE =================
+                    _sectionLabel('Work'),
+
                     _buildExpandable(
                       index: index++,
                       title: "Attendance",
                       icon: Icons.access_time_rounded,
                       expanded: _isAttendanceExpanded,
+                      isActive:
+                          route == "/mark-attendance" ||
+                          route == "/view-attendance" ||
+                          route == "/view-corrections" ||
+                          route == "/correct-attendance",
                       onTap: () => setState(
                         () => _isAttendanceExpanded = !_isAttendanceExpanded,
                       ),
@@ -132,12 +142,16 @@ class _AppDrawerState extends ConsumerState<AppDrawer>
                       ],
                     ),
 
-                    // ================= LEAVE =================
                     _buildExpandable(
                       index: index++,
                       title: "Leave",
                       icon: Icons.beach_access_rounded,
                       expanded: _isLeaveExpanded,
+                      isActive:
+                          route == "/leave-balance" ||
+                          route == "/leave-apply" ||
+                          route == "/leave-status" ||
+                          route == "/leave-approve",
                       onTap: () =>
                           setState(() => _isLeaveExpanded = !_isLeaveExpanded),
                       subItems: [
@@ -149,7 +163,6 @@ class _AppDrawerState extends ConsumerState<AppDrawer>
                       ],
                     ),
 
-                    // ================= TEAM DASHBOARD =================
                     if (hasLeaveApprove)
                       DrawerTile(
                         index: index++,
@@ -162,13 +175,15 @@ class _AppDrawerState extends ConsumerState<AppDrawer>
                         },
                       ),
 
-                    // ================= KRA / KPI =================
+                    _sectionLabel('HR'),
+
                     if (hasAnyKraPermission)
                       _buildExpandable(
                         index: index++,
                         title: "KRA / KPI",
                         icon: Icons.track_changes_rounded,
                         expanded: _isKraExpanded,
+                        isActive: route == "/kra",
                         onTap: () =>
                             setState(() => _isKraExpanded = !_isKraExpanded),
                         subItems: [
@@ -190,12 +205,14 @@ class _AppDrawerState extends ConsumerState<AppDrawer>
                         ],
                       ),
 
-                    // ================= EXPENSES (FIXED) =================
                     _buildExpandable(
                       index: index++,
                       title: "Expenses",
                       icon: Icons.receipt_long_rounded,
                       expanded: _isExpenseExpanded,
+                      isActive:
+                          route == "/expenses/my" ||
+                          route == "/expenses-dashboard",
                       onTap: () => setState(
                         () => _isExpenseExpanded = !_isExpenseExpanded,
                       ),
@@ -209,7 +226,6 @@ class _AppDrawerState extends ConsumerState<AppDrawer>
                       ],
                     ),
 
-                    // ================= PAYSLIP =================
                     DrawerTile(
                       index: index++,
                       icon: Icons.payment,
@@ -221,12 +237,25 @@ class _AppDrawerState extends ConsumerState<AppDrawer>
                       },
                     ),
 
-                    // ================= RESIGNATION (NEW) =================
+                    DrawerTile(
+                      index: index++,
+                      icon: Icons.policy_rounded,
+                      title: "Policies",
+                      isActive: route == "/policies",
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.pushNamed(context, "/policies");
+                      },
+                    ),
+
                     _buildExpandable(
                       index: index++,
                       title: "Resignation",
                       icon: Icons.exit_to_app_rounded,
                       expanded: _isResignationExpanded,
+                      isActive:
+                          route == "/resignation/my" ||
+                          route == "/resignation-dashboard",
                       onTap: () => setState(
                         () => _isResignationExpanded = !_isResignationExpanded,
                       ),
@@ -245,7 +274,8 @@ class _AppDrawerState extends ConsumerState<AppDrawer>
                       ],
                     ),
 
-                    // ================= SETTINGS =================
+                    _sectionLabel('App'),
+
                     DrawerTile(
                       index: index++,
                       icon: Icons.settings,
@@ -287,7 +317,11 @@ class _AppDrawerState extends ConsumerState<AppDrawer>
 
   // ================= HEADER =================
 
-  Widget _buildHeader(String companyLogo) {
+  Widget _buildHeader({
+    required String companyLogo,
+    required String employeeName,
+    String? designation,
+  }) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
@@ -299,16 +333,72 @@ class _AppDrawerState extends ConsumerState<AppDrawer>
         : scheme.primaryContainer;
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(18, 28, 18, 28),
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(18, 24, 18, 20),
       decoration: BoxDecoration(
         gradient: LinearGradient(colors: [startColor, endColor]),
       ),
-      child: Center(
-        child: companyLogo.isNotEmpty
-            ? Image.network(companyLogo, height: 60)
-            : const SizedBox(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 62,
+            height: 62,
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: scheme.surface.withValues(alpha: 0.92),
+              borderRadius: BorderRadius.circular(18),
+            ),
+            child: companyLogo.isNotEmpty
+                ? Image.network(companyLogo, fit: BoxFit.contain)
+                : Icon(Icons.business_rounded, color: scheme.primary),
+          ),
+          const SizedBox(height: 14),
+          Text(
+            employeeName,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: isDark ? scheme.onSurface : scheme.onPrimary,
+              fontSize: 17,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          if (designation != null && designation.trim().isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(
+              designation,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: (isDark ? scheme.onSurface : scheme.onPrimary)
+                    .withValues(alpha: 0.78),
+                fontSize: 13,
+              ),
+            ),
+          ],
+        ],
       ),
     ).animate().fade().slideY(begin: -.15);
+  }
+
+  Widget _sectionLabel(String title) {
+    final scheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(22, 14, 22, 6),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: Text(
+          title.toUpperCase(),
+          style: TextStyle(
+            color: scheme.onSurfaceVariant,
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.8,
+          ),
+        ),
+      ),
+    );
   }
 
   // ================= EXPANDABLE =================
@@ -318,6 +408,7 @@ class _AppDrawerState extends ConsumerState<AppDrawer>
     required String title,
     required IconData icon,
     required bool expanded,
+    bool isActive = false,
     required VoidCallback onTap,
     required List<Widget> subItems,
   }) {
@@ -328,14 +419,12 @@ class _AppDrawerState extends ConsumerState<AppDrawer>
           index: index,
           icon: icon,
           title: title,
+          isActive: isActive,
           onTap: onTap,
           trailing: AnimatedRotation(
             turns: expanded ? .5 : 0,
             duration: const Duration(milliseconds: 250),
-            child: Icon(
-              Icons.keyboard_arrow_down,
-              size: isIOS ? 22 : 24,
-            ),
+            child: Icon(Icons.keyboard_arrow_down, size: isIOS ? 22 : 24),
           ),
         ),
         AnimatedSize(
@@ -364,9 +453,7 @@ class _AppDrawerState extends ConsumerState<AppDrawer>
       padding: const EdgeInsets.only(left: 48, right: 14, top: 4, bottom: 4),
       child: InkWell(
         borderRadius: BorderRadius.circular(isIOS ? 8 : 10),
-        splashFactory: isIOS
-            ? NoSplash.splashFactory
-            : InkSplash.splashFactory,
+        splashFactory: isIOS ? NoSplash.splashFactory : InkSplash.splashFactory,
         onTap: () => _goToKra(args),
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 8),
@@ -392,33 +479,48 @@ class _AppDrawerState extends ConsumerState<AppDrawer>
   Widget _subItem(String title, String route) {
     final scheme = Theme.of(context).colorScheme;
     final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
+    final isActive = ModalRoute.of(context)?.settings.name == route;
 
     return Padding(
       padding: const EdgeInsets.only(left: 48, right: 14, top: 4, bottom: 4),
-      child: InkWell(
+      child: Material(
+        color: isActive
+            ? scheme.primary.withValues(alpha: 0.08)
+            : Colors.transparent,
         borderRadius: BorderRadius.circular(isIOS ? 8 : 10),
-        splashFactory: isIOS
-            ? NoSplash.splashFactory
-            : InkSplash.splashFactory,
-        onTap: () {
-          Navigator.pop(context);
-          Navigator.pushNamed(context, route);
-        },
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          child: Row(
-            children: [
-              Container(
-                width: 6,
-                height: 6,
-                decoration: BoxDecoration(
-                  color: scheme.primary,
-                  shape: BoxShape.circle,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(isIOS ? 8 : 10),
+          splashFactory: isIOS
+              ? NoSplash.splashFactory
+              : InkSplash.splashFactory,
+          onTap: () {
+            Navigator.pop(context);
+            Navigator.pushNamed(context, route);
+          },
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            child: Row(
+              children: [
+                Container(
+                  width: 6,
+                  height: 6,
+                  decoration: BoxDecoration(
+                    color: isActive ? scheme.primary : scheme.outline,
+                    shape: BoxShape.circle,
+                  ),
                 ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(child: Text(title)),
-            ],
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: TextStyle(
+                      color: isActive ? scheme.primary : scheme.onSurface,
+                      fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

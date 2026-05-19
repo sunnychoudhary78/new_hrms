@@ -35,6 +35,9 @@ class ApiEndpoints {
   static const String notifications = 'notifications';
   static const String myPayslips = '/payroll/my-payslips';
 
+  // ───────── POLICIES ─────────
+  static const String policies = 'policies';
+
   // ───────── EXPENSES ─────────
   static const String expenses = 'expenses';
 

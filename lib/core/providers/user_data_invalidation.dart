@@ -11,6 +11,7 @@ import '../../features/leave/presentation/providers/leave_approve_provider.dart'
 import '../../features/leave/presentation/providers/leave_balance_provider.dart';
 import '../../features/leave/presentation/providers/leave_details_provider.dart';
 import '../../features/notifications/presentation/providers/notifications_provider.dart';
+import '../../features/policy/presentation/providers/policy_provider.dart';
 import '../../features/resignation/presentation/providers/resignation_providers.dart';
 import '../notifications/notification_action_notifier.dart';
 
@@ -25,6 +26,7 @@ void invalidateAllUserScopedData(WidgetRef ref) {
   ref.invalidate(notificationProvider);
   ref.invalidate(unreadCountProvider);
   ref.invalidate(notificationActionProvider);
+  ref.invalidate(policiesProvider);
   ref.invalidate(leaveApplyProvider);
   ref.invalidate(leaveBalanceProvider);
   ref.invalidate(leaveApproveProvider);

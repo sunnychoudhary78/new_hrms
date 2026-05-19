@@ -240,7 +240,7 @@ class _OtpLoginScreenState extends ConsumerState<OtpLoginScreen>
                                 6,
                                 (i) => Padding(
                                   padding: const EdgeInsets.symmetric(
-                                    horizontal: 6,
+                                    horizontal: 4,
                                   ),
                                   child: OtpDigitField(
                                     controller: _otpControllers[i],
@@ -383,14 +383,25 @@ class _OtpDigitFieldState extends State<OtpDigitField>
         return Transform.scale(scale: _scaleAnimation.value, child: child);
       },
       child: SizedBox(
-        width: 48,
+        width: 52,
+        height: 56,
         child: TextField(
           controller: widget.controller,
           focusNode: widget.focusNode,
           textAlign: TextAlign.center,
+          textAlignVertical: TextAlignVertical.center,
           keyboardType: TextInputType.number,
           textInputAction: TextInputAction.done,
           maxLength: 1,
+          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.w600,
+                height: 1,
+              ) ??
+              const TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.w600,
+                height: 1,
+              ),
           onChanged: (v) {
             if (v.isNotEmpty) {
               _scaleController.forward().then((_) {
@@ -403,6 +414,8 @@ class _OtpDigitFieldState extends State<OtpDigitField>
           inputFormatters: [FilteringTextInputFormatter.digitsOnly],
           decoration: InputDecoration(
             counterText: "",
+            isDense: true,
+            contentPadding: EdgeInsets.zero,
             filled: true,
             fillColor: scheme.surfaceVariant.withOpacity(.35),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),

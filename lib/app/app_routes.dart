@@ -39,6 +39,9 @@ import 'package:lms/features/settings/presentation/screens/settings_screen.dart'
 // PAYSLIP
 import 'package:lms/features/payslip/presentation/screens/payslip_list_screen.dart';
 
+// POLICIES
+import 'package:lms/features/policy/presentation/screens/policy_screen.dart';
+
 // KRA / KPI
 import 'package:lms/features/kra/presentation/screens/kra_dashboard_screen.dart';
 
@@ -107,6 +110,9 @@ class AppRoutes {
 
     // ================= PAYSLIP =================
     '/payslip': (_) => const PayslipListScreen(),
+
+    // ================= POLICIES =================
+    '/policies': (_) => const PolicyScreen(),
 
     // ================= KRA / KPI =================
     '/kra': (_) => const KraDashboardScreen(),
