@@ -16,6 +16,7 @@ import 'package:lms/shared/widgets/app_bar.dart';
 
 import '../widgets/live_clock_card.dart';
 import '../widgets/session_logs.dart';
+import '../widgets/stale_open_session_banner.dart';
 
 class MarkAttendanceScreen extends ConsumerStatefulWidget {
   const MarkAttendanceScreen({super.key});
@@ -66,12 +67,18 @@ class _MarkAttendanceScreenState extends ConsumerState<MarkAttendanceScreen> {
             loading: () => const SizedBox(),
             error: (_, __) => const SizedBox(),
             data: (settings) {
-              final activeSession = ref.watch(
-                activeSessionProvider(attendanceState),
+              final openSession = ref.watch(
+                openSessionProvider(attendanceState),
+              );
+              final hasOpen = ref.watch(
+                hasOpenSessionProvider(attendanceState),
+              );
+              final isStale = ref.watch(
+                isStaleOpenSessionProvider(attendanceState),
               );
 
-              final punchInTime = activeSession?.checkInTime;
-              final punchOutTime = activeSession?.checkOutTime;
+              final punchInTime = openSession?.checkInTime;
+              final punchOutTime = openSession?.checkOutTime;
 
               final workingTime = punchInTime == null
                   ? "00:00"
@@ -101,7 +108,7 @@ class _MarkAttendanceScreenState extends ConsumerState<MarkAttendanceScreen> {
                       progress: progress,
                       shiftStart: officeStart,
                       shiftEnd: officeEnd,
-                      isCheckedIn: punchInTime != null, // ADD THIS
+                      isCheckedIn: hasOpen,
                     ),
 
                     const SizedBox(height: 32),
@@ -113,10 +120,12 @@ class _MarkAttendanceScreenState extends ConsumerState<MarkAttendanceScreen> {
 
                     const SizedBox(height: 32),
 
+                    if (isStale && openSession != null)
+                      StaleOpenSessionBanner(openSession: openSession),
+
                     /// ACTION SECTION (NEW CLEAN WIDGET)
                     AttendanceActionsSection(
-                      punchInTime: punchInTime,
-                      punchOutTime: punchOutTime,
+                      hasOpenSession: hasOpen,
                       isRemoteMode: isRemoteMode,
                       remoteReason: remoteReason,
                       onEnableRemoteMode: enableRemoteMode,

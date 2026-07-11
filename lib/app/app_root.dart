@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lms/core/services/app_update_service.dart';
 import 'package:lms/core/screens/splash_loading_screen.dart';
 import 'package:lms/core/screens/subscribtion_expired_screen.dart';
 import 'package:lms/core/providers/user_data_invalidation.dart';
@@ -29,6 +30,7 @@ class _AppRootState extends ConsumerState<AppRoot> {
   bool _pushInitialized = false;
   bool _minimumSplashElapsed = _hasShownStartupSplashInSession;
   bool _startupSplashCompleted = _hasShownStartupSplashInSession;
+  bool _playStoreUpdateChecked = false;
 
   String? _lastUserId;
 
@@ -117,7 +119,10 @@ class _AppRootState extends ConsumerState<AppRoot> {
           _startupSplashCompleted = true;
           _hasShownStartupSplashInSession = true;
         });
+        _checkPlayStoreUpdate();
       });
+    } else if (!_playStoreUpdateChecked) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _checkPlayStoreUpdate());
     }
 
     if (authState.isSubscriptionExpired) {
@@ -129,6 +134,12 @@ class _AppRootState extends ConsumerState<AppRoot> {
     }
 
     return const HomeScreen();
+  }
+
+  void _checkPlayStoreUpdate() {
+    if (_playStoreUpdateChecked || !mounted) return;
+    _playStoreUpdateChecked = true;
+    AppUpdateService.checkAndroidPlayStoreUpdate(context);
   }
 
   /// ─────────────────────────────────────────────

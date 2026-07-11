@@ -8,6 +8,7 @@ import 'package:lms/core/services/selfie_service.dart';
 import 'package:lms/features/attendance/shared/data/attendance_repository_provider.dart';
 import 'package:lms/features/attendance/shared/data/attendance_rerpository.dart';
 import 'package:lms/features/attendance/mark_attendance/data/models/attendance_session_model.dart';
+import 'package:lms/features/attendance/shared/utils/attendance_date_utils.dart';
 import 'package:lms/features/attendance/view_attendance/presentation/providers/view_attendance_provider.dart';
 import 'package:lms/features/dashboard/presentation/providers/team_attendance_provider.dart';
 
@@ -27,20 +28,33 @@ class MarkAttendanceNotifier extends AsyncNotifier<List<AttendanceSession>> {
     _locationService = ref.read(locationServiceProvider);
     _selfieService = SelfieService();
 
-    return _loadToday();
+    return _loadPunchSessions();
   }
 
   // ─────────────────────────────────────────────
-  // LOAD TODAY
+  // LOAD PUNCH SESSIONS
   // ─────────────────────────────────────────────
 
-  Future<List<AttendanceSession>> _loadToday() async {
-    return await _repo.fetchAttendanceToday();
+  Future<List<AttendanceSession>> _loadPunchSessions() async {
+    return await _repo.fetchPunchSessions();
+  }
+
+  bool _guardCheckIn(GlobalLoadingNotifier overlay) {
+    final sessions = state.value ?? [];
+    if (hasOpenSession(sessions)) {
+      overlay.showError("You have an open session. Please check out first.");
+      return false;
+    }
+    if (!canStartNewSession(sessions)) {
+      overlay.showError("Only 2 sessions allowed today");
+      return false;
+    }
+    return true;
   }
 
   Future<void> refresh() async {
     try {
-      final fresh = await _loadToday();
+      final fresh = await _loadPunchSessions();
       state = AsyncData(fresh);
     } catch (_) {
       // preserve current state
@@ -90,6 +104,10 @@ class MarkAttendanceNotifier extends AsyncNotifier<List<AttendanceSession>> {
     }
 
     try {
+      if (isCheckIn && !_guardCheckIn(overlay)) {
+        return;
+      }
+
       // ─────────────────────────────────────────────
       // STEP 1: FETCH MOBILE CONFIG
       // ─────────────────────────────────────────────

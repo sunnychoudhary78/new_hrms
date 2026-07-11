@@ -1,7 +1,11 @@
+import 'dart:io';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:upgrader/upgrader.dart';
 
 import 'package:lms/app/app_routes.dart';
 import 'package:lms/app/app_root.dart';
@@ -17,6 +21,13 @@ import 'package:lms/shared/widgets/global_message.dart';
 import 'package:lms/shared/widgets/global_sucess.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
+/// iOS App Store lookup. Android uses [AppUpdateService] (Play In-App Update API).
+final Upgrader _appUpgrader = Upgrader(
+  durationUntilAlertAgain: Duration.zero,
+  debugLogging: kDebugMode,
+  countryCode: 'IN',
+);
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -191,7 +202,7 @@ class MyApp extends ConsumerWidget {
         ),
       ),
 
-      home: const AppRoot(),
+      home: _buildHome(),
 
       routes: AppRoutes.routes,
 
@@ -212,6 +223,23 @@ class MyApp extends ConsumerWidget {
           ],
         );
       },
+    );
+  }
+
+  /// Android: Play In-App Update (versionCode). iOS: Upgrader (App Store version name).
+  Widget _buildHome() {
+    const appRoot = AppRoot();
+
+    if (Platform.isAndroid) {
+      return appRoot;
+    }
+
+    return UpgradeAlert(
+      upgrader: _appUpgrader,
+      navigatorKey: navigatorKey,
+      showIgnore: false,
+      showLater: false,
+      child: appRoot,
     );
   }
 }

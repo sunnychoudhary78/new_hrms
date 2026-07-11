@@ -9,6 +9,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:lms/features/attendance/mark_attendance/presentation/providers/attendance_selectors.dart';
 import 'package:lms/features/attendance/mark_attendance/presentation/providers/mark_attendance_provider.dart';
 import 'package:lms/features/attendance/mark_attendance/presentation/providers/mobile_config_provider.dart';
+import 'package:lms/features/attendance/mark_attendance/presentation/widgets/stale_open_session_banner.dart';
 
 class HomeWelcomeAttendanceCard extends ConsumerStatefulWidget {
   final String name;
@@ -143,19 +144,27 @@ class _HomeWelcomeAttendanceCardState
                           error: (_, __) => const SizedBox(height: 130),
 
                           data: (sessions) {
-                            final activeSession = ref.watch(
-                              activeSessionProvider(sessions),
+                            final openSession = ref.watch(
+                              openSessionProvider(sessions),
+                            );
+                            final hasOpen = ref.watch(
+                              hasOpenSessionProvider(sessions),
+                            );
+                            final canStartNew = ref.watch(
+                              canStartNewSessionProvider(sessions),
+                            );
+                            final isStale = ref.watch(
+                              isStaleOpenSessionProvider(sessions),
                             );
 
-                            final isCheckedIn =
-                                activeSession != null &&
-                                activeSession.checkOutTime == null;
+                            final isCheckedIn = hasOpen;
 
-                            /// Backend permission check
-                            final canPunchIn = !isCheckedIn && canMobileCheckIn;
+                            /// Backend permission check (aligned with web)
+                            final canPunchIn =
+                                canStartNew && canMobileCheckIn;
 
                             final canPunchOut =
-                                isCheckedIn && canMobileCheckOut;
+                                hasOpen && canMobileCheckOut;
 
                             final statusBg = isCheckedIn
                                 ? scheme.tertiaryContainer
@@ -243,6 +252,11 @@ class _HomeWelcomeAttendanceCardState
 
                                 const SizedBox(height: 20),
 
+                                if (isStale && openSession != null)
+                                  StaleOpenSessionBanner(
+                                    openSession: openSession,
+                                  ),
+
                                 /// STATUS + BUTTON
                                 Row(
                                   children: [
@@ -315,11 +329,13 @@ class _HomeWelcomeAttendanceCardState
                                   ],
                                 ),
 
-                                if (isCheckedIn)
+                                if (isCheckedIn && openSession != null)
                                   Padding(
                                     padding: const EdgeInsets.only(top: 10),
                                     child: Text(
-                                      "Checked in at ${_fmt(activeSession.checkInTime)}",
+                                      isStale
+                                          ? "Checked in ${_fmtDate(openSession.checkInTime)} at ${_fmt(openSession.checkInTime)}"
+                                          : "Checked in at ${_fmt(openSession.checkInTime)}",
                                       style: TextStyle(
                                         color: scheme.onSurfaceVariant,
                                         fontSize: 13,
@@ -372,6 +388,9 @@ class _HomeWelcomeAttendanceCardState
   }
 
   static String _fmt(DateTime t) => DateFormat('hh:mm a').format(t.toLocal());
+
+  static String _fmtDate(DateTime t) =>
+      DateFormat('EEE, MMM dd').format(t.toLocal());
 
   static String _greeting() {
     final hour = DateTime.now().hour;

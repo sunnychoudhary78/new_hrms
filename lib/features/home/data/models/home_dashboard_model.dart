@@ -157,12 +157,14 @@ class WeeklyAttendanceBar {
   final DateTime date;
   final int workedMinutes;
   final int expectedMinutes;
+  final int estimatedOtMinutes;
   final bool isCapped;
 
   const WeeklyAttendanceBar({
     required this.date,
     required this.workedMinutes,
     required this.expectedMinutes,
+    this.estimatedOtMinutes = 0,
     this.isCapped = false,
   });
 }

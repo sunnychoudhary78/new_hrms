@@ -1,17 +1,23 @@
 import 'package:lms/core/network/api_constants.dart';
 import 'package:lms/features/home/data/models/home_dashboard_model.dart';
 import 'package:lms/features/attendance/mark_attendance/data/models/attendance_session_model.dart';
+import 'package:lms/features/attendance/shared/utils/attendance_date_utils.dart';
 import 'package:lms/features/attendance/shared/data/attendance_rerpository.dart';
 import 'package:lms/features/auth/data/auth_api_service.dart';
+import 'package:lms/features/attendance/mark_attendance/data/company_settings_repository.dart';
+import 'package:lms/features/attendance/shared/utils/overtime_estimate_utils.dart';
+import 'package:lms/features/attendance/view_attendance/data/models/attendance_aggregate_model.dart';
 import 'package:lms/features/attendance/view_attendance/data/models/attendance_summary_model.dart';
 
 class HomeDashboardRepository {
   final AttendanceRepository attendanceRepo;
   final AuthApiService authApi;
+  final CompanySettingsRepository companySettingsRepo;
 
   HomeDashboardRepository({
     required this.attendanceRepo,
     required this.authApi,
+    required this.companySettingsRepo,
   });
 
   // ─────────────────────────────────────────────
@@ -132,15 +138,29 @@ class HomeDashboardRepository {
     final todayStatus = await _loadTodayAttendance();
 
     // 7️⃣ MONTH WORKING DAYS BARS
-    const int expectedMinutesPerDay = 540;
+    final companySettings = await companySettingsRepo.fetchCompanySettings();
+    final expectedMinutesPerDay = expectedMinutesFromOfficeHours(
+      companySettings.officeStart,
+      companySettings.officeEnd,
+    );
+    if (expectedMinutesPerDay <= 0) {
+      print(
+        '📊 Using summary expected hours fallback for bar chart',
+      );
+    }
+    final effectiveExpectedPerDay = expectedMinutesPerDay > 0
+        ? expectedMinutesPerDay
+        : summary.expectedWorkingHours * 60;
 
     print(
-      '📊 Loading month working days bars (expected=$expectedMinutesPerDay min)',
+      '📊 Loading month working days bars (expected=$effectiveExpectedPerDay min)',
     );
 
-    final lastFiveDays = await _loadLastFiveDaysBars(
-      expectedMinutesPerDay,
+    final lastFiveDays = _loadLastFiveDaysBars(
+      effectiveExpectedPerDay,
+      companySettings.autoCloseBufferMinutes,
       monthSessions,
+      res.days,
     );
 
     return HomeDashboardModel(
@@ -212,18 +232,35 @@ class HomeDashboardRepository {
   // TODAY CHECK-IN / CHECK-OUT
   // ─────────────────────────────────────────────
   Future<TodayAttendanceStatus> _loadTodayAttendance() async {
-    final sessions = await attendanceRepo.fetchAttendanceToday();
+    final sessions = await attendanceRepo.fetchPunchSessions();
 
-    print('🕘 Today sessions count = ${sessions.length}');
+    print('🕘 Punch sessions count = ${sessions.length}');
 
-    if (sessions.isEmpty) {
+    final open = findOpenSession(sessions);
+    if (open != null) {
+      return TodayAttendanceStatus(
+        isCheckedIn: true,
+        checkInTime: open.checkInTime,
+        checkOutTime: open.checkOutTime,
+      );
+    }
+
+    final today = localTodayIso();
+    final todayClosed = sessions
+        .where((s) => sessionDateIso(s) == today && s.checkOutTime != null)
+        .toList();
+
+    if (todayClosed.isEmpty) {
       return const TodayAttendanceStatus(isCheckedIn: false);
     }
 
-    final latest = sessions.last;
+    todayClosed.sort(
+      (a, b) => a.checkInTime.compareTo(b.checkInTime),
+    );
+    final latest = todayClosed.last;
 
     return TodayAttendanceStatus(
-      isCheckedIn: latest.checkOutTime == null,
+      isCheckedIn: false,
       checkInTime: latest.checkInTime,
       checkOutTime: latest.checkOutTime,
     );
@@ -260,41 +297,46 @@ class HomeDashboardRepository {
   // ─────────────────────────────────────────────
   // BUILD BARS FOR MONTH WORKING DAYS
   // ─────────────────────────────────────────────
-  Future<List<WeeklyAttendanceBar>> _loadLastFiveDaysBars(
-    int expectedMinutesPerDay,
+  List<WeeklyAttendanceBar> _loadLastFiveDaysBars(
+    int expectedMinsPerDay,
+    int autoCloseBufferMinutes,
     List<AttendanceSession> sessions,
-  ) async {
-    const int maxAllowedMinutesPerDay = 650;
-
+    List<AttendanceAggregate> summaryDays,
+  ) {
     print('📦 Sessions fetched = ${sessions.length}');
-    final Map<DateTime, int> workedByDate = {};
 
-    for (final session in sessions) {
-      final day = DateTime.parse(session.date);
-
-      final dayKey = DateTime(day.year, day.month, day.day);
-
-      int minutes = 0;
-
-      minutes = session.durationMinutes;
-
-      workedByDate[dayKey] = (workedByDate[dayKey] ?? 0) + minutes;
+    final statusByDate = <String, String>{};
+    for (final day in summaryDays) {
+      statusByDate[dateKeyFromDateTime(day.date)] = day.status;
     }
+
+    final sessionsByDate = groupSessionsByDate(sessions);
 
     final workingDays = _allWorkingDaysOfMonth();
 
     final bars = workingDays.map((day) {
-      final worked = workedByDate[day] ?? 0;
+      final key = dateKeyFromDateTime(day);
+      final dayStatus = statusByDate[key] ?? 'present';
+      final daySessions = sessionsByDate[key] ?? [];
 
-      final cappedWorked = worked.clamp(0, maxAllowedMinutesPerDay);
+      final expectedForDate = expectedMinutesForDate(
+        dayStatus: dayStatus,
+        expectedMinsPerDay: expectedMinsPerDay,
+      );
 
-      final isCapped = worked > maxAllowedMinutesPerDay;
+      final result = computeDayWorked(
+        daySessions: daySessions,
+        expectedMinsPerDay: expectedMinsPerDay,
+        expectedForDate: expectedForDate,
+        autoCloseBufferMinutes: autoCloseBufferMinutes,
+      );
 
       return WeeklyAttendanceBar(
         date: day,
-        workedMinutes: cappedWorked,
-        expectedMinutes: expectedMinutesPerDay,
-        isCapped: isCapped,
+        workedMinutes: result.workedMinutes,
+        expectedMinutes: result.expectedMinutes,
+        estimatedOtMinutes: result.estimatedOtMinutes,
+        isCapped: result.isAutoCloseCapped,
       );
     }).toList();
 

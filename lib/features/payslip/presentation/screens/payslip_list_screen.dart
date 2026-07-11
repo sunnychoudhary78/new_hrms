@@ -265,6 +265,18 @@ class _PayslipCard extends StatelessWidget {
               style: TextStyle(color: scheme.onSurfaceVariant),
             ),
 
+            if (payslip.hasOvertimePay) ...[
+              const SizedBox(height: 8),
+              Text(
+                "OT: ₹${payslip.overtimePay.toStringAsFixed(2)} (${payslip.overtimeHours.toStringAsFixed(2)} hrs)",
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.amber.shade800,
+                ),
+              ),
+            ],
+
             const SizedBox(height: 12),
 
             Row(

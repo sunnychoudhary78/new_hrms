@@ -233,6 +233,17 @@ class _LastFiveDaysAttendanceCardState
 
           const SizedBox(height: 12),
 
+          Text(
+            'Estimated OT — final amount appears on payslip after payroll.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 11,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+
+          const SizedBox(height: 8),
+
           /// LEGEND
           const Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -241,7 +252,7 @@ class _LastFiveDaysAttendanceCardState
               SizedBox(width: 16),
               _Legend(AttendanceColors.overtime, "Overtime"),
               SizedBox(width: 16),
-              _Legend(AttendanceColors.capped, "Capped"),
+              _Legend(AttendanceColors.capped, "Auto-close cap"),
               SizedBox(width: 16),
               _Legend(AttendanceColors.expected, "Expected"),
             ],

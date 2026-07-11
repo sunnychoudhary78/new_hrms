@@ -14,6 +14,8 @@ class AttendanceAggregate {
 
     if (raw.contains('week')) {
       status = 'weekoff';
+    } else if (raw.contains('holiday')) {
+      status = 'holiday';
     } else if (raw.contains('absent')) {
       status = 'absent';
     } else if (raw.contains('leave')) {

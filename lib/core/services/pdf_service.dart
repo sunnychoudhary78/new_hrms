@@ -105,7 +105,18 @@ class PayslipPdfService {
 
               pw.SizedBox(height: 16),
 
-              /// 💰 NET SALARY HIGHLIGHT
+              if (payslip.hasOvertimePay)
+                pw.Padding(
+                  padding: const pw.EdgeInsets.only(bottom: 12),
+                  child: _pdfBox([
+                    _pdfRow(
+                      "OVERTIME PAY (Outside PF/ESIC Base)",
+                      "₹${payslip.overtimePay.toStringAsFixed(2)} (${payslip.overtimeHours.toStringAsFixed(2)} hrs)",
+                    ),
+                  ]),
+                ),
+
+              /// NET SALARY HIGHLIGHT
               pw.Container(
                 padding: const pw.EdgeInsets.all(12),
                 decoration: pw.BoxDecoration(

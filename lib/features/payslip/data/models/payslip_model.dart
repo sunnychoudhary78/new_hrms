@@ -16,6 +16,10 @@ class Payslip {
   final double netSalary;
   final double totalCtc;
 
+  final int overtimeMinutes;
+  final double overtimeHours;
+  final double overtimePay;
+
   final Employee employee;
   final Company company;
 
@@ -35,6 +39,9 @@ class Payslip {
     required this.totalDeductions,
     required this.netSalary,
     required this.totalCtc,
+    this.overtimeMinutes = 0,
+    this.overtimeHours = 0,
+    this.overtimePay = 0,
     required this.employee,
     required this.company,
     required this.createdAt,
@@ -60,12 +67,21 @@ class Payslip {
       netSalary: double.tryParse(json['net_salary'].toString()) ?? 0,
       totalCtc: double.tryParse(json['total_ctc'].toString()) ?? 0,
 
+      overtimeMinutes: int.tryParse(json['overtime_minutes']?.toString() ?? '') ??
+          0,
+      overtimeHours:
+          double.tryParse(json['overtime_hours']?.toString() ?? '') ?? 0,
+      overtimePay:
+          double.tryParse(json['overtime_pay']?.toString() ?? '') ?? 0,
+
       employee: Employee.fromJson(json['employee']),
       company: Company.fromJson(json['company']),
 
       createdAt: DateTime.parse(json['createdAt']),
     );
   }
+
+  bool get hasOvertimePay => overtimePay > 0;
 }
 
 class Employee {

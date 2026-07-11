@@ -1,6 +1,7 @@
 class CompanySettings {
   final String? officeStart;
   final String? officeEnd;
+  final int autoCloseBufferMinutes;
 
   final double? officeLat;
   final double? officeLng;
@@ -9,6 +10,7 @@ class CompanySettings {
   CompanySettings({
     this.officeStart,
     this.officeEnd,
+    this.autoCloseBufferMinutes = 30,
     this.officeLat,
     this.officeLng,
     this.officeRadius,
@@ -18,6 +20,9 @@ class CompanySettings {
     return CompanySettings(
       officeStart: json['office_start_time']?.toString(),
       officeEnd: json['office_end_time']?.toString(),
+      autoCloseBufferMinutes:
+          int.tryParse(json['auto_close_buffer_minutes']?.toString() ?? '') ??
+          30,
 
       officeLat: json['office_lat'] != null
           ? double.tryParse(json['office_lat'].toString())

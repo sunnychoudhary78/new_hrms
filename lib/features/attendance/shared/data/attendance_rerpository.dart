@@ -3,6 +3,7 @@ import 'package:lms/features/attendance/correction_attendance/data/models/attend
 import 'package:lms/features/attendance/mark_attendance/data/models/attendance_session_model.dart';
 import 'package:lms/features/attendance/shared/data/attendence_api_service.dart';
 import 'package:lms/features/attendance/shared/data/models/mobile_config_model.dart';
+import 'package:lms/features/attendance/shared/utils/attendance_date_utils.dart';
 import 'package:lms/features/attendance/view_attendance/data/models/attendance_full_response.dart';
 
 class AttendanceRepository {
@@ -35,23 +36,22 @@ class AttendanceRepository {
   }
 
   // ─────────────────────────────────────────────
-  // TODAY ATTENDANCE (KEEPING OLD FOR NOW)
+  // PUNCH SESSIONS (aligned with web attendance page)
   // ─────────────────────────────────────────────
 
-  Future<List<AttendanceSession>> fetchAttendanceToday() async {
-    final now = DateTime.now();
-
-    final res = await api.fetchAttendance(month: now.month, year: now.year);
+  /// Open sessions from any date + closed sessions for today (by session.date).
+  Future<List<AttendanceSession>> fetchPunchSessions() async {
+    final res = await api.fetchAttendance();
 
     final sessions = (res['sessions'] as List? ?? [])
         .map((e) => AttendanceSession.fromJson(e))
         .toList();
 
-    bool isSameDay(DateTime a, DateTime b) =>
-        a.year == b.year && a.month == b.month && a.day == b.day;
-
-    return sessions.where((s) => isSameDay(s.checkInTime, now)).toList();
+    return filterPunchSessions(sessions);
   }
+
+  /// @deprecated Use [fetchPunchSessions].
+  Future<List<AttendanceSession>> fetchAttendanceToday() => fetchPunchSessions();
 
   Future<List<AttendanceSession>> fetchMonthSessions({
     required int month,

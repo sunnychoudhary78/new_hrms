@@ -184,6 +184,7 @@ class _SalarySummary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -195,9 +196,26 @@ class _SalarySummary extends StatelessWidget {
           _amountRow("Gross Salary", payslip.grossSalary),
           _amountRow("Total Deductions", payslip.totalDeductions),
 
+          if (payslip.hasOvertimePay) ...[
+            const SizedBox(height: 4),
+            _amountRow(
+              "Overtime Pay",
+              payslip.overtimePay,
+            ),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Text(
+                "${payslip.overtimeHours.toStringAsFixed(2)} hrs · Outside PF/ESIC base",
+                style: TextStyle(
+                  fontSize: 11,
+                  color: scheme.onSurfaceVariant,
+                ),
+              ),
+            ),
+          ],
+
           const Divider(),
 
-          /// 🔥 HIGHLIGHT NET SALARY
           _amountRow("Net Salary", payslip.netSalary, isBold: true),
         ],
       ),

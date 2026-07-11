@@ -223,6 +223,7 @@ class AuthNotifier extends Notifier<AuthState> {
 
       state = state.copyWith(
         isLoading: false,
+        isInitializing: false,
         authUser: userModel.user,
         profile: profile,
         permissions: permissions,
@@ -235,8 +236,20 @@ class AuthNotifier extends Notifier<AuthState> {
       );
 
       await _registerFcmIfAvailable();
+
+      Future.microtask(() {
+        navigatorKey.currentState?.pushNamedAndRemoveUntil(
+          '/',
+          (route) => false,
+        );
+        final name = profile.associatesName?.split(' ').first ?? '';
+
+        ref
+            .read(globalLoadingProvider.notifier)
+            .showMessage("Welcome back, $name 👋");
+      });
     } catch (e) {
-      state = state.copyWith(isLoading: false);
+      state = state.copyWith(isLoading: false, isInitializing: false);
 
       if (e.toString().contains('SUBSCRIPTION_EXPIRED')) {
         forceSubscriptionExpired();

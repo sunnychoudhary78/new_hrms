@@ -5,7 +5,8 @@ import 'package:crypto/crypto.dart';
 import 'package:pointycastle/export.dart';
 
 class CryptoHelper {
-  static const String SECRET_KEY = 'your_api_secret';
+  static const String SECRET_KEY =
+      'aa4742853b4784ed47a5421457497f4146b6676f0e06a2f035480c7c51697a14';
 
   static Map<String, dynamic>? encryptPayload(dynamic data) {
     if (data == null) return data;

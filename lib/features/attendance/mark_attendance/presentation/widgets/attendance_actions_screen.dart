@@ -2,14 +2,14 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:lms/features/attendance/mark_attendance/presentation/providers/attendance_selectors.dart';
 import 'package:lms/features/attendance/mark_attendance/presentation/providers/mark_attendance_provider.dart';
 import 'package:lms/features/attendance/mark_attendance/presentation/providers/mobile_config_provider.dart';
 
 import '../widgets/modern_punch_button.dart';
 
 class AttendanceActionsSection extends ConsumerWidget {
-  final DateTime? punchInTime;
-  final DateTime? punchOutTime;
+  final bool hasOpenSession;
 
   final bool isRemoteMode;
   final String? remoteReason;
@@ -19,8 +19,7 @@ class AttendanceActionsSection extends ConsumerWidget {
 
   const AttendanceActionsSection({
     super.key,
-    required this.punchInTime,
-    required this.punchOutTime,
+    required this.hasOpenSession,
     required this.isRemoteMode,
     required this.remoteReason,
     required this.onEnableRemoteMode,
@@ -32,6 +31,9 @@ class AttendanceActionsSection extends ConsumerWidget {
     final scheme = Theme.of(context).colorScheme;
 
     final notifier = ref.read(markAttendanceProvider.notifier);
+    final sessions = ref.watch(markAttendanceProvider).value ?? [];
+
+    final canStartNew = ref.watch(canStartNewSessionProvider(sessions));
 
     /// Watch backend config
     final mobileConfigAsync = ref.watch(mobileConfigProvider);
@@ -39,11 +41,9 @@ class AttendanceActionsSection extends ConsumerWidget {
     final canMobileCheckIn = ref.watch(canMobileCheckInProvider);
     final canMobileCheckOut = ref.watch(canMobileCheckOutProvider);
 
-    /// Combine backend + session state
-    final canCheckIn = punchInTime == null && canMobileCheckIn;
-
-    final canCheckOut =
-        punchInTime != null && punchOutTime == null && canMobileCheckOut;
+    /// Combine backend + session state (aligned with web)
+    final canCheckIn = canStartNew && canMobileCheckIn;
+    final canCheckOut = hasOpenSession && canMobileCheckOut;
 
     return Column(
       children: [
@@ -160,17 +160,21 @@ class AttendanceActionsSection extends ConsumerWidget {
         const SizedBox(height: 16),
 
         /// REMOTE OPTION
-        if (punchOutTime == null)
+        if (!hasOpenSession)
           TextButton.icon(
             onPressed: () => _openRemoteDialog(context),
 
             icon: Icon(Icons.wifi_tethering_rounded, color: scheme.primary),
 
-            label: Text(
-              punchInTime == null
-                  ? "Work remotely (remote check-in)"
-                  : "Work remotely (remote check-out)",
-            ),
+            label: const Text("Work remotely (remote check-in)"),
+          )
+        else
+          TextButton.icon(
+            onPressed: () => _openRemoteDialog(context),
+
+            icon: Icon(Icons.wifi_tethering_rounded, color: scheme.primary),
+
+            label: const Text("Work remotely (remote check-out)"),
           ),
 
         /// REMOTE ACTIVE INDICATOR
@@ -188,9 +192,9 @@ class AttendanceActionsSection extends ConsumerWidget {
             ),
 
             child: Text(
-              punchInTime == null
-                  ? "Remote check-in enabled"
-                  : "Remote check-out enabled",
+              hasOpenSession
+                  ? "Remote check-out enabled"
+                  : "Remote check-in enabled",
 
               style: TextStyle(
                 color: scheme.onTertiaryContainer,

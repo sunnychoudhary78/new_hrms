@@ -25,6 +25,7 @@ class _OtpLoginScreenState extends ConsumerState<OtpLoginScreen>
   final List<FocusNode> _focusNodes = List.generate(6, (_) => FocusNode());
 
   bool _otpSent = false;
+  bool _isVerifyingOtp = false;
   int _resendTimer = 0;
   Timer? _timer;
 
@@ -62,16 +63,22 @@ class _OtpLoginScreenState extends ConsumerState<OtpLoginScreen>
   /// SMS Auto Fill
   @override
   void codeUpdated() {
-    if (code == null) return;
+    final receivedOtp = _extractOtp(code);
 
-    final receivedOtp = code!.trim();
+    if (receivedOtp == null) return;
 
-    if (receivedOtp.length == 6) {
-      for (int i = 0; i < 6; i++) {
-        _otpControllers[i].text = receivedOtp[i];
-      }
+    _fillOtp(receivedOtp);
+    _verifyOtp();
+  }
 
-      _verifyOtp();
+  String? _extractOtp(String? value) {
+    if (value == null) return null;
+    return RegExp(r'\d{6}').firstMatch(value)?.group(0);
+  }
+
+  void _fillOtp(String otp) {
+    for (int i = 0; i < 6; i++) {
+      _otpControllers[i].text = otp[i];
     }
   }
 
@@ -108,14 +115,18 @@ class _OtpLoginScreenState extends ConsumerState<OtpLoginScreen>
     setState(() => _otpSent = true);
 
     _startTimer();
+    listenForCode();
 
     Future.delayed(const Duration(milliseconds: 300), () {
+      if (!mounted) return;
       _focusNodes[0].requestFocus();
     });
     _checkClipboardOtp();
   }
 
   Future<void> _verifyOtp() async {
+    if (_isVerifyingOtp) return;
+
     final phone = _phoneController.text.trim();
 
     if (_otp.length != 6) {
@@ -127,7 +138,12 @@ class _OtpLoginScreenState extends ConsumerState<OtpLoginScreen>
       return;
     }
 
-    await ref.read(authProvider.notifier).verifyOtp(phone: phone, otp: _otp);
+    _isVerifyingOtp = true;
+    try {
+      await ref.read(authProvider.notifier).verifyOtp(phone: phone, otp: _otp);
+    } finally {
+      _isVerifyingOtp = false;
+    }
   }
 
   void _onOtpChanged(int index, String value) async {
@@ -154,12 +170,10 @@ class _OtpLoginScreenState extends ConsumerState<OtpLoginScreen>
 
     if (data?.text == null) return;
 
-    final text = data!.text!.trim();
+    final text = _extractOtp(data!.text);
 
-    if (RegExp(r'^\d{6}$').hasMatch(text)) {
-      for (int i = 0; i < 6; i++) {
-        _otpControllers[i].text = text[i];
-      }
+    if (text != null) {
+      _fillOtp(text);
 
       _verifyOtp();
     }
@@ -168,12 +182,6 @@ class _OtpLoginScreenState extends ConsumerState<OtpLoginScreen>
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
-
-    ref.listen(authProvider, (prev, next) {
-      if (next.profile != null) {
-        Navigator.pop(context);
-      }
-    });
 
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
@@ -392,8 +400,10 @@ class _OtpDigitFieldState extends State<OtpDigitField>
           textAlignVertical: TextAlignVertical.center,
           keyboardType: TextInputType.number,
           textInputAction: TextInputAction.done,
+          autofillHints: const [AutofillHints.oneTimeCode],
           maxLength: 1,
-          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+          style:
+              Theme.of(context).textTheme.headlineSmall?.copyWith(
                 fontWeight: FontWeight.w600,
                 height: 1,
               ) ??

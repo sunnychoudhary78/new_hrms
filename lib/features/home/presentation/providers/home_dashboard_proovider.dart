@@ -3,6 +3,7 @@ import 'package:lms/features/home/data/home_dashboard_repository.dart';
 import 'package:lms/features/home/data/models/home_dashboard_model.dart';
 import 'package:lms/features/attendance/shared/data/attendance_repository_provider.dart';
 import 'package:lms/features/auth/presentation/providers/auth_provider.dart';
+import 'package:lms/features/attendance/mark_attendance/presentation/providers/company_settings_provider.dart';
 import 'package:lms/features/auth/presentation/providers/auth_api_providers.dart';
 
 /// ─────────────────────────────────────────────
@@ -15,6 +16,7 @@ final homeDashboardRepositoryProvider = Provider<HomeDashboardRepository>((
 
   final attendanceRepo = ref.read(attendanceRepositoryProvider);
   final authApi = ref.read(authApiServiceProvider);
+  final companySettingsRepo = ref.read(companySettingsRepositoryProvider);
 
   print("📦 attendanceRepo type → ${attendanceRepo.runtimeType}");
   print("📦 authApi type → ${authApi.runtimeType}");
@@ -22,6 +24,7 @@ final homeDashboardRepositoryProvider = Provider<HomeDashboardRepository>((
   return HomeDashboardRepository(
     attendanceRepo: attendanceRepo,
     authApi: authApi,
+    companySettingsRepo: companySettingsRepo,
   );
 });
 
@@ -113,6 +116,7 @@ class HomeDashboardNotifier extends AsyncNotifier<HomeDashboardModel> {
           "      ${day.date.toIso8601String()} "
           "worked=${day.workedMinutes} "
           "expected=${day.expectedMinutes} "
+          "ot=${day.estimatedOtMinutes} "
           "capped=${day.isCapped}",
         );
       }
