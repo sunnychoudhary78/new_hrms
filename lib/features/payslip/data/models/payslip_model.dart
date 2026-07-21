@@ -82,6 +82,11 @@ class Payslip {
   }
 
   bool get hasOvertimePay => overtimePay > 0;
+
+  bool get isDownloadable {
+    final status = this.status.toLowerCase();
+    return status == 'published' || status == 'paid';
+  }
 }
 
 class Employee {

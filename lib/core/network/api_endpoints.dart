@@ -34,6 +34,8 @@ class ApiEndpoints {
   // ───────── NOTIFICATIONS ─────────
   static const String notifications = 'notifications';
   static const String myPayslips = '/payroll/my-payslips';
+  static String myPayslipDownload(String id) =>
+      '/payroll/my-payslips/$id/download';
 
   // ───────── POLICIES ─────────
   static const String policies = 'policies';

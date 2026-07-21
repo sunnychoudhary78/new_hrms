@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lms/core/providers/network_providers.dart';
 import 'package:lms/core/services/pdf_service.dart';
 import 'package:lms/features/payslip/data/models/payslip_model.dart';
 import 'package:lms/features/payslip/presentation/screens/payslip_details_screen.dart';
@@ -96,7 +97,7 @@ class _PayslipListScreenState extends ConsumerState<PayslipListScreen> {
                   ),
                 ),
                 child: Text(
-                  "Browse monthly salary slips and open details or download PDF.",
+                  "Browse monthly salary slips and view or download PDF.",
                   style: TextStyle(
                     color: scheme.onSurface,
                     fontWeight: FontWeight.w600,
@@ -189,16 +190,17 @@ class _MonthFilter extends StatelessWidget {
   }
 }
 
-class _PayslipCard extends StatelessWidget {
+class _PayslipCard extends ConsumerWidget {
   final Payslip payslip;
   final bool isIOS;
 
   const _PayslipCard({required this.payslip, required this.isIOS});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
     final isPublished = payslip.status.toLowerCase() == 'published';
+    final canDownload = payslip.isDownloadable;
     final cardRadius = BorderRadius.circular(isIOS ? 12 : 16);
     final pillRadius = BorderRadius.circular(isIOS ? 14 : 20);
 
@@ -282,21 +284,31 @@ class _PayslipCard extends StatelessWidget {
             Row(
               children: [
                 TextButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => PayslipDetailScreen(payslip: payslip),
-                      ),
-                    );
-                  },
+                  onPressed: canDownload
+                      ? () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) =>
+                                  PayslipDetailScreen(payslip: payslip),
+                            ),
+                          );
+                        }
+                      : null,
                   child: const Text("View"),
                 ),
 
                 TextButton(
-                  onPressed: () async {
-                    await PayslipPdfService.generate(context, payslip);
-                  },
+                  onPressed: canDownload
+                      ? () async {
+                          final dio = ref.read(dioClientProvider).dio;
+                          await PayslipPdfService.download(
+                            context,
+                            dio,
+                            payslip,
+                          );
+                        }
+                      : null,
                   child: const Text("Download"),
                 ),
               ],
