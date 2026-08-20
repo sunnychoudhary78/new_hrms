@@ -10,14 +10,22 @@ final tokenStorageProvider = Provider<TokenStorage>((ref) {
   return TokenStorage();
 });
 
+final sessionGuardProvider = Provider<SessionGuard>((ref) {
+  return SessionGuard();
+});
+
 final dioClientProvider = Provider<DioClient>((ref) {
   final tokenStorage = ref.read(tokenStorageProvider);
 
   return DioClient(
     tokenStorage: tokenStorage,
-
     onSubscriptionExpired: () {
       ref.read(authProvider.notifier).forceSubscriptionExpired();
+    },
+    onSessionInvalid: () {
+      ref.read(sessionGuardProvider).trigger(() {
+        ref.read(authProvider.notifier).logout();
+      });
     },
   );
 });
@@ -26,8 +34,4 @@ final dioClientProvider = Provider<DioClient>((ref) {
 final apiServiceProvider = Provider<ApiService>((ref) {
   final dioClient = ref.read(dioClientProvider);
   return ApiService(dioClient.dio, ref);
-});
-
-final sessionGuardProvider = Provider<SessionGuard>((ref) {
-  return SessionGuard();
 });

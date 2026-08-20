@@ -8,39 +8,39 @@ import 'package:lms/core/services/selfie_service.dart';
 import 'package:lms/features/attendance/shared/data/attendance_repository_provider.dart';
 import 'package:lms/features/attendance/shared/data/attendance_rerpository.dart';
 import 'package:lms/features/attendance/mark_attendance/data/models/attendance_session_model.dart';
+import 'package:lms/features/attendance/mark_attendance/presentation/providers/effective_shift_provider.dart';
+import 'package:lms/features/attendance/shared/data/models/attendance_response_model.dart';
 import 'package:lms/features/attendance/shared/utils/attendance_date_utils.dart';
 import 'package:lms/features/attendance/view_attendance/presentation/providers/view_attendance_provider.dart';
 import 'package:lms/features/dashboard/presentation/providers/team_attendance_provider.dart';
 
 final markAttendanceProvider =
-    AsyncNotifierProvider<MarkAttendanceNotifier, List<AttendanceSession>>(
+    AsyncNotifierProvider<MarkAttendanceNotifier, AttendanceResponse>(
       MarkAttendanceNotifier.new,
     );
 
-class MarkAttendanceNotifier extends AsyncNotifier<List<AttendanceSession>> {
+class MarkAttendanceNotifier extends AsyncNotifier<AttendanceResponse> {
   late AttendanceRepository _repo;
   late LocationService _locationService;
   late SelfieService _selfieService;
 
   @override
-  Future<List<AttendanceSession>> build() async {
+  Future<AttendanceResponse> build() async {
     _repo = ref.read(attendanceRepositoryProvider);
     _locationService = ref.read(locationServiceProvider);
     _selfieService = SelfieService();
 
-    return _loadPunchSessions();
+    return _loadPunchAttendance();
   }
 
-  // ─────────────────────────────────────────────
-  // LOAD PUNCH SESSIONS
-  // ─────────────────────────────────────────────
+  List<AttendanceSession> get _sessions => state.value?.sessions ?? [];
 
-  Future<List<AttendanceSession>> _loadPunchSessions() async {
-    return await _repo.fetchPunchSessions();
+  Future<AttendanceResponse> _loadPunchAttendance() async {
+    return await _repo.fetchPunchAttendance();
   }
 
   bool _guardCheckIn(GlobalLoadingNotifier overlay) {
-    final sessions = state.value ?? [];
+    final sessions = _sessions;
     if (hasOpenSession(sessions)) {
       overlay.showError("You have an open session. Please check out first.");
       return false;
@@ -54,7 +54,7 @@ class MarkAttendanceNotifier extends AsyncNotifier<List<AttendanceSession>> {
 
   Future<void> refresh() async {
     try {
-      final fresh = await _loadPunchSessions();
+      final fresh = await _loadPunchAttendance();
       state = AsyncData(fresh);
     } catch (_) {
       // preserve current state
@@ -129,7 +129,7 @@ class MarkAttendanceNotifier extends AsyncNotifier<List<AttendanceSession>> {
           ? config.requireMobileCheckinSelfie
           : config.requireMobileCheckoutSelfie;
 
-      final bool requireGPS = config.requireMobileGps;
+      final bool requireGPS = config.requireLocation;
 
       File? compressedFile;
       Map<String, dynamic>? location;
@@ -211,6 +211,7 @@ class MarkAttendanceNotifier extends AsyncNotifier<List<AttendanceSession>> {
       overlay.showLoading("Refreshing attendance...");
 
       await refresh();
+      ref.invalidate(effectiveShiftProvider);
 
       // 🔥 CRITICAL: refresh calendar + sessions everywhere
       ref.invalidate(viewAttendanceProvider);

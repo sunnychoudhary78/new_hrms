@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
-import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
+import 'package:lms/core/network/auth_refresh_interceptor.dart';
 import 'package:lms/core/network/subscription_interceptor.dart';
 import 'api_constants.dart';
 import '../storage/token_storage.dart';
@@ -9,8 +10,9 @@ class DioClient {
 
   DioClient({
     required TokenStorage tokenStorage,
-    required Function() onSubscriptionExpired,
-  }       ) : dio = Dio(
+    required VoidCallback onSubscriptionExpired,
+    required VoidCallback onSessionInvalid,
+  }) : dio = Dio(
          BaseOptions(
            baseUrl: '${ApiConstants.baseUrl}/',
            connectTimeout: const Duration(seconds: 25),
@@ -42,7 +44,7 @@ class DioClient {
         },
       ),
     );
-    // AUTH HEADER
+
     dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
@@ -57,7 +59,14 @@ class DioClient {
       ),
     );
 
-    // SUBSCRIPTION PROTECTION
+    dio.interceptors.add(
+      AuthRefreshInterceptor(
+        dio: dio,
+        tokenStorage: tokenStorage,
+        onSessionInvalid: onSessionInvalid,
+      ),
+    );
+
     dio.interceptors.add(
       SubscriptionInterceptor(onSubscriptionExpired: onSubscriptionExpired),
     );

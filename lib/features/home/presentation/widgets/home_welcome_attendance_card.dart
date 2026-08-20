@@ -143,7 +143,8 @@ class _HomeWelcomeAttendanceCardState
 
                           error: (_, __) => const SizedBox(height: 130),
 
-                          data: (sessions) {
+                          data: (attendance) {
+                            final sessions = attendance.sessions;
                             final openSession = ref.watch(
                               openSessionProvider(sessions),
                             );

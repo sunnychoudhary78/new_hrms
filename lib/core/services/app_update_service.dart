@@ -39,25 +39,26 @@ class AppUpdateService {
 
       await showDialog<void>(
         context: context,
-        barrierDismissible: false,
-        builder: (dialogContext) => PopScope(
-          canPop: false,
-          child: AlertDialog(
-            title: const Text('Update available'),
-            content: const Text(
-              'A new version of HRMS is available on the Play Store. '
-              'Please update to get the latest features and fixes.',
-            ),
-            actions: [
-              FilledButton(
-                onPressed: () async {
-                  Navigator.of(dialogContext).pop();
-                  await _startUpdate(info);
-                },
-                child: const Text('Update now'),
-              ),
-            ],
+        barrierDismissible: true,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Update available'),
+          content: const Text(
+            'A new version of HRMS is available on the Play Store. '
+            'Please update to get the latest features and fixes.',
           ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Later'),
+            ),
+            FilledButton(
+              onPressed: () async {
+                Navigator.of(dialogContext).pop();
+                await _startUpdate(info);
+              },
+              child: const Text('Update now'),
+            ),
+          ],
         ),
       );
     } catch (e, stackTrace) {

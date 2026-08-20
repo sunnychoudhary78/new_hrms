@@ -24,7 +24,7 @@ final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 /// iOS App Store lookup. Android uses [AppUpdateService] (Play In-App Update API).
 final Upgrader _appUpgrader = Upgrader(
-  durationUntilAlertAgain: Duration.zero,
+  durationUntilAlertAgain: const Duration(days: 1),
   debugLogging: kDebugMode,
   countryCode: 'IN',
 );
@@ -238,7 +238,7 @@ class MyApp extends ConsumerWidget {
       upgrader: _appUpgrader,
       navigatorKey: navigatorKey,
       showIgnore: false,
-      showLater: false,
+      showLater: true,
       child: appRoot,
     );
   }

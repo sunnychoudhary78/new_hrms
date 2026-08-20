@@ -27,7 +27,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   /// Refresh profile
   Future<void> _refreshUser() async {
-    await ref.read(authProvider.notifier).tryAutoLogin();
+    try {
+      await ref.read(authProvider.notifier).refreshProfile();
+    } catch (e) {
+      if (!mounted) return;
+      ref.read(globalLoadingProvider.notifier).showError(
+        e.toString().replaceFirst('Exception: ', ''),
+      );
+    }
   }
 
   /// SHOW IMAGE SOURCE OPTIONS

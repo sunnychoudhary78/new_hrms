@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lms/core/services/app_update_service.dart';
+import 'package:lms/core/screens/session_restore_failed_screen.dart';
 import 'package:lms/core/screens/splash_loading_screen.dart';
 import 'package:lms/core/screens/subscribtion_expired_screen.dart';
 import 'package:lms/core/providers/user_data_invalidation.dart';
@@ -129,11 +130,20 @@ class _AppRootState extends ConsumerState<AppRoot> {
       return const SubscriptionExpiredScreen();
     }
 
-    if (authState.profile == null) {
-      return const LoginScreen();
+    if (authState.profile != null) {
+      return const HomeScreen();
     }
 
-    return const HomeScreen();
+    if (authState.restoreFailed || authState.hasStoredSession) {
+      return SessionRestoreFailedScreen(
+        isLoading: authState.isLoading,
+        onRetry: () {
+          ref.read(authProvider.notifier).tryAutoLogin();
+        },
+      );
+    }
+
+    return const LoginScreen();
   }
 
   void _checkPlayStoreUpdate() {

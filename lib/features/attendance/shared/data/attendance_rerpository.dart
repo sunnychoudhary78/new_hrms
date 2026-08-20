@@ -1,7 +1,9 @@
 import 'dart:io';
 import 'package:lms/features/attendance/correction_attendance/data/models/attendance_request_model.dart';
 import 'package:lms/features/attendance/mark_attendance/data/models/attendance_session_model.dart';
+import 'package:lms/features/attendance/mark_attendance/data/models/effective_shift_model.dart';
 import 'package:lms/features/attendance/shared/data/attendence_api_service.dart';
+import 'package:lms/features/attendance/shared/data/models/attendance_response_model.dart';
 import 'package:lms/features/attendance/shared/data/models/mobile_config_model.dart';
 import 'package:lms/features/attendance/shared/utils/attendance_date_utils.dart';
 import 'package:lms/features/attendance/view_attendance/data/models/attendance_full_response.dart';
@@ -18,6 +20,11 @@ class AttendanceRepository {
   Future<MobileConfig> fetchMobileConfig() async {
     final res = await api.fetchMobileConfig();
     return MobileConfig.fromJson(res);
+  }
+
+  Future<EffectiveShift> fetchEffectiveShift({String? userId}) async {
+    final res = await api.fetchEffectiveShift(userId: userId);
+    return EffectiveShift.fromJson(res);
   }
 
   // ─────────────────────────────────────────────
@@ -40,14 +47,26 @@ class AttendanceRepository {
   // ─────────────────────────────────────────────
 
   /// Open sessions from any date + closed sessions for today (by session.date).
+  Future<AttendanceResponse> fetchPunchAttendance() async {
+    final today = DateTime.now();
+    final from = today.subtract(const Duration(days: 7));
+
+    final res = await api.fetchAttendance(
+      from: isoDate(from),
+      to: isoDate(today),
+    );
+
+    final parsed = AttendanceResponse.fromJson(res);
+
+    return AttendanceResponse(
+      sessions: filterPunchSessions(parsed.sessions),
+      aggregates: parsed.aggregates,
+    );
+  }
+
   Future<List<AttendanceSession>> fetchPunchSessions() async {
-    final res = await api.fetchAttendance();
-
-    final sessions = (res['sessions'] as List? ?? [])
-        .map((e) => AttendanceSession.fromJson(e))
-        .toList();
-
-    return filterPunchSessions(sessions);
+    final res = await fetchPunchAttendance();
+    return res.sessions;
   }
 
   /// @deprecated Use [fetchPunchSessions].
@@ -57,10 +76,13 @@ class AttendanceRepository {
     required int month,
     required int year,
   }) async {
-    final res = await api.fetchAttendance(month: month, year: year);
+    final res = await api.fetchAttendance(
+      from: monthRangeFrom(year, month),
+      to: monthRangeTo(year, month),
+    );
 
     return (res['sessions'] as List? ?? [])
-        .map((e) => AttendanceSession.fromJson(e))
+        .map((e) => AttendanceSession.fromJson(e as Map<String, dynamic>))
         .toList();
   }
 

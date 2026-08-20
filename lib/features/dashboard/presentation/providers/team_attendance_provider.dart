@@ -74,11 +74,18 @@ final employeeAttendanceProvider =
         // 1️⃣ FETCH ATTENDANCE (sessions + aggregates)
         //////////////////////////////////////////////////////////
 
+        final from = DateTime(params.month.year, params.month.month, 1);
+        final to = DateTime(params.month.year, params.month.month + 1, 0);
+        final fromStr =
+            '${from.year}-${from.month.toString().padLeft(2, '0')}-${from.day.toString().padLeft(2, '0')}';
+        final toStr =
+            '${to.year}-${to.month.toString().padLeft(2, '0')}-${to.day.toString().padLeft(2, '0')}';
+
         final attendanceRes = await api.get(
           'attendance',
           queryParams: {
-            'month': params.month.month,
-            'year': params.month.year,
+            'from': fromStr,
+            'to': toStr,
             if (params.userId.isNotEmpty) 'userId': params.userId,
           },
         );

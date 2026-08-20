@@ -9,6 +9,7 @@ class ApiEndpoints {
       'attendance/corrections/managed';
   static const String attendanceCorrectionsMy = 'attendance/corrections/my';
   static const String mobileAttendanceConfig = 'attendance/mobile-config';
+  static const String effectiveShift = 'shifts/effective';
 
   // ───────── COMPANY ─────────
   static const String companySettings = 'company-settings/my';
@@ -21,6 +22,7 @@ class ApiEndpoints {
   static const String changePassword = 'auth/change-password';
   static const String forgotPassword = 'auth/forgot-password';
   static const String resetPassword = 'auth/reset-password';
+  static const String refreshToken = 'auth/refresh-token';
   static const String registerFcmToken = 'auth/register-fcm-token';
   static const String unregisterFcmToken = 'auth/unregister-fcm-token';
 

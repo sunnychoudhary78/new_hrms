@@ -7,6 +7,7 @@ import 'package:lms/core/providers/network_providers.dart';
 import 'package:lms/main.dart';
 import '../../../../core/storage/token_storage.dart';
 import '../../data/auth_api_service.dart';
+import '../../data/models/user_model.dart';
 import 'auth_state.dart';
 import '../../../profile/data/models/user_details_model.dart';
 import 'auth_api_providers.dart';
@@ -26,24 +27,43 @@ class AuthNotifier extends Notifier<AuthState> {
     return const AuthState();
   }
 
+  Future<void> _persistTokens(UserModel userModel) async {
+    await _tokenStorage.saveJwt(userModel.token);
+    final refresh = userModel.refreshToken;
+    if (refresh != null && refresh.isNotEmpty) {
+      await _tokenStorage.saveRefreshToken(refresh);
+    }
+  }
+
+  bool _isAuthFailure(Object e) {
+    final msg = e.toString().toLowerCase();
+    return msg.contains('unauthorized') ||
+        msg.contains('invalid token') ||
+        msg.contains('token missing') ||
+        msg.contains('authorization header missing') ||
+        msg.contains('invalid refresh token');
+  }
+
   // ───────────────── AUTO LOGIN ─────────────────
 
   Future<void> tryAutoLogin() async {
     final jwt = await _tokenStorage.getJwt();
 
-    /// ❌ No token → go to login
     if (jwt == null || jwt.isEmpty) {
       state = const AuthState(isLoading: false, isInitializing: false);
       return;
     }
 
     try {
-      /// Auto login loading
-      state = state.copyWith(isLoading: true, isSubscriptionExpired: false);
+      state = state.copyWith(
+        isLoading: true,
+        isSubscriptionExpired: false,
+        restoreFailed: false,
+        hasStoredSession: true,
+      );
 
       final profileJson = await _authApi.fetchProfile();
 
-      /// Subscription expired
       if (_isSubscriptionExpired(profileJson)) {
         await _tokenStorage.clear();
 
@@ -54,10 +74,11 @@ class AuthNotifier extends Notifier<AuthState> {
       final profile = Userdetails.fromJson(profileJson);
       final permissions = await _authApi.fetchPermissions();
 
-      /// ✅ Auto login success
       state = state.copyWith(
         isLoading: false,
         isInitializing: false,
+        restoreFailed: false,
+        hasStoredSession: true,
         profile: profile,
         permissions: permissions,
         profileUrl: profile.profilePicture != null
@@ -70,8 +91,6 @@ class AuthNotifier extends Notifier<AuthState> {
 
       await _registerFcmIfAvailable();
     } catch (e) {
-      // Only treat explicit company subscription signal from ApiService / 402.
-      // Avoid substring "expired" (matches JWT "token expired", session text, etc.).
       final msg = e.toString();
       if (msg.contains('SUBSCRIPTION_EXPIRED')) {
         state = const AuthState(
@@ -84,10 +103,51 @@ class AuthNotifier extends Notifier<AuthState> {
         return;
       }
 
-      /// Token invalid → clear and go to login
-      await _tokenStorage.clear();
+      if (_isAuthFailure(e)) {
+        await _tokenStorage.clear();
+        state = const AuthState(isLoading: false, isInitializing: false);
+        return;
+      }
 
-      state = const AuthState(isLoading: false, isInitializing: false);
+      state = state.copyWith(
+        isLoading: false,
+        isInitializing: false,
+        restoreFailed: true,
+        hasStoredSession: true,
+      );
+    }
+  }
+
+  /// Reloads profile without clearing tokens on failure.
+  Future<void> refreshProfile() async {
+    try {
+      final profileJson = await _authApi.fetchProfile();
+
+      if (_isSubscriptionExpired(profileJson)) {
+        forceSubscriptionExpired();
+        return;
+      }
+
+      final profile = Userdetails.fromJson(profileJson);
+      final permissions = await _authApi.fetchPermissions();
+
+      state = state.copyWith(
+        profile: profile,
+        permissions: permissions,
+        restoreFailed: false,
+        profileUrl: profile.profilePicture != null
+            ? ApiConstants.imageBaseUrl + profile.profilePicture!
+            : '',
+        companyLogoUrl: profile.companyLogoFilename != null
+            ? ApiConstants.companyLogoBaseUrl + profile.companyLogoFilename!
+            : '',
+      );
+    } catch (e) {
+      if (e.toString().contains('SUBSCRIPTION_EXPIRED')) {
+        forceSubscriptionExpired();
+        return;
+      }
+      rethrow;
     }
   }
 
@@ -99,7 +159,7 @@ class AuthNotifier extends Notifier<AuthState> {
     try {
       final userModel = await _authApi.login(email, password);
 
-      await _tokenStorage.saveJwt(userModel.token);
+      await _persistTokens(userModel);
 
       final profileJson = await _authApi.fetchProfile();
 
@@ -209,7 +269,7 @@ class AuthNotifier extends Notifier<AuthState> {
     try {
       final userModel = await _authApi.verifyOtp(phone: phone, otp: otp);
 
-      await _tokenStorage.saveJwt(userModel.token);
+      await _persistTokens(userModel);
 
       final profileJson = await _authApi.fetchProfile();
 

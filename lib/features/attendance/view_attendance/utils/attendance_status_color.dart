@@ -7,10 +7,12 @@ class AttendanceStatusColor {
     switch (status.toLowerCase()) {
       case 'present':
       case 'on-time':
+      case 'ontime':
         return scheme.primary;
 
       case 'late':
       case 'half-day':
+      case 'half day':
         return Colors.orange;
 
       case 'leave':
@@ -19,6 +21,11 @@ class AttendanceStatusColor {
 
       case 'holiday':
         return scheme.primaryContainer;
+
+      case 'weekoff':
+      case 'week-off':
+      case 'week off':
+        return scheme.outlineVariant;
 
       case 'absent':
         return Colors.red;

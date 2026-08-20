@@ -6,18 +6,24 @@ import 'dart:convert';
 
 class UserModel {
   final String token;
+  final String? refreshToken;
   final User user;
 
-  UserModel({required this.token, required this.user});
+  UserModel({required this.token, this.refreshToken, required this.user});
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
     return UserModel(
       token: json['token']?.toString() ?? '',
+      refreshToken: json['refreshToken']?.toString(),
       user: User.fromJson(Map<String, dynamic>.from(json['user'] ?? {})),
     );
   }
 
-  Map<String, dynamic> toJson() => {'token': token, 'user': user.toJson()};
+  Map<String, dynamic> toJson() => {
+    'token': token,
+    if (refreshToken != null) 'refreshToken': refreshToken,
+    'user': user.toJson(),
+  };
 
   static UserModel fromRawJson(String str) =>
       UserModel.fromJson(json.decode(str));

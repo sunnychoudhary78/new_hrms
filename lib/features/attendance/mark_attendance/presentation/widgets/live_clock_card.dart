@@ -2,20 +2,19 @@ import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:lms/features/attendance/mark_attendance/data/models/effective_shift_model.dart';
 
 class LiveClockCard extends StatelessWidget {
   final String workingTime;
   final double progress;
-  final TimeOfDay? shiftStart;
-  final TimeOfDay? shiftEnd;
+  final EffectiveShift? shift;
   final bool isCheckedIn;
 
   const LiveClockCard({
     super.key,
     required this.workingTime,
     required this.progress,
-    required this.shiftStart,
-    required this.shiftEnd,
+    required this.shift,
     required this.isCheckedIn,
   });
 
@@ -23,6 +22,8 @@ class LiveClockCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
+    final startSubtitle = shift?.startSubtitle ?? '';
+    final lunch = shift?.lunchDisplay;
 
     return Container(
       padding: const EdgeInsets.all(24),
@@ -40,18 +41,41 @@ class LiveClockCard extends StatelessWidget {
       child: Column(
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _ShiftLabel(
-                title: "Shift Start",
-                time: shiftStart?.format(context) ?? "--:--",
+              Expanded(
+                child: _ShiftLabel(
+                  title: "Office start",
+                  time: shift?.officeStartDisplay ?? "--:--",
+                  subtitle: startSubtitle.isEmpty ? null : startSubtitle,
+                  alignEnd: false,
+                ),
               ),
-              _ShiftLabel(
-                title: "Shift End",
-                time: shiftEnd?.format(context) ?? "--:--",
+              const SizedBox(width: 12),
+              Expanded(
+                child: _ShiftLabel(
+                  title: "Office end",
+                  time: shift?.officeEndDisplay ?? "--:--",
+                  alignEnd: true,
+                ),
               ),
             ],
           ),
+          if (lunch != null) ...[
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                "Lunch: $lunch",
+                style: TextStyle(
+                  fontSize: 12,
+                  color: scheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
           const SizedBox(height: 20),
           LayoutBuilder(
             builder: (context, constraints) {
@@ -83,7 +107,6 @@ class LiveClockCard extends StatelessWidget {
                         const SizedBox(height: 4),
                         Text(
                           isCheckedIn ? "Working hours" : "Not punched in",
-
                           style: TextStyle(
                             fontSize: arcWidth * 0.07,
                             color: scheme.onSurfaceVariant,
@@ -105,17 +128,24 @@ class LiveClockCard extends StatelessWidget {
 class _ShiftLabel extends StatelessWidget {
   final String title;
   final String time;
+  final String? subtitle;
+  final bool alignEnd;
 
-  const _ShiftLabel({required this.title, required this.time});
+  const _ShiftLabel({
+    required this.title,
+    required this.time,
+    this.subtitle,
+    required this.alignEnd,
+  });
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final align = alignEnd ? CrossAxisAlignment.end : CrossAxisAlignment.start;
+    final textAlign = alignEnd ? TextAlign.end : TextAlign.start;
 
     return Column(
-      crossAxisAlignment: title == "Shift Start"
-          ? CrossAxisAlignment.start
-          : CrossAxisAlignment.end,
+      crossAxisAlignment: align,
       children: [
         Text(
           title,
@@ -127,12 +157,25 @@ class _ShiftLabel extends StatelessWidget {
         ),
         Text(
           time,
+          textAlign: textAlign,
           style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w700,
             color: scheme.onSurface,
           ),
         ),
+        if (subtitle != null)
+          Text(
+            subtitle!,
+            textAlign: textAlign,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+              color: scheme.onSurfaceVariant,
+            ),
+          ),
       ],
     );
   }

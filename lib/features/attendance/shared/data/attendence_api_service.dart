@@ -31,18 +31,38 @@ class AttendanceApiService {
   // FETCH ATTENDANCE
   // ─────────────────────────────────────────────
 
-  Future<Map<String, dynamic>> fetchAttendance({int? month, int? year}) async {
+  Future<Map<String, dynamic>> fetchEffectiveShift({String? userId}) async {
+    debugPrint("➡️ GET ${ApiEndpoints.effectiveShift}");
+
+    final res = await api.get(
+      ApiEndpoints.effectiveShift,
+      queryParams: {
+        if (userId != null && userId.isNotEmpty) "userId": userId,
+      },
+    );
+
+    debugPrint("✅ EFFECTIVE SHIFT: $res");
+
+    return Map<String, dynamic>.from(res as Map);
+  }
+
+  Future<Map<String, dynamic>> fetchAttendance({
+    String? from,
+    String? to,
+    String? userId,
+  }) async {
     debugPrint("➡️ GET ${ApiEndpoints.attendance}");
 
     final res = await api.get(
       ApiEndpoints.attendance,
       queryParams: {
-        if (month != null) "month": month,
-        if (year != null) "year": year,
+        if (from != null) "from": from,
+        if (to != null) "to": to,
+        if (userId != null && userId.isNotEmpty) "userId": userId,
       },
     );
 
-    return res;
+    return Map<String, dynamic>.from(res as Map);
   }
 
   // ─────────────────────────────────────────────

@@ -31,7 +31,7 @@ class AttendanceActionsSection extends ConsumerWidget {
     final scheme = Theme.of(context).colorScheme;
 
     final notifier = ref.read(markAttendanceProvider.notifier);
-    final sessions = ref.watch(markAttendanceProvider).value ?? [];
+    final sessions = ref.watch(markAttendanceProvider).value?.sessions ?? [];
 
     final canStartNew = ref.watch(canStartNewSessionProvider(sessions));
 

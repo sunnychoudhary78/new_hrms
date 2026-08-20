@@ -1,10 +1,15 @@
 import 'package:lms/features/attendance/mark_attendance/data/models/attendance_session_model.dart';
 
 /// Local calendar date as yyyy-MM-dd (matches web toLocaleDateString('en-CA')).
-String localTodayIso() {
-  final n = DateTime.now();
-  return '${n.year}-${n.month.toString().padLeft(2, '0')}-${n.day.toString().padLeft(2, '0')}';
-}
+String isoDate(DateTime d) =>
+    '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+
+String localTodayIso() => isoDate(DateTime.now());
+
+String monthRangeFrom(int year, int month) => isoDate(DateTime(year, month, 1));
+
+String monthRangeTo(int year, int month) =>
+    isoDate(DateTime(year, month + 1, 0));
 
 /// Normalize session.date to yyyy-MM-dd for comparison.
 String sessionDateIso(AttendanceSession session) {

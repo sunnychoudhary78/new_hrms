@@ -1,29 +1,27 @@
 class AttendanceAggregate {
   final DateTime date;
   final String status;
+  final int totalMinutes;
 
-  AttendanceAggregate({required this.date, required this.status});
+  AttendanceAggregate({
+    required this.date,
+    required this.status,
+    this.totalMinutes = 0,
+  });
+
+  String get dateKey =>
+      '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
 
   factory AttendanceAggregate.fromJson(Map<String, dynamic> json) {
-    final date = DateTime.parse(json['date']);
+    final rawDate = json['date']?.toString() ?? '';
+    final parsed = DateTime.tryParse(rawDate) ?? DateTime.now();
 
-    final raw = (json['status'] ?? '').toString().toLowerCase();
+    final status = (json['status'] ?? '').toString().trim();
 
-    /// ✅ normalize backend → app format
-    String status;
-
-    if (raw.contains('week')) {
-      status = 'weekoff';
-    } else if (raw.contains('holiday')) {
-      status = 'holiday';
-    } else if (raw.contains('absent')) {
-      status = 'absent';
-    } else if (raw.contains('leave')) {
-      status = 'leave';
-    } else {
-      status = 'present'; // fallback
-    }
-
-    return AttendanceAggregate(date: date, status: status);
+    return AttendanceAggregate(
+      date: parsed,
+      status: status.isEmpty ? '-' : status,
+      totalMinutes: int.tryParse(json['totalMinutes']?.toString() ?? '') ?? 0,
+    );
   }
 }
