@@ -52,9 +52,12 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
     return Scaffold(
       backgroundColor: scheme.surface,
       appBar: AppBar(title: const Text("Forgot Password"), centerTitle: true),
-      body: Center(
-        child: SingleChildScrollView(
-          child: Container(
+      body: SafeArea(
+        top: false,
+        child: Center(
+          child: SingleChildScrollView(
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+            child: Container(
             width: cardWidth,
             padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 32),
             decoration: BoxDecoration(
@@ -169,6 +172,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
               ],
             ),
           ).animate().fadeIn().scale(),
+        ),
         ),
       ),
     );

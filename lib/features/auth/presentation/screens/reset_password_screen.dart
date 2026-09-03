@@ -270,9 +270,12 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
     return Scaffold(
       backgroundColor: scheme.surface,
       appBar: AppBar(title: const Text("Reset Password"), centerTitle: true),
-      body: Center(
-        child: SingleChildScrollView(
-          child: Container(
+      body: SafeArea(
+        top: false,
+        child: Center(
+          child: SingleChildScrollView(
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+            child: Container(
             width: cardWidth,
             padding: const EdgeInsets.all(28),
             decoration: BoxDecoration(
@@ -368,6 +371,7 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
               ],
             ),
           ),
+        ),
         ),
       ),
     );

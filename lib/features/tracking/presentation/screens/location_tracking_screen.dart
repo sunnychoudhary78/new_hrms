@@ -125,33 +125,31 @@ class _EmployeeTrackingScreenState extends State<EmployeeTrackingScreen> {
 
   Widget buildBottom() {
     return Container(
-      padding: const EdgeInsets.all(16),
-
       decoration: const BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-
-        children: [
-          row("Distance", "${distance.toStringAsFixed(2)} km"),
-
-          row("Status", "Tracking"),
-
-          const SizedBox(height: 10),
-
-          ElevatedButton(
-            onPressed: trackingService.startTracking,
-            child: const Text("Start"),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              row("Distance", "${distance.toStringAsFixed(2)} km"),
+              row("Status", "Tracking"),
+              const SizedBox(height: 10),
+              ElevatedButton(
+                onPressed: trackingService.startTracking,
+                child: const Text("Start"),
+              ),
+              ElevatedButton(
+                onPressed: trackingService.stopTracking,
+                child: const Text("Stop"),
+              ),
+            ],
           ),
-
-          ElevatedButton(
-            onPressed: trackingService.stopTracking,
-            child: const Text("Stop"),
-          ),
-        ],
+        ),
       ),
     );
   }

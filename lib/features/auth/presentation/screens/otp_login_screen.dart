@@ -188,9 +188,11 @@ class _OtpLoginScreenState extends ConsumerState<OtpLoginScreen>
 
     return Scaffold(
       backgroundColor: scheme.surface,
-      body: Center(
-        child: SingleChildScrollView(
-          child: Container(
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+            child: Container(
             width: 420,
             padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 32),
             decoration: BoxDecoration(
@@ -296,6 +298,7 @@ class _OtpLoginScreenState extends ConsumerState<OtpLoginScreen>
               ],
             ),
           ),
+        ),
         ),
       ),
     );
