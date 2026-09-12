@@ -112,7 +112,7 @@ class HomeStats {
   final double payableDays;
   final int lateDays;
   final int absentDays;
-  final int totalLeaves;
+  final num totalLeaves;
 
   const HomeStats({
     required this.payableDays,

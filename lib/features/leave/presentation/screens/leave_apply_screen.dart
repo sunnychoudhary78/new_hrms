@@ -215,202 +215,207 @@ class _LeaveApplyScreenState extends ConsumerState<LeaveApplyScreen> {
             physics: scrollPhysics,
             padding: const EdgeInsets.all(16),
             children: [
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(isIOS ? 14 : 18),
-                gradient: LinearGradient(
-                  colors: [scheme.primaryContainer, scheme.secondaryContainer],
-                ),
-              ),
-              child: Row(
-                children: [
-                  CircleAvatar(
-                    backgroundColor: scheme.primary,
-                    child: Icon(
-                      Icons.event_note_outlined,
-                      color: scheme.onPrimary,
-                    ),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(isIOS ? 14 : 18),
+                  gradient: LinearGradient(
+                    colors: [
+                      scheme.primaryContainer,
+                      scheme.secondaryContainer,
+                    ],
                   ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      "Submit your leave request with date, reason and supporting document.",
-                      style: TextStyle(
-                        color: scheme.onSurface,
-                        fontWeight: FontWeight.w600,
+                ),
+                child: Row(
+                  children: [
+                    CircleAvatar(
+                      backgroundColor: scheme.primary,
+                      child: Icon(
+                        Icons.event_note_outlined,
+                        color: scheme.onPrimary,
                       ),
                     ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            /// 🔹 LEAVE TYPE
-            SectionCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const _SectionTitle("Leave Type"),
-                  const SizedBox(height: 12),
-
-                  LeaveTypeDropdown(
-                    leaves: leaves,
-                    selected: selectedLeave,
-                    onChanged: (leave) {
-                      setState(() {
-                        selectedLeave = leave;
-                        fromDate = null;
-                        toDate = null;
-                        dayType = DayType.full;
-                        halfDayPart = null;
-                        document = null;
-                      });
-                    },
-                  ),
-
-                  if (selectedLeave != null) ...[
-                    const SizedBox(height: 12),
-                    _BalanceCard(leave: selectedLeave!),
-                  ],
-                ],
-              ),
-            ),
-
-            /// 🔹 DURATION
-            SectionCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const _SectionTitle("Duration"),
-                  const SizedBox(height: 12),
-
-                  _DayTypeSelector(
-                    value: dayType,
-                    allowHalfDay: selectedLeave?.allowHalfDay ?? false,
-                    onChanged: (v) {
-                      setState(() {
-                        dayType = v;
-                        halfDayPart = null;
-                        if (v == DayType.half && fromDate != null) {
-                          toDate = fromDate;
-                        }
-                      });
-                    },
-                  ),
-
-                  if (dayType == DayType.half) ...[
-                    const SizedBox(height: 12),
-                    _HalfDaySelector(
-                      value: halfDayPart,
-                      onChanged: (v) => setState(() => halfDayPart = v),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        "Submit your leave request with date, reason and supporting document.",
+                        style: TextStyle(
+                          color: scheme.onSurface,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     ),
                   ],
-
-                  const SizedBox(height: 16),
-
-                  DateRangePicker(
-                    from: fromDate,
-                    to: toDate,
-                    maxLeaveDays: selectedLeave == null
-                        ? 0
-                        : selectedLeave!.allowNegativeBalance
-                        ? -1
-                        : selectedLeave!.available,
-                    isHalfDay: dayType == DayType.half,
-                    onFromPick: (d) {
-                      setState(() {
-                        fromDate = d;
-                        if (dayType == DayType.half) toDate = d;
-                      });
-                    },
-                    onToPick: (d) {
-                      setState(() {
-                        toDate = d;
-                      });
-                    },
-                  ),
-                ],
+                ),
               ),
-            ),
+              const SizedBox(height: 12),
 
-            /// 🔹 REASON
-            SectionCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const _SectionTitle("Reason"),
-                  const SizedBox(height: 12),
-
-                  ReasonInput(onChanged: (v) => reason = v),
-                ],
-              ),
-            ),
-
-            /// 🔹 DOCUMENT
-            if (isDocumentRequired)
+              /// 🔹 LEAVE TYPE
               SectionCard(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const _SectionTitle("Supporting Document"),
+                    const _SectionTitle("Leave Type"),
                     const SizedBox(height: 12),
 
-                    InkWell(
-                      onTap: _pickDocument,
-                      borderRadius: BorderRadius.circular(isIOS ? 12 : 16),
-                      child: Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(isIOS ? 12 : 16),
-                          color: scheme.surfaceContainerHighest,
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.upload_file),
-                            const SizedBox(width: 12),
+                    LeaveTypeDropdown(
+                      leaves: leaves,
+                      selected: selectedLeave,
+                      onChanged: (leave) {
+                        setState(() {
+                          selectedLeave = leave;
+                          fromDate = null;
+                          toDate = null;
+                          dayType = DayType.full;
+                          halfDayPart = null;
+                          document = null;
+                        });
+                      },
+                    ),
 
-                            Expanded(
-                              child: Text(
-                                document == null
-                                    ? "Tap to upload document"
-                                    : document!.path.split('/').last,
-                              ),
-                            ),
+                    if (selectedLeave != null) ...[
+                      const SizedBox(height: 12),
+                      _BalanceCard(leave: selectedLeave!),
+                    ],
+                  ],
+                ),
+              ),
 
-                            if (document != null)
-                              IconButton(
-                                icon: const Icon(Icons.close),
-                                style: IconButton.styleFrom(
-                                  splashFactory: isIOS
-                                      ? NoSplash.splashFactory
-                                      : InkSplash.splashFactory,
-                                ),
-                                onPressed: () {
-                                  setState(() {
-                                    document = null;
-                                  });
-                                },
-                              ),
-                          ],
-                        ),
+              /// 🔹 DURATION
+              SectionCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const _SectionTitle("Duration"),
+                    const SizedBox(height: 12),
+
+                    _DayTypeSelector(
+                      value: dayType,
+                      allowHalfDay: selectedLeave?.allowHalfDay ?? false,
+                      onChanged: (v) {
+                        setState(() {
+                          dayType = v;
+                          halfDayPart = null;
+                          if (v == DayType.half && fromDate != null) {
+                            toDate = fromDate;
+                          }
+                        });
+                      },
+                    ),
+
+                    if (dayType == DayType.half) ...[
+                      const SizedBox(height: 12),
+                      _HalfDaySelector(
+                        value: halfDayPart,
+                        onChanged: (v) => setState(() => halfDayPart = v),
                       ),
+                    ],
+
+                    const SizedBox(height: 16),
+
+                    DateRangePicker(
+                      from: fromDate,
+                      to: toDate,
+                      maxLeaveDays: selectedLeave == null
+                          ? 0
+                          : selectedLeave!.allowNegativeBalance
+                          ? -1
+                          : selectedLeave!.available,
+                      isHalfDay: dayType == DayType.half,
+                      onFromPick: (d) {
+                        setState(() {
+                          fromDate = d;
+                          if (dayType == DayType.half) toDate = d;
+                        });
+                      },
+                      onToPick: (d) {
+                        setState(() {
+                          toDate = d;
+                        });
+                      },
                     ),
                   ],
                 ),
               ),
 
-            const SizedBox(height: 8),
+              /// 🔹 REASON
+              SectionCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const _SectionTitle("Reason"),
+                    const SizedBox(height: 12),
 
-            /// 🔹 SUBMIT
-            SubmitButton(
-              isLoading: applyState == LeaveApplyStatus.loading,
-              onPressed: _submit,
-            ),
+                    ReasonInput(onChanged: (v) => reason = v),
+                  ],
+                ),
+              ),
 
-            const SizedBox(height: 20),
-          ],
+              /// 🔹 DOCUMENT
+              if (isDocumentRequired)
+                SectionCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const _SectionTitle("Supporting Document"),
+                      const SizedBox(height: 12),
+
+                      InkWell(
+                        onTap: _pickDocument,
+                        borderRadius: BorderRadius.circular(isIOS ? 12 : 16),
+                        child: Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(
+                              isIOS ? 12 : 16,
+                            ),
+                            color: scheme.surfaceContainerHighest,
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.upload_file),
+                              const SizedBox(width: 12),
+
+                              Expanded(
+                                child: Text(
+                                  document == null
+                                      ? "Tap to upload document"
+                                      : document!.path.split('/').last,
+                                ),
+                              ),
+
+                              if (document != null)
+                                IconButton(
+                                  icon: const Icon(Icons.close),
+                                  style: IconButton.styleFrom(
+                                    splashFactory: isIOS
+                                        ? NoSplash.splashFactory
+                                        : InkSplash.splashFactory,
+                                  ),
+                                  onPressed: () {
+                                    setState(() {
+                                      document = null;
+                                    });
+                                  },
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+              const SizedBox(height: 8),
+
+              /// 🔹 SUBMIT
+              SubmitButton(
+                isLoading: applyState == LeaveApplyStatus.loading,
+                onPressed: _submit,
+              ),
+
+              const SizedBox(height: 20),
+            ],
           );
         },
       ),

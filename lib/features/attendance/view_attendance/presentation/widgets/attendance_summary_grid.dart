@@ -8,6 +8,9 @@ class AttendanceSummaryGrid extends StatelessWidget {
 
   const AttendanceSummaryGrid({super.key, required this.summary});
 
+  String _formatNumber(num value) =>
+      value == value.truncateToDouble() ? value.toInt().toString() : '$value';
+
   Widget _tile(BuildContext context, String title, String value, Color color) {
     final scheme = Theme.of(context).colorScheme;
     final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
@@ -43,63 +46,129 @@ class AttendanceSummaryGrid extends StatelessWidget {
     );
   }
 
-  String _formatMinutes(int minutes) {
-    final hours = minutes ~/ 60;
-    final mins = minutes % 60;
-    return "${hours.toString().padLeft(2, '0')}:${mins.toString().padLeft(2, '0')}";
+  Widget _leaveChip(BuildContext context, LeaveBreakdown lb) {
+    final scheme = Theme.of(context).colorScheme;
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
+    final color = AttendanceStatusColor.fromStatus(context, "leave");
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: color.withOpacity(.12),
+        borderRadius: BorderRadius.circular(isIOS ? 10 : 12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            lb.type,
+            style: TextStyle(
+              fontSize: 12,
+              color: scheme.onSurfaceVariant,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            "${lb.days}",
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    return GridView.count(
-      crossAxisCount: 2,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      crossAxisSpacing: 12,
-      mainAxisSpacing: 12,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _tile(
-          context,
-          "Working Days",
-          "${summary.workingDays}",
-          AttendanceStatusColor.fromStatus(context, "present"),
+        GridView.count(
+          crossAxisCount: 2,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          crossAxisSpacing: 12,
+          mainAxisSpacing: 12,
+          children: [
+            _tile(
+              context,
+              "Working Days",
+              _formatNumber(summary.workingDays),
+              AttendanceStatusColor.fromStatus(context, "present"),
+            ),
+            _tile(
+              context,
+              "Late Days",
+              "${summary.lateDays}",
+              AttendanceStatusColor.fromStatus(context, "late"),
+            ),
+            _tile(
+              context,
+              "Leaves",
+              _formatNumber(summary.totalLeaves),
+
+              AttendanceStatusColor.fromStatus(context, "leave"),
+            ),
+            _tile(
+              context,
+              "Absent",
+              _formatNumber(summary.absentDays),
+              AttendanceStatusColor.fromStatus(context, "absent"),
+            ),
+            _tile(
+              context,
+              "Payable Days",
+              _formatNumber(summary.payableDays),
+              AttendanceStatusColor.fromStatus(context, "present"),
+            ),
+            _tile(
+              context,
+              "Total Working Hours",
+              summary.workingHours,
+              Colors.indigo,
+            ),
+            _tile(
+              context,
+              "Expected Hours",
+              "${summary.expectedWorkingHours} hrs",
+              Colors.teal,
+            ),
+            _tile(
+              context,
+              "Week Offs",
+              "${summary.totalWeekoffs}",
+              Colors.blueGrey,
+            ),
+            _tile(
+              context,
+              "Holidays",
+              "${summary.totalHolidays}",
+              Colors.deepOrange,
+            ),
+          ],
         ),
-        _tile(
-          context,
-          "Late Days",
-          "${summary.lateDays}",
-          AttendanceStatusColor.fromStatus(context, "late"),
-        ),
-        _tile(
-          context,
-          "Leaves",
-          "${summary.totalLeaves}",
-          AttendanceStatusColor.fromStatus(context, "leave"),
-        ),
-        _tile(
-          context,
-          "Absent",
-          "${summary.absentDays}",
-          AttendanceStatusColor.fromStatus(context, "absent"),
-        ),
-        _tile(
-          context,
-          "Payable Days",
-          "${summary.payableDays}",
-          AttendanceStatusColor.fromStatus(context, "present"),
-        ),
-        _tile(
-          context,
-          "Total Working Hours",
-          _formatMinutes(summary.totalMinutes),
-          Colors.indigo,
-        ),
-        _tile(
-          context,
-          "Expected Hours",
-          "${summary.expectedWorkingHours} hrs",
-          Colors.teal,
-        ),
+        if (summary.leaveBreakdown.isNotEmpty) ...[
+          const SizedBox(height: 20),
+          Text(
+            "Leave Breakdown",
+            style: Theme.of(
+              context,
+            ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: summary.leaveBreakdown
+                .map((lb) => _leaveChip(context, lb))
+                .toList(),
+          ),
+        ],
       ],
     );
   }

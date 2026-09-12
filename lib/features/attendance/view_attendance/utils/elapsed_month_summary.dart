@@ -54,8 +54,8 @@ Set<String> _datesWithCheckIn(Map<String, AttendanceDayData> attendanceMap) {
   return set;
 }
 
-/// Recomputes working / late / leave / absent for days from the start of the
-/// month through today so stats match the home dashboard pie logic.
+/// Recomputes present and late days from the start of the month through today
+/// so stats match the home dashboard pie logic.
 AttendanceSummary resolveElapsedMonthSummary({
   required AttendanceSummary apiSummary,
   required List<AttendanceAggregate> aggregates,
@@ -68,9 +68,7 @@ AttendanceSummary resolveElapsedMonthSummary({
 
   final datesWithCheckIn = _datesWithCheckIn(attendanceMap);
 
-  var trackedWorkingDays = 0;
   var presentLikeDays = 0;
-  var leaveDays = 0;
 
   for (final agg in aggregates) {
     final date = DateTime(agg.date.year, agg.date.month, agg.date.day);
@@ -82,29 +80,27 @@ AttendanceSummary resolveElapsedMonthSummary({
     final status = resolved?.status ?? agg.status;
 
     if (_isNonWorkingStatus(status)) continue;
-    trackedWorkingDays++;
 
     if (_isLeaveStatus(status)) {
-      leaveDays++;
+      continue;
     } else if (_effectivePresentLike(status, date, datesWithCheckIn)) {
       presentLikeDays++;
     }
   }
 
   final lateDays = apiSummary.lateDays.clamp(0, presentLikeDays);
-  final workedDays = (presentLikeDays - lateDays).clamp(0, presentLikeDays);
-  final absentDays = (trackedWorkingDays - presentLikeDays - leaveDays).clamp(
-    0,
-    trackedWorkingDays,
-  );
 
   return AttendanceSummary(
-    workingDays: workedDays,
+    workingDays: apiSummary.workingDays,
     lateDays: lateDays,
-    totalLeaves: leaveDays,
-    absentDays: absentDays,
+    totalLeaves: apiSummary.totalLeaves,
+    absentDays: apiSummary.absentDays,
     payableDays: apiSummary.payableDays,
     totalMinutes: apiSummary.totalMinutes,
     expectedWorkingHours: apiSummary.expectedWorkingHours,
+    workingHours: apiSummary.workingHours,
+    totalWeekoffs: apiSummary.totalWeekoffs,
+    totalHolidays: apiSummary.totalHolidays,
+    leaveBreakdown: apiSummary.leaveBreakdown,
   );
 }

@@ -18,6 +18,9 @@ class LeaveBalanceTile extends StatelessWidget {
     final available = balance.available < 0 ? 0.0 : balance.available;
     final carried = balance.carried;
     final reserved = balance.pendingReserved;
+    print(
+      "LeaveBalanceTile: $name, available: ${balance.available}, carried: ${balance.carried}, reserved: ${balance.pendingReserved}",
+    );
 
     final Color accentColor = LeaveColorMapper.colorFor(name);
 

@@ -1,11 +1,33 @@
+class LeaveBreakdown {
+  final String type;
+  final num days;
+
+  LeaveBreakdown({required this.type, required this.days});
+
+  factory LeaveBreakdown.fromJson(Map<String, dynamic> json) {
+    final rawDays = json['days'];
+    final days = rawDays is num
+        ? rawDays
+        : num.tryParse(rawDays?.toString() ?? '') ?? 0;
+
+    return LeaveBreakdown(type: json['type']?.toString() ?? '', days: days);
+  }
+}
+
 class AttendanceSummary {
-  final int workingDays;
+  final num workingDays;
   final int lateDays;
-  final int totalLeaves;
-  final int absentDays;
-  final int payableDays;
+  final num totalLeaves;
+  final num absentDays;
+  final num payableDays;
   final int totalMinutes;
   final int expectedWorkingHours;
+
+  /// Backend-formatted "H:MM" string. Show as-is — do not reformat.
+  final String workingHours;
+  final int totalWeekoffs;
+  final int totalHolidays;
+  final List<LeaveBreakdown> leaveBreakdown;
 
   AttendanceSummary({
     required this.workingDays,
@@ -15,6 +37,10 @@ class AttendanceSummary {
     required this.payableDays,
     required this.totalMinutes,
     required this.expectedWorkingHours,
+    this.workingHours = '0:00',
+    this.totalWeekoffs = 0,
+    this.totalHolidays = 0,
+    this.leaveBreakdown = const [],
   });
 
   static int _asInt(dynamic v) {
@@ -27,6 +53,21 @@ class AttendanceSummary {
     return 0;
   }
 
+  static num _asNum(dynamic v) {
+    if (v == null) return 0;
+
+    if (v is num) return v;
+    if (v is String) return num.tryParse(v) ?? 0;
+
+    return 0;
+  }
+
+  static String _formatMinutesFallback(int minutes) {
+    final hours = minutes ~/ 60;
+    final mins = minutes % 60;
+    return "${hours.toString().padLeft(2, '0')}:${mins.toString().padLeft(2, '0')}";
+  }
+
   factory AttendanceSummary.fromJson(Map<String, dynamic> json) {
     final data = json['summary'];
 
@@ -34,21 +75,28 @@ class AttendanceSummary {
       throw Exception("Summary missing in response");
     }
 
+    final totalMinutes = _asInt(data['totalMinutes']);
+
     return AttendanceSummary(
-      workingDays: _asInt(data['workingDays']),
+      workingDays: _asNum(data['workingDays']),
       lateDays: _asInt(data['lateDays']),
-      totalLeaves: _asInt(data['totalLeaves']),
-      absentDays: _asInt(data['absentDays']),
-      payableDays: _asInt(data['payableDays']),
-      totalMinutes: _asInt(data['totalMinutes']),
+      totalLeaves: _asNum(data['totalLeaves']),
+      absentDays: _asNum(data['absentDays']),
+      payableDays: _asNum(data['payableDays']),
+      totalMinutes: totalMinutes,
       expectedWorkingHours: _asInt(data['expectedWorkingHours']),
+      workingHours:
+          data['workingHours']?.toString() ??
+          _formatMinutesFallback(totalMinutes),
+      totalWeekoffs: _asInt(data['totalWeekoffs']),
+      totalHolidays: _asInt(data['totalHolidays']),
+      leaveBreakdown: (data['leaveBreakdown'] as List? ?? [])
+          .map((e) => LeaveBreakdown.fromJson(e as Map<String, dynamic>))
+          .toList(),
     );
   }
 
-  String get totalWorkingHoursFormatted {
-    final hours = totalMinutes ~/ 60;
-    final minutes = totalMinutes % 60;
-
-    return "${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}";
-  }
+  /// Kept for any existing call sites; prefer [workingHours] going forward
+  /// since the backend already applies business rules to it.
+  String get totalWorkingHoursFormatted => _formatMinutesFallback(totalMinutes);
 }

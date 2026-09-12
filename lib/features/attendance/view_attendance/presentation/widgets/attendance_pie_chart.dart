@@ -3,10 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 
 class AttendancePieChart extends StatelessWidget {
-  final int present;
-  final int absent;
+  final num present;
+  final num absent;
   final int late;
-  final int leave;
+  final num leave;
 
   const AttendancePieChart({
     super.key,
@@ -16,7 +16,7 @@ class AttendancePieChart extends StatelessWidget {
     required this.leave,
   });
 
-  int get total => present + absent + late + leave;
+  num get total => present + absent + late + leave;
 
   @override
   Widget build(BuildContext context) {
@@ -63,7 +63,7 @@ class AttendancePieChart extends StatelessWidget {
     );
   }
 
-  PieChartSectionData _section(String t, int v, Color c) {
+  PieChartSectionData _section(String t, num v, Color c) {
     if (v == 0) return PieChartSectionData(value: 0);
 
     return PieChartSectionData(
@@ -79,7 +79,7 @@ class AttendancePieChart extends StatelessWidget {
     );
   }
 
-  Widget _legend(String t, int v, Color c) {
+  Widget _legend(String t, num v, Color c) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [

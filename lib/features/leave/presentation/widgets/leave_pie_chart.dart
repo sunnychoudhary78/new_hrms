@@ -14,9 +14,12 @@ class LeavePieChart extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
     final pieRadius = isIOS ? 18.0 : 24.0;
+    final chartLeaves = leaves
+        .where((leave) => !leave.name.toLowerCase().contains('emergency'))
+        .toList();
 
     // 🔥 Clamp negative values to 0 for display
-    final sanitizedLeaves = leaves
+    final sanitizedLeaves = chartLeaves
         .map((l) => l.available < 0 ? 0.0 : l.available)
         .toList();
 
@@ -62,8 +65,8 @@ class LeavePieChart extends StatelessWidget {
                   sectionsSpace: 4,
                   centerSpaceRadius: 90,
                   startDegreeOffset: -90,
-                  sections: List.generate(leaves.length, (index) {
-                    final leave = leaves[index];
+                  sections: List.generate(chartLeaves.length, (index) {
+                    final leave = chartLeaves[index];
                     final value = leave.available < 0 ? 0.0 : leave.available;
 
                     final percent = (value / totalAvailable) * 100;

@@ -84,7 +84,10 @@ class _ViewAttendanceScreenState extends ConsumerState<ViewAttendanceScreen> {
 
       map[key] = AttendanceDayData(
         date: key,
-        status: AttendanceDayData.resolveStatusWithSessions(agg.status, sessions),
+        status: AttendanceDayData.resolveStatusWithSessions(
+          agg.status,
+          sessions,
+        ),
         totalMinutes: sessionData?.totalMinutes ?? 0,
         sessions: sessions,
       );
@@ -159,8 +162,7 @@ class _ViewAttendanceScreenState extends ConsumerState<ViewAttendanceScreen> {
             },
 
             child: SingleChildScrollView(
-              keyboardDismissBehavior:
-                  ScrollViewKeyboardDismissBehavior.onDrag,
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
               physics: isIOS
                   ? const AlwaysScrollableScrollPhysics(
                       parent: BouncingScrollPhysics(),
@@ -310,13 +312,13 @@ class _ViewAttendanceScreenState extends ConsumerState<ViewAttendanceScreen> {
                     title: "Attendance Breakdown",
 
                     child: AttendancePieChart(
-                      present: displaySummary.workingDays,
+                      present: displaySummary.workingDays.toInt(),
 
                       absent: displaySummary.absentDays,
 
-                      late: displaySummary.lateDays,
+                      late: displaySummary.lateDays.toInt(),
 
-                      leave: displaySummary.totalLeaves,
+                      leave: displaySummary.totalLeaves.toInt(),
                     ),
                   ),
                 ],
