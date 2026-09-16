@@ -245,15 +245,14 @@ class _LastFiveDaysAttendanceCardState
           const SizedBox(height: 8),
 
           /// LEGEND
-          const Row(
-            mainAxisAlignment: MainAxisAlignment.center,
+          const Wrap(
+            alignment: WrapAlignment.center,
+            spacing: 16,
+            runSpacing: 8,
             children: [
               _Legend(AttendanceColors.worked, "Worked"),
-              SizedBox(width: 16),
               _Legend(AttendanceColors.overtime, "Overtime"),
-              SizedBox(width: 16),
               _Legend(AttendanceColors.capped, "Auto-close cap"),
-              SizedBox(width: 16),
               _Legend(AttendanceColors.expected, "Expected"),
             ],
           ),
@@ -398,6 +397,7 @@ class _Legend extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
         Container(
           width: 10,
