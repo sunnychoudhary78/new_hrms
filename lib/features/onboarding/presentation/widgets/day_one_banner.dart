@@ -7,16 +7,23 @@ class DayOneBanner extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Finished once → the guide never comes back for this user.
+    if (ref.watch(dayOneFinishedProvider)) return const SizedBox.shrink();
+
     final async = ref.watch(myOnboardingProvider);
 
     return async.maybeWhen(
       data: (data) {
+        if (data.dayOne.isComplete) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            markDayOneFinishedIfComplete(ref, data);
+          });
+          return const SizedBox.shrink();
+        }
+
         if (!data.showDashboardBanner) return const SizedBox.shrink();
 
         final dayOne = data.dayOne;
-        final subtitle = dayOne.total > 0
-            ? '${dayOne.completed} of ${dayOne.total} first-week steps done.'
-            : 'Status: ${data.onboardingStatus.replaceAll('_', ' ')}. Finish your first-week steps so you are ready to work.';
 
         return Padding(
           padding: const EdgeInsets.only(bottom: 16),
@@ -40,7 +47,7 @@ class DayOneBanner extends ConsumerWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    subtitle,
+                    '${dayOne.completed} of ${dayOne.total} first-week steps done.',
                     style: const TextStyle(
                       fontSize: 13,
                       color: Color(0xFF0369A1),

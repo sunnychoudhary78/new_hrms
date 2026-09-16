@@ -72,18 +72,30 @@ class DayOneProgress {
             ?.map((e) => e.toString())
             .toList() ??
         const <String>[];
+
+    final items = (j['items'] as List? ?? [])
+        .whereType<Map>()
+        .map((e) => DayOneStep.fromJson(Map<String, dynamic>.from(e)))
+        .where((step) => !_mobileHiddenKeys.contains(step.key))
+        .toList();
+
+    final completed = items.where((step) => step.isCompleted).length;
+
     return DayOneProgress(
-      items: (j['items'] as List? ?? [])
-          .whereType<Map>()
-          .map((e) => DayOneStep.fromJson(Map<String, dynamic>.from(e)))
-          .toList(),
-      completed: _asInt(j['completed']) ?? 0,
-      total: _asInt(j['total']) ?? 0,
-      progressPercent: _asInt(j['progress_percent']) ?? 0,
+      items: items,
+      completed: completed,
+      total: items.length,
+      progressPercent: items.isEmpty
+          ? 0
+          : ((completed / items.length) * 100).round(),
       selfCompleteKeys: keys.toSet(),
     );
   }
 }
+
+/// Steps handled only on web. `complete_profile` needs the My Details wizard,
+/// which the mobile app does not have.
+const _mobileHiddenKeys = {'complete_profile'};
 
 class OnboardingMe {
   final String? employeeId;
@@ -100,15 +112,10 @@ class OnboardingMe {
       onboardingStatus == 'cancelled' ||
       (employeeId == null || employeeId!.isEmpty);
 
-  /// Matches web dashboard: incomplete Day-one, or status still in progress.
-  bool get showDashboardBanner {
-    final dayOneIncomplete = dayOne.isIncomplete;
-    final status = onboardingStatus;
-    return dayOneIncomplete ||
-        (status.isNotEmpty &&
-            status != 'completed' &&
-            status != 'cancelled');
-  }
+  /// Mobile shows the guide purely by Day-one steps — the HR onboarding status
+  /// stays `in_progress` until My Details is filled on web, which the app
+  /// cannot do.
+  bool get showDashboardBanner => !isInactive && dayOne.isIncomplete;
 
   factory OnboardingMe.fromJson(Map<String, dynamic>? j) {
     if (j == null) {

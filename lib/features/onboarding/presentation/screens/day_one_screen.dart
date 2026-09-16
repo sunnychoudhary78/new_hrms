@@ -121,6 +121,12 @@ class _DayOneScreenState extends ConsumerState<DayOneScreen> {
           final progress = data.dayOne.progressPercent;
           final status = data.onboardingStatus.replaceAll('_', ' ');
 
+          // Last step done → retire the guide for this user.
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
+            markDayOneFinishedIfComplete(ref, data);
+          });
+
           return RefreshIndicator(
             onRefresh: () => _refresh(sync: true),
             child: ListView(

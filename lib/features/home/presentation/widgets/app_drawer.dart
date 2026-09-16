@@ -6,6 +6,7 @@ import 'package:lms/core/providers/user_data_invalidation.dart';
 import 'package:lms/features/auth/presentation/providers/auth_provider.dart';
 import 'package:lms/features/home/presentation/widgets/drawer_item_tile.dart';
 import 'package:lms/features/kra/presentation/kra_route_args.dart';
+import 'package:lms/features/onboarding/presentation/providers/onboarding_providers.dart';
 
 class AppDrawer extends ConsumerStatefulWidget {
   const AppDrawer({super.key});
@@ -29,6 +30,7 @@ class _AppDrawerState extends ConsumerState<AppDrawer>
 
     final permissions = authState.permissions;
     final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
+    final dayOneFinished = ref.watch(dayOneFinishedProvider);
 
     // ================= ROLE DETECTION =================
 
@@ -115,16 +117,17 @@ class _AppDrawerState extends ConsumerState<AppDrawer>
                       },
                     ),
 
-                    DrawerTile(
-                      index: index++,
-                      icon: Icons.flag_rounded,
-                      title: "Day-one Guide",
-                      isActive: route == "/day-one",
-                      onTap: () {
-                        Navigator.pop(context);
-                        Navigator.pushNamed(context, "/day-one");
-                      },
-                    ),
+                    if (!dayOneFinished)
+                      DrawerTile(
+                        index: index++,
+                        icon: Icons.flag_rounded,
+                        title: "Day-one Guide",
+                        isActive: route == "/day-one",
+                        onTap: () {
+                          Navigator.pop(context);
+                          Navigator.pushNamed(context, "/day-one");
+                        },
+                      ),
 
                     _sectionLabel('Work'),
 

@@ -60,13 +60,14 @@ class _HomeDashboardViewState extends ConsumerState<HomeDashboardView> {
             physics: scrollPhysics,
             padding: const EdgeInsets.all(16),
             children: [
+              const DayOneBanner(),
+
               HomeWelcomeAttendanceCard(
                 name: dashboard.userName,
                 role: dashboard.designation,
                 imageUrl: dashboard.profileImageUrl,
               ),
               const SizedBox(height: 16),
-              const DayOneBanner(),
 
               LastFiveDaysAttendanceCard(days: dashboard.lastFiveDays),
               const SizedBox(height: 16),
