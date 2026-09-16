@@ -115,6 +115,17 @@ class _AppDrawerState extends ConsumerState<AppDrawer>
                       },
                     ),
 
+                    DrawerTile(
+                      index: index++,
+                      icon: Icons.flag_rounded,
+                      title: "Day-one Guide",
+                      isActive: route == "/day-one",
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.pushNamed(context, "/day-one");
+                      },
+                    ),
+
                     _sectionLabel('Work'),
 
                     _buildExpandable(

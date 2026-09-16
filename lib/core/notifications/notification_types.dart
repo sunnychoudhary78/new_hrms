@@ -40,4 +40,7 @@ abstract class NotificationTypes {
 
   // Fallback
   static const unknown = 'unknown';
+
+  // Onboarding
+  static const onboardingReminder = 'onboarding_reminder';
 }

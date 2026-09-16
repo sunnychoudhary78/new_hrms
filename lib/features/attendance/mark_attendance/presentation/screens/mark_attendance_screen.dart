@@ -16,6 +16,8 @@ import 'package:lms/features/attendance/shared/utils/attendance_date_utils.dart'
 import 'package:lms/features/attendance/view_attendance/utils/attendance_status_color.dart';
 
 import 'package:lms/features/home/presentation/widgets/app_drawer.dart';
+import 'package:lms/features/onboarding/data/day_one_route.dart';
+import 'package:lms/features/onboarding/presentation/widgets/feature_tour_overlay.dart';
 import 'package:lms/shared/widgets/app_bar.dart';
 
 import '../widgets/live_clock_card.dart';
@@ -36,6 +38,9 @@ class _MarkAttendanceScreenState extends ConsumerState<MarkAttendanceScreen> {
   bool isRemoteMode = false;
   String? remoteReason;
   Timer? _shiftPollTimer;
+  final GlobalKey _punchInKey = GlobalKey();
+  final GlobalKey _punchOutKey = GlobalKey();
+  bool _tourStarted = false;
 
   @override
   void initState() {
@@ -45,8 +50,24 @@ class _MarkAttendanceScreenState extends ConsumerState<MarkAttendanceScreen> {
     });
   }
 
+  void _maybeStartTour() {
+    if (_tourStarted || !mounted) return;
+    final tour = tourIdFromArgs(ModalRoute.of(context)?.settings.arguments);
+    if (tour != 'attendance') return;
+    _tourStarted = true;
+    FeatureTourOverlay.maybeStart(
+      context: context,
+      tourId: tour,
+      targets: {
+        'attendance-clock-in': _punchInKey,
+        'attendance-clock-out': _punchOutKey,
+      },
+    );
+  }
+
   @override
   void dispose() {
+    FeatureTourOverlay.hide();
     _shiftPollTimer?.cancel();
     super.dispose();
   }
@@ -92,6 +113,7 @@ class _MarkAttendanceScreenState extends ConsumerState<MarkAttendanceScreen> {
         loading: () => const SizedBox(),
         error: (_, __) => const SizedBox(),
         data: (attendance) {
+          WidgetsBinding.instance.addPostFrameCallback((_) => _maybeStartTour());
           final sessions = attendance.sessions;
           final openSession = ref.watch(openSessionProvider(sessions));
           final hasOpen = ref.watch(hasOpenSessionProvider(sessions));
@@ -149,6 +171,8 @@ class _MarkAttendanceScreenState extends ConsumerState<MarkAttendanceScreen> {
                   remoteReason: remoteReason,
                   onEnableRemoteMode: enableRemoteMode,
                   onResetRemoteMode: resetRemoteMode,
+                  punchInKey: _punchInKey,
+                  punchOutKey: _punchOutKey,
                 ),
 
                 const SizedBox(height: 16),

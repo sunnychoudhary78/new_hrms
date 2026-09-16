@@ -3,23 +3,109 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:lms/core/network/api_constants.dart';
+import 'package:lms/features/onboarding/data/day_one_route.dart';
+import 'package:lms/features/onboarding/presentation/providers/onboarding_providers.dart';
+import 'package:lms/features/onboarding/presentation/widgets/feature_tour_overlay.dart';
 import 'package:lms/features/policy/data/models/policy_model.dart';
 import 'package:lms/features/policy/presentation/providers/policy_provider.dart';
+import 'package:lms/shared/utils/app_snackbar.dart';
 import 'package:lms/shared/widgets/app_bar.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-class PolicyScreen extends ConsumerWidget {
+class PolicyScreen extends ConsumerStatefulWidget {
   const PolicyScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<PolicyScreen> createState() => _PolicyScreenState();
+}
+
+class _PolicyScreenState extends ConsumerState<PolicyScreen> {
+  final GlobalKey _listKey = GlobalKey();
+  final GlobalKey _ackKey = GlobalKey();
+  bool _tourStarted = false;
+  bool _acking = false;
+
+  void _maybeStartTour() {
+    if (_tourStarted || !mounted) return;
+    final tour = tourIdFromArgs(ModalRoute.of(context)?.settings.arguments);
+    if (tour != 'policies') return;
+    _tourStarted = true;
+    FeatureTourOverlay.maybeStart(
+      context: context,
+      tourId: tour,
+      targets: {
+        'policies-list': _listKey,
+        'policies-ack': _ackKey,
+      },
+    );
+  }
+
+  @override
+  void dispose() {
+    FeatureTourOverlay.hide();
+    super.dispose();
+  }
+
+  Future<void> _ackPolicies() async {
+    setState(() => _acking = true);
+    try {
+      await ref
+          .read(onboardingApiServiceProvider)
+          .completeDayOneStep('day1_read_policies');
+      ref.invalidate(myOnboardingProvider);
+      if (mounted) {
+        AppSnackbar.success(context, 'Policies marked as reviewed');
+      }
+    } catch (e) {
+      if (mounted) {
+        AppSnackbar.error(
+          context,
+          e.toString().replaceFirst('Exception: ', ''),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _acking = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final policiesAsync = ref.watch(policiesProvider);
+    final onboardingAsync = ref.watch(myOnboardingProvider);
+    final onboarding = onboardingAsync.asData?.value;
+    final policiesStep = onboarding?.dayOne.items.where(
+      (s) => s.key == 'day1_read_policies',
+    );
+    final showAck =
+        policiesStep != null &&
+        policiesStep.isNotEmpty &&
+        !policiesStep.first.isCompleted;
     final scheme = Theme.of(context).colorScheme;
     final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
+
+    if (onboardingAsync.hasValue) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _maybeStartTour());
+    }
 
     return Scaffold(
       backgroundColor: scheme.surfaceContainerLowest,
       appBar: const AppAppBar(title: 'Policies'),
+      bottomNavigationBar: showAck
+          ? SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+                child: KeyedSubtree(
+                  key: _ackKey,
+                  child: FilledButton(
+                    onPressed: _acking ? null : _ackPolicies,
+                    child: Text(
+                      _acking ? 'Saving…' : "I've reviewed company policies",
+                    ),
+                  ),
+                ),
+              ),
+            )
+          : null,
       body: policiesAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => _StateCard(
@@ -31,49 +117,55 @@ class PolicyScreen extends ConsumerWidget {
         ),
         data: (policies) {
           if (policies.isEmpty) {
-            return _StateCard(
-              icon: Icons.policy_outlined,
-              title: 'No policies available',
-              message: 'Active company policies will appear here.',
-              actionLabel: 'Refresh',
-              onAction: () => ref.invalidate(policiesProvider),
+            return KeyedSubtree(
+              key: _listKey,
+              child: _StateCard(
+                icon: Icons.policy_outlined,
+                title: 'No policies available',
+                message: 'Active company policies will appear here.',
+                actionLabel: 'Refresh',
+                onAction: () => ref.invalidate(policiesProvider),
+              ),
             );
           }
 
           return RefreshIndicator(
             onRefresh: () async => ref.invalidate(policiesProvider),
-            child: ListView(
-              physics: isIOS
-                  ? const AlwaysScrollableScrollPhysics(
-                      parent: BouncingScrollPhysics(),
-                    )
-                  : const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(isIOS ? 14 : 18),
-                    gradient: LinearGradient(
-                      colors: [
-                        scheme.primaryContainer,
-                        scheme.secondaryContainer,
-                      ],
+            child: KeyedSubtree(
+              key: _listKey,
+              child: ListView(
+                physics: isIOS
+                    ? const AlwaysScrollableScrollPhysics(
+                        parent: BouncingScrollPhysics(),
+                      )
+                    : const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(isIOS ? 14 : 18),
+                      gradient: LinearGradient(
+                        colors: [
+                          scheme.primaryContainer,
+                          scheme.secondaryContainer,
+                        ],
+                      ),
+                    ),
+                    child: Text(
+                      'View HR policies shared by your company. Tap a policy to open the PDF.',
+                      style: TextStyle(
+                        color: scheme.onSurface,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
-                  child: Text(
-                    'View HR policies shared by your company. Tap a policy to open the PDF.',
-                    style: TextStyle(
-                      color: scheme.onSurface,
-                      fontWeight: FontWeight.w600,
-                    ),
+                  const SizedBox(height: 14),
+                  ...policies.map(
+                    (policy) => _PolicyCard(policy: policy, isIOS: isIOS),
                   ),
-                ),
-                const SizedBox(height: 14),
-                ...policies.map(
-                  (policy) => _PolicyCard(policy: policy, isIOS: isIOS),
-                ),
-              ],
+                ],
+              ),
             ),
           );
         },

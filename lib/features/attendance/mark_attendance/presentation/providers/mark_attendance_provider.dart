@@ -13,6 +13,7 @@ import 'package:lms/features/attendance/shared/data/models/attendance_response_m
 import 'package:lms/features/attendance/shared/utils/attendance_date_utils.dart';
 import 'package:lms/features/attendance/view_attendance/presentation/providers/view_attendance_provider.dart';
 import 'package:lms/features/dashboard/presentation/providers/team_attendance_provider.dart';
+import 'package:lms/features/onboarding/presentation/providers/onboarding_providers.dart';
 
 final markAttendanceProvider =
     AsyncNotifierProvider<MarkAttendanceNotifier, AttendanceResponse>(
@@ -232,6 +233,8 @@ class MarkAttendanceNotifier extends AsyncNotifier<AttendanceResponse> {
                   ? "Remote check-out successful"
                   : "Check-out successful"),
       );
+
+      await syncOnboardingQuietly(ref);
     } catch (e) {
       overlay.showError(e.toString().replaceFirst("Exception: ", ""));
     }

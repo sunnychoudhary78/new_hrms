@@ -14,6 +14,8 @@ import 'package:lms/core/services/location_tracking_service.dart';
 
 import 'package:lms/core/theme/app_theme_provider.dart';
 import 'package:lms/core/theme/theme_mode_provider.dart';
+import 'package:lms/features/auth/presentation/providers/auth_provider.dart';
+import 'package:lms/features/onboarding/presentation/widgets/force_password_change_gate.dart';
 
 import 'package:lms/shared/widgets/global_error.dart';
 import 'package:lms/shared/widgets/global_loader.dart';
@@ -208,6 +210,9 @@ class MyApp extends ConsumerWidget {
 
       builder: (context, child) {
         final overlay = ref.watch(globalLoadingProvider);
+        final auth = ref.watch(authProvider);
+        final showPasswordGate =
+            auth.profile != null && auth.mustChangePassword;
 
         return Stack(
           children: [
@@ -220,6 +225,8 @@ class MyApp extends ConsumerWidget {
             if (overlay.isError) GlobalError(message: overlay.message),
 
             if (overlay.isMessage) GlobalMessage(message: overlay.message),
+
+            if (showPasswordGate) const ForcePasswordChangeGate(),
           ],
         );
       },

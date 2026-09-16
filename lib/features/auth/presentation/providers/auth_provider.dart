@@ -73,6 +73,7 @@ class AuthNotifier extends Notifier<AuthState> {
 
       final profile = Userdetails.fromJson(profileJson);
       final permissions = await _authApi.fetchPermissions();
+      final mustChange = await _tokenStorage.getMustChangePassword();
 
       state = state.copyWith(
         isLoading: false,
@@ -81,6 +82,7 @@ class AuthNotifier extends Notifier<AuthState> {
         hasStoredSession: true,
         profile: profile,
         permissions: permissions,
+        mustChangePassword: mustChange,
         profileUrl: profile.profilePicture != null
             ? ApiConstants.imageBaseUrl + profile.profilePicture!
             : '',
@@ -170,6 +172,9 @@ class AuthNotifier extends Notifier<AuthState> {
 
       final profile = Userdetails.fromJson(profileJson);
       final permissions = await _authApi.fetchPermissions();
+      await _tokenStorage.saveMustChangePassword(
+        userModel.user.mustChangePassword,
+      );
 
       state = state.copyWith(
         isLoading: false,
@@ -178,6 +183,7 @@ class AuthNotifier extends Notifier<AuthState> {
         authUser: userModel.user,
         profile: profile,
         permissions: permissions,
+        mustChangePassword: userModel.user.mustChangePassword,
         profileUrl: profile.profilePicture != null
             ? ApiConstants.imageBaseUrl + profile.profilePicture!
             : '',
@@ -280,6 +286,9 @@ class AuthNotifier extends Notifier<AuthState> {
 
       final profile = Userdetails.fromJson(profileJson);
       final permissions = await _authApi.fetchPermissions();
+      await _tokenStorage.saveMustChangePassword(
+        userModel.user.mustChangePassword,
+      );
 
       state = state.copyWith(
         isLoading: false,
@@ -287,6 +296,7 @@ class AuthNotifier extends Notifier<AuthState> {
         authUser: userModel.user,
         profile: profile,
         permissions: permissions,
+        mustChangePassword: userModel.user.mustChangePassword,
         profileUrl: profile.profilePicture != null
             ? ApiConstants.imageBaseUrl + profile.profilePicture!
             : '',
@@ -392,6 +402,11 @@ class AuthNotifier extends Notifier<AuthState> {
     } finally {
       state = state.copyWith(isLoading: false);
     }
+  }
+
+  Future<void> clearMustChangePassword() async {
+    await _tokenStorage.saveMustChangePassword(false);
+    state = state.copyWith(mustChangePassword: false);
   }
 
   // ───────────────── PROFILE IMAGE ─────────────────

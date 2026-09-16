@@ -8,6 +8,7 @@ import 'package:lms/features/auth/presentation/screens/login_screen.dart';
 import 'package:lms/features/auth/presentation/screens/otp_login_screen.dart';
 import 'package:lms/features/auth/presentation/screens/reset_password_screen.dart';
 import 'package:lms/features/expenses/presentation/screens/expense_details_screen.dart';
+import 'package:lms/features/onboarding/presentation/screens/day_one_screen.dart';
 
 // HOME
 import '../features/home/presentation/screens/home_screen.dart';
@@ -67,6 +68,7 @@ class AppRoutes {
 
     // ================= PROFILE =================
     '/profile': (_) => const ProfileScreen(),
+    '/day-one': (_) => const DayOneScreen(),
 
     // ================= DASHBOARD =================
     '/team-dashboard': (_) => const TeamDashboardScreen(),

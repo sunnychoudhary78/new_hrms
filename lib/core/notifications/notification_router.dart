@@ -73,6 +73,9 @@ class NotificationRouter {
       case NotificationTypes.kraCycleUpdated:
         return const OpenKra();
 
+      case NotificationTypes.onboardingReminder:
+        return const OpenDayOne();
+
       // ───────── DEFAULT ─────────
 
       default:
@@ -99,6 +102,9 @@ class NotificationRouter {
         }
         if (t.contains('kra') || t.contains('kpi')) {
           return const OpenKra();
+        }
+        if (t.contains('onboarding')) {
+          return const OpenDayOne();
         }
         return const OpenNotifications();
     }

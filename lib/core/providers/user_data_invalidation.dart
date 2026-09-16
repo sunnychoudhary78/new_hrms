@@ -13,6 +13,7 @@ import '../../features/leave/presentation/providers/leave_details_provider.dart'
 import '../../features/notifications/presentation/providers/notifications_provider.dart';
 import '../../features/policy/presentation/providers/policy_provider.dart';
 import '../../features/resignation/presentation/providers/resignation_providers.dart';
+import '../../features/onboarding/presentation/providers/onboarding_providers.dart';
 import '../notifications/notification_action_notifier.dart';
 
 /// Clears cached async/notifier state tied to the signed-in user. Call when
@@ -50,4 +51,5 @@ void invalidateAllUserScopedData(WidgetRef ref) {
   ref.invalidate(myResignationProvider);
   ref.invalidate(resignationListFilterProvider);
   ref.invalidate(resignationDashboardProvider);
+  ref.invalidate(myOnboardingProvider);
 }

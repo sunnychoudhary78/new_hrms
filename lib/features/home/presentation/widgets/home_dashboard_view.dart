@@ -7,6 +7,8 @@ import 'package:lms/features/home/presentation/providers/home_dashboard_proovide
 import 'package:lms/features/home/presentation/widgets/attendance_overview_card.dart';
 import 'package:lms/features/home/presentation/widgets/home_welcome_attendance_card.dart';
 import 'package:lms/features/home/presentation/widgets/last_five_days_card.dart';
+import 'package:lms/features/onboarding/presentation/providers/onboarding_providers.dart';
+import 'package:lms/features/onboarding/presentation/widgets/day_one_banner.dart';
 
 class HomeDashboardView extends ConsumerStatefulWidget {
   const HomeDashboardView({super.key});
@@ -30,6 +32,7 @@ class _HomeDashboardViewState extends ConsumerState<HomeDashboardView> {
     ref.invalidate(homeDashboardProvider);
     ref.invalidate(markAttendanceProvider);
     ref.invalidate(mobileConfigProvider);
+    ref.invalidate(myOnboardingProvider);
   }
 
   @override
@@ -63,6 +66,7 @@ class _HomeDashboardViewState extends ConsumerState<HomeDashboardView> {
                 imageUrl: dashboard.profileImageUrl,
               ),
               const SizedBox(height: 16),
+              const DayOneBanner(),
 
               LastFiveDaysAttendanceCard(days: dashboard.lastFiveDays),
               const SizedBox(height: 16),

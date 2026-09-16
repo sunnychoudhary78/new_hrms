@@ -71,6 +71,7 @@ class User {
   final String? departmentName;
 
   final Role? role;
+  final bool mustChangePassword;
 
   User({
     required this.id,
@@ -82,6 +83,7 @@ class User {
     this.departmentId,
     this.departmentName,
     this.role,
+    this.mustChangePassword = false,
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
@@ -104,6 +106,7 @@ class User {
       role: json['role'] != null
           ? Role.fromJson(Map<String, dynamic>.from(json['role']))
           : null,
+      mustChangePassword: json['must_change_password'] == true,
     );
   }
 
@@ -117,5 +120,6 @@ class User {
     'departmentId': departmentId,
     'departmentName': departmentName,
     'role': role?.toJson(),
+    'must_change_password': mustChangePassword,
   };
 }

@@ -270,6 +270,10 @@ class _AppRootState extends ConsumerState<AppRoot> {
         nav.pushNamed('/kra');
         break;
 
+      case OpenDayOne():
+        nav.pushNamed('/day-one');
+        break;
+
       case OpenNotifications():
         nav.pushNamed('/notifications');
         break;

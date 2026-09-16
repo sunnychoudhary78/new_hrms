@@ -42,6 +42,13 @@ class ApiEndpoints {
   // ───────── POLICIES ─────────
   static const String policies = 'policies';
 
+  // ───────── ONBOARDING / DAY-ONE ─────────
+  static const String onboardingMe = 'onboarding/me';
+  static const String onboardingMeSync = 'onboarding/me/sync';
+  static const String onboardingChangePassword = 'onboarding/change-password';
+  static String onboardingDayOneComplete(String key) =>
+      'onboarding/me/day-one/${Uri.encodeComponent(key)}/complete';
+
   // ───────── EXPENSES ─────────
   static const String expenses = 'expenses';
 

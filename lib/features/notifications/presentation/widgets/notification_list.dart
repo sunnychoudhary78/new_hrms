@@ -342,6 +342,12 @@ class NotificationList extends ConsumerWidget {
                 return;
               }
 
+              if (normalizedType == 'onboarding_reminder' ||
+                  normalizedType.contains('onboarding')) {
+                Navigator.pushNamed(context, '/day-one');
+                return;
+              }
+
               /// =====================================================
               /// DEFAULT FALLBACK → Open Generic Notification Details
               /// =====================================================

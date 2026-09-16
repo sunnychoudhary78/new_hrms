@@ -16,6 +16,8 @@ class AttendanceActionsSection extends ConsumerWidget {
 
   final Function(String reason) onEnableRemoteMode;
   final VoidCallback onResetRemoteMode;
+  final GlobalKey? punchInKey;
+  final GlobalKey? punchOutKey;
 
   const AttendanceActionsSection({
     super.key,
@@ -24,6 +26,8 @@ class AttendanceActionsSection extends ConsumerWidget {
     required this.remoteReason,
     required this.onEnableRemoteMode,
     required this.onResetRemoteMode,
+    this.punchInKey,
+    this.punchOutKey,
   });
 
   @override
@@ -52,53 +56,51 @@ class AttendanceActionsSection extends ConsumerWidget {
           children: [
             /// PUNCH IN BUTTON
             Expanded(
-              child: mobileConfigAsync.when(
-                /// LOADING STATE
-                loading: () => ModernPunchButton(
-                  text: "Checking...",
-                  icon: Icons.fingerprint,
-                  onPressed: null,
-                  colors: [
-                    scheme.outlineVariant,
-                    scheme.surfaceContainerHighest,
-                  ],
-                ),
+              child: KeyedSubtree(
+                key: punchInKey,
+                child: mobileConfigAsync.when(
+                  loading: () => ModernPunchButton(
+                    text: "Checking...",
+                    icon: Icons.fingerprint,
+                    onPressed: null,
+                    colors: [
+                      scheme.outlineVariant,
+                      scheme.surfaceContainerHighest,
+                    ],
+                  ),
+                  error: (_, __) => ModernPunchButton(
+                    text: "Unavailable",
+                    icon: Icons.fingerprint,
+                    onPressed: null,
+                    colors: [
+                      scheme.outlineVariant,
+                      scheme.surfaceContainerHighest,
+                    ],
+                  ),
+                  data: (_) => ModernPunchButton(
+                    text: canMobileCheckIn ? "Punch In" : "Check-In Disabled",
+                    icon: Icons.fingerprint,
+                    onPressed: canCheckIn
+                        ? () async {
+                            if (isRemoteMode && remoteReason != null) {
+                              await notifier.punchInRemote(
+                                context,
+                                remoteReason!,
+                              );
 
-                /// ERROR STATE
-                error: (_, __) => ModernPunchButton(
-                  text: "Unavailable",
-                  icon: Icons.fingerprint,
-                  onPressed: null,
-                  colors: [
-                    scheme.outlineVariant,
-                    scheme.surfaceContainerHighest,
-                  ],
-                ),
-
-                /// DATA STATE
-                data: (_) => ModernPunchButton(
-                  text: canMobileCheckIn ? "Punch In" : "Check-In Disabled",
-
-                  icon: Icons.fingerprint,
-
-                  onPressed: canCheckIn
-                      ? () async {
-                          if (isRemoteMode && remoteReason != null) {
-                            await notifier.punchInRemote(
-                              context,
-                              remoteReason!,
-                            );
-
-                            onResetRemoteMode();
-                          } else {
-                            await notifier.punchIn(context);
+                              onResetRemoteMode();
+                            } else {
+                              await notifier.punchIn(context);
+                            }
                           }
-                        }
-                      : null,
-
-                  colors: canMobileCheckIn
-                      ? [scheme.primary, scheme.primaryContainer]
-                      : [scheme.outlineVariant, scheme.surfaceContainerHighest],
+                        : null,
+                    colors: canMobileCheckIn
+                        ? [scheme.primary, scheme.primaryContainer]
+                        : [
+                            scheme.outlineVariant,
+                            scheme.surfaceContainerHighest,
+                          ],
+                  ),
                 ),
               ),
             ),
@@ -107,50 +109,53 @@ class AttendanceActionsSection extends ConsumerWidget {
 
             /// PUNCH OUT BUTTON
             Expanded(
-              child: mobileConfigAsync.when(
-                loading: () => ModernPunchButton(
-                  text: "Checking...",
-                  icon: Icons.power_settings_new_rounded,
-                  onPressed: null,
-                  colors: [
-                    scheme.outlineVariant,
-                    scheme.surfaceContainerHighest,
-                  ],
-                ),
+              child: KeyedSubtree(
+                key: punchOutKey,
+                child: mobileConfigAsync.when(
+                  loading: () => ModernPunchButton(
+                    text: "Checking...",
+                    icon: Icons.power_settings_new_rounded,
+                    onPressed: null,
+                    colors: [
+                      scheme.outlineVariant,
+                      scheme.surfaceContainerHighest,
+                    ],
+                  ),
+                  error: (_, __) => ModernPunchButton(
+                    text: "Unavailable",
+                    icon: Icons.power_settings_new_rounded,
+                    onPressed: null,
+                    colors: [
+                      scheme.outlineVariant,
+                      scheme.surfaceContainerHighest,
+                    ],
+                  ),
+                  data: (_) => ModernPunchButton(
+                    text: canMobileCheckOut
+                        ? "Punch Out"
+                        : "Check-Out Disabled",
+                    icon: Icons.power_settings_new_rounded,
+                    onPressed: canCheckOut
+                        ? () async {
+                            if (isRemoteMode && remoteReason != null) {
+                              await notifier.punchOutRemote(
+                                context,
+                                remoteReason!,
+                              );
 
-                error: (_, __) => ModernPunchButton(
-                  text: "Unavailable",
-                  icon: Icons.power_settings_new_rounded,
-                  onPressed: null,
-                  colors: [
-                    scheme.outlineVariant,
-                    scheme.surfaceContainerHighest,
-                  ],
-                ),
-
-                data: (_) => ModernPunchButton(
-                  text: canMobileCheckOut ? "Punch Out" : "Check-Out Disabled",
-
-                  icon: Icons.power_settings_new_rounded,
-
-                  onPressed: canCheckOut
-                      ? () async {
-                          if (isRemoteMode && remoteReason != null) {
-                            await notifier.punchOutRemote(
-                              context,
-                              remoteReason!,
-                            );
-
-                            onResetRemoteMode();
-                          } else {
-                            await notifier.punchOut(context);
+                              onResetRemoteMode();
+                            } else {
+                              await notifier.punchOut(context);
+                            }
                           }
-                        }
-                      : null,
-
-                  colors: canMobileCheckOut
-                      ? [scheme.secondary, scheme.secondaryContainer]
-                      : [scheme.outlineVariant, scheme.surfaceContainerHighest],
+                        : null,
+                    colors: canMobileCheckOut
+                        ? [scheme.secondary, scheme.secondaryContainer]
+                        : [
+                            scheme.outlineVariant,
+                            scheme.surfaceContainerHighest,
+                          ],
+                  ),
                 ),
               ),
             ),

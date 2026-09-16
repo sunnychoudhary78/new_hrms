@@ -4,6 +4,7 @@ class TokenStorage {
   static const _jwtKey = 'jwt_token';
   static const _refreshKey = 'refresh_token';
   static const _fcmKey = 'fcm_token';
+  static const _mustChangePasswordKey = 'must_change_password';
 
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
 
@@ -34,8 +35,21 @@ class TokenStorage {
     return token;
   }
 
+  Future<void> saveMustChangePassword(bool value) async {
+    await _storage.write(
+      key: _mustChangePasswordKey,
+      value: value ? 'true' : 'false',
+    );
+  }
+
+  Future<bool> getMustChangePassword() async {
+    final value = await _storage.read(key: _mustChangePasswordKey);
+    return value == 'true';
+  }
+
   Future<void> clear() async {
     await _storage.delete(key: _jwtKey);
     await _storage.delete(key: _refreshKey);
+    await _storage.delete(key: _mustChangePasswordKey);
   }
 }

@@ -51,6 +51,11 @@ class OpenKra extends NotificationAction {
   const OpenKra();
 }
 
+/// Open employee Day-one guide
+class OpenDayOne extends NotificationAction {
+  const OpenDayOne();
+}
+
 /// Open notifications list (fallback)
 class OpenNotifications extends NotificationAction {
   const OpenNotifications();

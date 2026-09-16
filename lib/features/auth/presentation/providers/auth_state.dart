@@ -20,6 +20,7 @@ class AuthState {
   final bool hasStoredSession;
 
   final List<String> permissions;
+  final bool mustChangePassword;
 
   const AuthState({
     this.isLoading = false,
@@ -32,6 +33,7 @@ class AuthState {
     this.isSubscriptionExpired = false,
     this.restoreFailed = false,
     this.hasStoredSession = false,
+    this.mustChangePassword = false,
   });
 
   AuthState copyWith({
@@ -45,6 +47,7 @@ class AuthState {
     bool? restoreFailed,
     bool? hasStoredSession,
     List<String>? permissions,
+    bool? mustChangePassword,
   }) {
     return AuthState(
       isLoading: isLoading ?? this.isLoading,
@@ -58,6 +61,7 @@ class AuthState {
           isSubscriptionExpired ?? this.isSubscriptionExpired,
       restoreFailed: restoreFailed ?? this.restoreFailed,
       hasStoredSession: hasStoredSession ?? this.hasStoredSession,
+      mustChangePassword: mustChangePassword ?? this.mustChangePassword,
     );
   }
 }
