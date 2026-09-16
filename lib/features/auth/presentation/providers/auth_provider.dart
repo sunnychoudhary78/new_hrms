@@ -91,6 +91,8 @@ class AuthNotifier extends Notifier<AuthState> {
             : '',
       );
 
+      ref.read(sessionGuardProvider).reset();
+
       await _registerFcmIfAvailable();
     } catch (e) {
       final msg = e.toString();
@@ -191,6 +193,8 @@ class AuthNotifier extends Notifier<AuthState> {
             ? ApiConstants.companyLogoBaseUrl + profile.companyLogoFilename!
             : '',
       );
+
+      ref.read(sessionGuardProvider).reset();
 
       await _registerFcmIfAvailable();
 
@@ -304,6 +308,8 @@ class AuthNotifier extends Notifier<AuthState> {
             ? ApiConstants.companyLogoBaseUrl + profile.companyLogoFilename!
             : '',
       );
+
+      ref.read(sessionGuardProvider).reset();
 
       await _registerFcmIfAvailable();
 

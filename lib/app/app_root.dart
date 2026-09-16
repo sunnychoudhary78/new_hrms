@@ -64,11 +64,6 @@ class _AppRootState extends ConsumerState<AppRoot> {
       }
 
       _initPush();
-
-      // 🔥 Periodic sync (prevents stale data)
-      _notificationSyncTimer = Timer.periodic(const Duration(seconds: 10), (_) {
-        ref.read(notificationProvider.notifier).refresh();
-      });
     });
 
     /// 🔔 Notification action listener
@@ -95,6 +90,9 @@ class _AppRootState extends ConsumerState<AppRoot> {
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
     final currentUserId = authState.profile?.userId;
+
+    /// 🔥 Periodic sync only while a session is active
+    _updateNotificationSync(isLoggedIn: authState.profile != null);
 
     /// 🔥 USER CHANGE DETECTED
     if (currentUserId != null && _lastUserId != currentUserId) {
@@ -144,6 +142,23 @@ class _AppRootState extends ConsumerState<AppRoot> {
     }
 
     return const LoginScreen();
+  }
+
+  /// Notifications are user-scoped, so polling them without a session only
+  /// produces 401s that force a logout and restart the app.
+  void _updateNotificationSync({required bool isLoggedIn}) {
+    if (!isLoggedIn) {
+      _notificationSyncTimer?.cancel();
+      _notificationSyncTimer = null;
+      return;
+    }
+
+    if (_notificationSyncTimer != null) return;
+
+    _notificationSyncTimer = Timer.periodic(const Duration(seconds: 10), (_) {
+      if (!mounted || ref.read(authProvider).profile == null) return;
+      ref.read(notificationProvider.notifier).refresh();
+    });
   }
 
   void _checkPlayStoreUpdate() {

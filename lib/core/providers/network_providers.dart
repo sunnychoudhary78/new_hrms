@@ -23,6 +23,10 @@ final dioClientProvider = Provider<DioClient>((ref) {
       ref.read(authProvider.notifier).forceSubscriptionExpired();
     },
     onSessionInvalid: () {
+      // A 401 with nobody logged in (login screen, or a failed session restore)
+      // must not force a logout — that restarts the whole app.
+      if (ref.read(authProvider).profile == null) return;
+
       ref.read(sessionGuardProvider).trigger(() {
         ref.read(authProvider.notifier).logout();
       });

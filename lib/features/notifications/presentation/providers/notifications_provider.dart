@@ -22,6 +22,11 @@ class NotificationNotifier extends AsyncNotifier<List<Map<String, dynamic>>> {
   }
 
   Future<void> refresh() async {
+    if (ref.read(authProvider).profile == null) {
+      state = const AsyncData([]);
+      return;
+    }
+
     try {
       final api = ref.read(notificationApiServiceProvider);
       final data = await api.fetchMyNotifications();
