@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:lms/core/theme/app_design.dart';
 import 'package:lms/features/attendance/correction_attendance/data/models/attendance_request_model.dart';
+import 'package:lms/features/attendance/shared/utils/attendance_date_utils.dart';
 
 class MyCorrectionCard extends StatefulWidget {
   final AttendanceRequest request;
@@ -53,13 +54,6 @@ class _MyCorrectionCardState extends State<MyCorrectionCard> {
     final dt = DateTime.tryParse(date);
     if (dt == null) return date;
     return DateFormat('EEE, d MMM yyyy').format(dt);
-  }
-
-  String _formatTime(String? iso) {
-    if (iso == null) return "--";
-    final dt = DateTime.tryParse(iso);
-    if (dt == null) return "--";
-    return DateFormat('hh:mm a').format(dt);
   }
 
   @override
@@ -190,11 +184,11 @@ class _MyCorrectionCardState extends State<MyCorrectionCard> {
                   if (req.isCorrection) ...[
                     _InfoRow(
                       label: "Proposed Check-in",
-                      value: _formatTime(req.proposedCheckIn),
+                      value: formatIsoToLocalTime(req.proposedCheckIn),
                     ),
                     _InfoRow(
                       label: "Proposed Check-out",
-                      value: _formatTime(req.proposedCheckOut),
+                      value: formatIsoToLocalTime(req.proposedCheckOut),
                     ),
                     const SizedBox(height: AppSpacing.sm),
                   ],
@@ -205,9 +199,7 @@ class _MyCorrectionCardState extends State<MyCorrectionCard> {
 
                   _InfoRow(
                     label: "Requested at",
-                    value: req.requestedAt != null
-                        ? _formatDate(req.requestedAt!)
-                        : "--",
+                    value: formatIsoToLocalDateTime(req.requestedAt),
                   ),
                 ],
               ),

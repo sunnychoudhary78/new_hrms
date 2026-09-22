@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lms/core/providers/global_loading_provider.dart';
+import 'package:lms/features/attendance/shared/utils/attendance_date_utils.dart';
 import '../../data/models/attendance_request_model.dart';
 import '../providers/attendance_requests_provider.dart';
 
@@ -151,8 +152,14 @@ class _ReviewDialogState extends ConsumerState<_ReviewDialog> {
               const SizedBox(height: 16),
 
               if (req.isCorrection) ...[
-                _InfoRow("Proposed In", req.proposedCheckIn),
-                _InfoRow("Proposed Out", req.proposedCheckOut),
+                _InfoRow(
+                  "Proposed In",
+                  formatIsoToLocalTime(req.proposedCheckIn),
+                ),
+                _InfoRow(
+                  "Proposed Out",
+                  formatIsoToLocalTime(req.proposedCheckOut),
+                ),
                 const SizedBox(height: 12),
               ],
 

@@ -1,8 +1,36 @@
+import 'package:intl/intl.dart';
 import 'package:lms/features/attendance/mark_attendance/data/models/attendance_session_model.dart';
 
 /// Local calendar date as yyyy-MM-dd (matches web toLocaleDateString('en-CA')).
 String isoDate(DateTime d) =>
     '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+
+/// Convert a local wall-clock DateTime to UTC ISO-8601 with Z.
+/// Matches web `new Date(`${date}T${time}:00`).toISOString()`.
+String localDateTimeToUtcIso(DateTime local) {
+  final utc = local.toUtc();
+  String two(int n) => n.toString().padLeft(2, '0');
+  return '${utc.year.toString().padLeft(4, '0')}-'
+      '${two(utc.month)}-${two(utc.day)}T'
+      '${two(utc.hour)}:${two(utc.minute)}:${two(utc.second)}.000Z';
+}
+
+DateTime? tryParseIsoToLocal(String? iso) {
+  if (iso == null || iso.trim().isEmpty) return null;
+  return DateTime.tryParse(iso)?.toLocal();
+}
+
+String formatIsoToLocalTime(String? iso, {String fallback = '--'}) {
+  final dt = tryParseIsoToLocal(iso);
+  if (dt == null) return fallback;
+  return DateFormat('hh:mm a').format(dt);
+}
+
+String formatIsoToLocalDateTime(String? iso, {String fallback = '--'}) {
+  final dt = tryParseIsoToLocal(iso);
+  if (dt == null) return fallback;
+  return DateFormat('EEE, d MMM yyyy, hh:mm a').format(dt);
+}
 
 String localTodayIso() => isoDate(DateTime.now());
 

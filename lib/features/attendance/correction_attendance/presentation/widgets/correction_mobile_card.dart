@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:lms/features/attendance/correction_attendance/presentation/dialogs/review_request_dialog.dart';
+import 'package:lms/features/attendance/shared/utils/attendance_date_utils.dart';
 import '../../data/models/attendance_request_model.dart';
 import 'user_cell.dart';
 
@@ -9,18 +10,7 @@ class RequestCard extends StatelessWidget {
 
   const RequestCard({super.key, required this.item});
 
-  String formatTime(String? iso) {
-    if (iso == null) return "--";
-
-    final dt = DateTime.tryParse(iso)?.toLocal();
-    if (dt == null) return "--";
-
-    final hour = dt.hour > 12 ? dt.hour - 12 : dt.hour;
-    final minute = dt.minute.toString().padLeft(2, '0');
-    final suffix = dt.hour >= 12 ? "PM" : "AM";
-
-    return "${hour == 0 ? 12 : hour}:$minute $suffix";
-  }
+  String formatTime(String? iso) => formatIsoToLocalTime(iso);
 
   /// 🔥 STATUS COLOR (controlled)
   Color _statusColor() {

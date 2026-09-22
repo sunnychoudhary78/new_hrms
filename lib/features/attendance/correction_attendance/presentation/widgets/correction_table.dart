@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:lms/features/attendance/shared/utils/attendance_date_utils.dart';
 import '../../data/models/attendance_request_model.dart';
 import '../dialogs/review_request_dialog.dart';
 import 'user_cell.dart';
@@ -127,7 +128,7 @@ class _TimeChip extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
-        time!,
+        formatIsoToLocalTime(time),
         style: const TextStyle(
           fontWeight: FontWeight.w600,
           fontSize: 12,

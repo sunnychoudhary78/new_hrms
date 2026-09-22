@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lms/features/attendance/shared/data/attendance_repository_provider.dart';
+import 'package:lms/features/attendance/shared/utils/attendance_date_utils.dart';
 import 'package:lms/features/attendance/view_attendance/data/models/attendance_aggregate_model.dart';
 import 'package:lms/features/attendance/view_attendance/data/models/attendance_summary_model.dart';
 import 'package:lms/features/attendance/shared/data/attendance_rerpository.dart';
@@ -56,17 +57,13 @@ class ViewAttendanceNotifier extends AsyncNotifier<ViewAttendanceState> {
     required String reason,
   }) async {
     String toIso(DateTime d, TimeOfDay t) {
-      return DateTime(
-        d.year,
-        d.month,
-        d.day,
-        t.hour,
-        t.minute,
-      ).toIso8601String();
+      return localDateTimeToUtcIso(
+        DateTime(d.year, d.month, d.day, t.hour, t.minute),
+      );
     }
 
     final body = {
-      "targetDate": date.toIso8601String().split('T').first,
+      "targetDate": isoDate(date),
       "proposedCheckIn": toIso(date, checkIn),
       if (checkOut != null) "proposedCheckOut": toIso(date, checkOut),
       "reason": reason,

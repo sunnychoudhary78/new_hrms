@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:lms/core/providers/global_loading_provider.dart';
 import 'package:lms/features/attendance/shared/data/attendance_repository_provider.dart';
+import 'package:lms/features/attendance/shared/utils/attendance_date_utils.dart';
 import '../widgets/section_header.dart';
 import '../widgets/time_picker_card.dart';
 
@@ -81,8 +82,9 @@ class _RequestCorrectionDialogState
     try {
       await ref.read(attendanceRepositoryProvider).requestCorrection({
         "targetDate": DateFormat('yyyy-MM-dd').format(targetDate),
-        "proposedCheckIn": checkIn.toIso8601String(),
-        if (checkOut != null) "proposedCheckOut": checkOut.toIso8601String(),
+        "proposedCheckIn": localDateTimeToUtcIso(checkIn),
+        if (checkOut != null)
+          "proposedCheckOut": localDateTimeToUtcIso(checkOut),
         "reason": reasonController.text.trim(),
       });
 
