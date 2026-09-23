@@ -20,6 +20,9 @@ class AuthState {
   final bool hasStoredSession;
 
   final List<String> permissions;
+  final Map<String, dynamic> features;
+  final String? roleName;
+  final bool featuresLoaded;
   final bool mustChangePassword;
 
   const AuthState({
@@ -30,6 +33,9 @@ class AuthState {
     this.profileUrl = '',
     this.companyLogoUrl = '',
     this.permissions = const [],
+    this.features = const {},
+    this.roleName,
+    this.featuresLoaded = false,
     this.isSubscriptionExpired = false,
     this.restoreFailed = false,
     this.hasStoredSession = false,
@@ -47,6 +53,9 @@ class AuthState {
     bool? restoreFailed,
     bool? hasStoredSession,
     List<String>? permissions,
+    Map<String, dynamic>? features,
+    String? roleName,
+    bool? featuresLoaded,
     bool? mustChangePassword,
   }) {
     return AuthState(
@@ -57,6 +66,9 @@ class AuthState {
       profileUrl: profileUrl ?? this.profileUrl,
       companyLogoUrl: companyLogoUrl ?? this.companyLogoUrl,
       permissions: permissions ?? this.permissions,
+      features: features ?? this.features,
+      roleName: roleName ?? this.roleName,
+      featuresLoaded: featuresLoaded ?? this.featuresLoaded,
       isSubscriptionExpired:
           isSubscriptionExpired ?? this.isSubscriptionExpired,
       restoreFailed: restoreFailed ?? this.restoreFailed,

@@ -14,6 +14,7 @@ import '../../features/notifications/presentation/providers/notifications_provid
 import '../../features/policy/presentation/providers/policy_provider.dart';
 import '../../features/resignation/presentation/providers/resignation_providers.dart';
 import '../../features/onboarding/presentation/providers/onboarding_providers.dart';
+import '../../features/meetings/presentation/providers/meetings_providers.dart';
 import '../notifications/notification_action_notifier.dart';
 
 /// Clears cached async/notifier state tied to the signed-in user. Call when
@@ -52,4 +53,8 @@ void invalidateAllUserScopedData(WidgetRef ref) {
   ref.invalidate(resignationListFilterProvider);
   ref.invalidate(resignationDashboardProvider);
   ref.invalidate(myOnboardingProvider);
+
+  ref.invalidate(meetingsTabProvider);
+  ref.invalidate(meetingsListProvider);
+  ref.invalidate(meetingEmployeesProvider);
 }

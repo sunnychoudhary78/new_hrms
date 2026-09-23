@@ -289,6 +289,14 @@ class _AppRootState extends ConsumerState<AppRoot> {
         nav.pushNamed('/day-one');
         break;
 
+      case OpenMeeting():
+        if (action.meetingId != null && action.meetingId!.isNotEmpty) {
+          nav.pushNamed('/meetings/detail', arguments: action.meetingId);
+        } else {
+          nav.pushNamed('/meetings');
+        }
+        break;
+
       case OpenNotifications():
         nav.pushNamed('/notifications');
         break;

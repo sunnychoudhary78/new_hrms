@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -348,6 +350,20 @@ class NotificationList extends ConsumerWidget {
                 return;
               }
 
+              if (normalizedType.contains('meeting')) {
+                final meetingId = _meetingIdFromNotificationData(data);
+                if (meetingId != null && meetingId.isNotEmpty) {
+                  Navigator.pushNamed(
+                    context,
+                    '/meetings/detail',
+                    arguments: meetingId,
+                  );
+                } else {
+                  Navigator.pushNamed(context, '/meetings');
+                }
+                return;
+              }
+
               /// =====================================================
               /// DEFAULT FALLBACK → Open Generic Notification Details
               /// =====================================================
@@ -369,6 +385,7 @@ class NotificationList extends ConsumerWidget {
     if (t.contains('expense')) return Icons.receipt_long;
     if (t.contains('resignation')) return Icons.assignment_return_outlined;
     if (t.contains('kra') || t.contains('kpi')) return Icons.insights_rounded;
+    if (t.contains('meeting')) return Icons.videocam_rounded;
 
     switch (t) {
       case 'attendance_checkin':
@@ -398,6 +415,27 @@ class NotificationList extends ConsumerWidget {
       default:
         return Icons.notifications;
     }
+  }
+
+  String? _meetingIdFromNotificationData(dynamic data) {
+    Map<String, dynamic>? payload;
+    if (data is Map) {
+      payload = Map<String, dynamic>.from(data);
+    } else if (data is String && data.trim().isNotEmpty) {
+      try {
+        final decoded = jsonDecode(data);
+        if (decoded is Map) {
+          payload = Map<String, dynamic>.from(decoded);
+        }
+      } catch (_) {}
+    }
+    if (payload == null) return null;
+    final direct =
+        payload['meetingId']?.toString() ?? payload['meeting_id']?.toString();
+    if (direct != null && direct.isNotEmpty) return direct;
+    final path = payload['path']?.toString();
+    if (path == null || path.isEmpty) return null;
+    return RegExp(r'/meetings/([^/?#]+)').firstMatch(path)?.group(1);
   }
 
   /// TIME FORMATTER

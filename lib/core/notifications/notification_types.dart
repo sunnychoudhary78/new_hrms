@@ -43,4 +43,10 @@ abstract class NotificationTypes {
 
   // Onboarding
   static const onboardingReminder = 'onboarding_reminder';
+
+  // Internal meetings
+  static const meetingInvite = 'meeting_invite';
+  static const meetingReminder = 'meeting_reminder';
+  static const meetingCancelled = 'meeting_cancelled';
+  static const meetingUpdated = 'meeting_updated';
 }

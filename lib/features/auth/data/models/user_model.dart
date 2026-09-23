@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'package:lms/core/auth/auth_features.dart';
+
 // ─────────────────────────────────────────────
 // 🔐 AUTH RESPONSE MODEL
 // ─────────────────────────────────────────────
@@ -72,6 +74,7 @@ class User {
 
   final Role? role;
   final bool mustChangePassword;
+  final Map<String, dynamic> features;
 
   User({
     required this.id,
@@ -84,6 +87,7 @@ class User {
     this.departmentName,
     this.role,
     this.mustChangePassword = false,
+    this.features = const {},
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
@@ -107,6 +111,7 @@ class User {
           ? Role.fromJson(Map<String, dynamic>.from(json['role']))
           : null,
       mustChangePassword: json['must_change_password'] == true,
+      features: resolveAuthFeatures(Map<String, dynamic>.from(json)),
     );
   }
 
@@ -121,5 +126,7 @@ class User {
     'departmentName': departmentName,
     'role': role?.toJson(),
     'must_change_password': mustChangePassword,
+    'plan': {'features': features},
+    'company': {'features': features},
   };
 }

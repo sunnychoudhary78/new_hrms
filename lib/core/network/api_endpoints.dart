@@ -19,6 +19,7 @@ class ApiEndpoints {
   static const String sendOtp = 'auth/otp/send';
   static const String verifyOtp = 'auth/otp/verify';
   static const String permissions = 'auth/permissions';
+  static const String authMe = 'auth/me';
   static const String changePassword = 'auth/change-password';
   static const String forgotPassword = 'auth/forgot-password';
   static const String resetPassword = 'auth/reset-password';
@@ -63,6 +64,10 @@ class ApiEndpoints {
   static const String kraCycles = 'kra/cycles';
   static const String kraEvaluations = 'kra/evaluations';
   static const String kraSubmitRating = 'kra/submit-rating';
+
+  // ───────── INTERNAL MEETINGS ─────────
+  static const String meetings = 'meetings';
+  static const String employeesMinimal = 'employees/all/minimal';
 
   // ───────── RESIGNATION ─────────
   static const String resignation = 'resignations';

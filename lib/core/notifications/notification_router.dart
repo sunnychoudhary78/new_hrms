@@ -76,6 +76,14 @@ class NotificationRouter {
       case NotificationTypes.onboardingReminder:
         return const OpenDayOne();
 
+      // ───────── MEETINGS ─────────
+
+      case NotificationTypes.meetingInvite:
+      case NotificationTypes.meetingReminder:
+      case NotificationTypes.meetingCancelled:
+      case NotificationTypes.meetingUpdated:
+        return OpenMeeting(meetingId: _meetingId(payload));
+
       // ───────── DEFAULT ─────────
 
       default:
@@ -106,6 +114,9 @@ class NotificationRouter {
         if (t.contains('onboarding')) {
           return const OpenDayOne();
         }
+        if (t.contains('meeting')) {
+          return OpenMeeting(meetingId: _meetingId(payload));
+        }
         return const OpenNotifications();
     }
   }
@@ -122,5 +133,14 @@ class NotificationRouter {
     final value = data[key];
     final text = value?.toString().trim();
     return text == null || text.isEmpty ? null : text;
+  }
+
+  static String? _meetingId(Map<String, dynamic> data) {
+    final direct = _string(data, 'meetingId') ?? _string(data, 'meeting_id');
+    if (direct != null) return direct;
+    final path = _string(data, 'path');
+    if (path == null) return null;
+    final match = RegExp(r'/meetings/([^/?#]+)').firstMatch(path);
+    return match?.group(1);
   }
 }

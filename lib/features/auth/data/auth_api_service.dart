@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:dio/dio.dart';
+import 'package:lms/core/auth/auth_features.dart';
 import 'package:lms/core/network/api_endpoints.dart';
 import 'package:lms/features/auth/data/models/user_model.dart';
 import '../../../../core/network/api_service.dart';
@@ -40,11 +41,14 @@ class AuthApiService {
     return await api.get(ApiEndpoints.userDetails);
   }
 
+  Future<Map<String, dynamic>> fetchMe() async {
+    final response = await api.get(ApiEndpoints.authMe);
+    return extractAuthUserMap(response);
+  }
+
   Future<List<String>> fetchPermissions() async {
     final response = await api.get(ApiEndpoints.permissions);
-
-    final List list = response['permissions'];
-    return list.map((p) => p['name'] as String).toList();
+    return normalizePermissionNames(response);
   }
 
   // ───────────────── PASSWORD ─────────────────

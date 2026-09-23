@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lms/core/auth/auth_features.dart';
 import 'package:lms/core/network/api_constants.dart';
 import 'package:lms/core/providers/global_loading_provider.dart';
 import 'package:lms/core/providers/network_providers.dart';
@@ -72,7 +73,7 @@ class AuthNotifier extends Notifier<AuthState> {
       }
 
       final profile = Userdetails.fromJson(profileJson);
-      final permissions = await _authApi.fetchPermissions();
+      final access = await _loadAccessContext();
       final mustChange = await _tokenStorage.getMustChangePassword();
 
       state = state.copyWith(
@@ -81,7 +82,10 @@ class AuthNotifier extends Notifier<AuthState> {
         restoreFailed: false,
         hasStoredSession: true,
         profile: profile,
-        permissions: permissions,
+        permissions: access.permissions,
+        features: access.features,
+        roleName: access.roleName,
+        featuresLoaded: access.featuresLoaded,
         mustChangePassword: mustChange,
         profileUrl: profile.profilePicture != null
             ? ApiConstants.imageBaseUrl + profile.profilePicture!
@@ -133,11 +137,14 @@ class AuthNotifier extends Notifier<AuthState> {
       }
 
       final profile = Userdetails.fromJson(profileJson);
-      final permissions = await _authApi.fetchPermissions();
+      final access = await _loadAccessContext();
 
       state = state.copyWith(
         profile: profile,
-        permissions: permissions,
+        permissions: access.permissions,
+        features: access.features,
+        roleName: access.roleName,
+        featuresLoaded: access.featuresLoaded,
         restoreFailed: false,
         profileUrl: profile.profilePicture != null
             ? ApiConstants.imageBaseUrl + profile.profilePicture!
@@ -173,7 +180,9 @@ class AuthNotifier extends Notifier<AuthState> {
       }
 
       final profile = Userdetails.fromJson(profileJson);
-      final permissions = await _authApi.fetchPermissions();
+      final access = await _loadAccessContext(
+        loginUser: userModel.user.toJson(),
+      );
       await _tokenStorage.saveMustChangePassword(
         userModel.user.mustChangePassword,
       );
@@ -184,7 +193,10 @@ class AuthNotifier extends Notifier<AuthState> {
         isSubscriptionExpired: false,
         authUser: userModel.user,
         profile: profile,
-        permissions: permissions,
+        permissions: access.permissions,
+        features: access.features,
+        roleName: access.roleName ?? userModel.user.role?.name,
+        featuresLoaded: access.featuresLoaded,
         mustChangePassword: userModel.user.mustChangePassword,
         profileUrl: profile.profilePicture != null
             ? ApiConstants.imageBaseUrl + profile.profilePicture!
@@ -289,7 +301,9 @@ class AuthNotifier extends Notifier<AuthState> {
       }
 
       final profile = Userdetails.fromJson(profileJson);
-      final permissions = await _authApi.fetchPermissions();
+      final access = await _loadAccessContext(
+        loginUser: userModel.user.toJson(),
+      );
       await _tokenStorage.saveMustChangePassword(
         userModel.user.mustChangePassword,
       );
@@ -299,7 +313,10 @@ class AuthNotifier extends Notifier<AuthState> {
         isInitializing: false,
         authUser: userModel.user,
         profile: profile,
-        permissions: permissions,
+        permissions: access.permissions,
+        features: access.features,
+        roleName: access.roleName ?? userModel.user.role?.name,
+        featuresLoaded: access.featuresLoaded,
         mustChangePassword: userModel.user.mustChangePassword,
         profileUrl: profile.profilePicture != null
             ? ApiConstants.imageBaseUrl + profile.profilePicture!
@@ -341,6 +358,47 @@ class AuthNotifier extends Notifier<AuthState> {
         overlay.showError("OTP verification failed");
       }
     }
+  }
+
+  Future<_AuthAccess> _loadAccessContext({
+    Map<String, dynamic>? loginUser,
+  }) async {
+    var me = <String, dynamic>{};
+    var featuresLoaded = false;
+    try {
+      me = await _authApi.fetchMe();
+      featuresLoaded = me.isNotEmpty;
+    } catch (_) {
+      me = loginUser ?? {};
+      featuresLoaded = me.isNotEmpty;
+    }
+    if (me.isEmpty && loginUser != null && loginUser.isNotEmpty) {
+      me = loginUser;
+      featuresLoaded = true;
+    }
+
+    var permissions = <String>[];
+    try {
+      permissions = await _authApi.fetchPermissions();
+    } catch (_) {}
+
+    final fromRole = permissionsFromAuthUser(me);
+    if (fromRole.isNotEmpty) {
+      permissions = {...permissions, ...fromRole}.toList();
+    }
+
+    final fromMe = resolveAuthFeatures(me);
+    final fromLogin = resolveAuthFeatures(loginUser ?? {});
+    final features = fromMe.isNotEmpty ? fromMe : fromLogin;
+
+    return _AuthAccess(
+      permissions: permissions,
+      features: features,
+      roleName:
+          roleNameFromAuthUser(me) ?? roleNameFromAuthUser(loginUser ?? {}),
+      featuresLoaded:
+          featuresLoaded || (loginUser != null && loginUser.isNotEmpty),
+    );
   }
 
   // ───────────────── SUBSCRIPTION CHECK ─────────────────
@@ -519,4 +577,18 @@ class AuthNotifier extends Notifier<AuthState> {
   Future<void> registerFcmTokenIfNeeded() async {
     await _registerFcmIfAvailable();
   }
+}
+
+class _AuthAccess {
+  const _AuthAccess({
+    required this.permissions,
+    required this.features,
+    required this.roleName,
+    required this.featuresLoaded,
+  });
+
+  final List<String> permissions;
+  final Map<String, dynamic> features;
+  final String? roleName;
+  final bool featuresLoaded;
 }

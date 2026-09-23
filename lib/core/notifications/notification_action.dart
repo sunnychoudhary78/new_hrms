@@ -56,6 +56,13 @@ class OpenDayOne extends NotificationAction {
   const OpenDayOne();
 }
 
+/// Open internal meeting detail (or list if id missing)
+class OpenMeeting extends NotificationAction {
+  final String? meetingId;
+
+  const OpenMeeting({this.meetingId});
+}
+
 /// Open notifications list (fallback)
 class OpenNotifications extends NotificationAction {
   const OpenNotifications();

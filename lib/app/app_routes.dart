@@ -59,6 +59,10 @@ import 'package:lms/features/expenses/presentation/screens/expenses_dashboard_sc
 import 'package:lms/features/resignation/presentation/screens/my_resignation_screen.dart';
 import 'package:lms/features/resignation/presentation/screens/resignation_dashboard_screen.dart';
 
+// ================= MEETINGS =================
+import 'package:lms/features/meetings/presentation/screens/meetings_list_screen.dart';
+import 'package:lms/features/meetings/presentation/screens/meeting_detail_screen.dart';
+
 class AppRoutes {
   static Map<String, WidgetBuilder> routes = {
     // ================= CORE =================
@@ -118,6 +122,19 @@ class AppRoutes {
 
     // ================= KRA / KPI =================
     '/kra': (_) => const KraDashboardScreen(),
+
+    // ================= INTERNAL MEETINGS =================
+    '/meetings': (_) => const MeetingsListScreen(),
+    '/meetings/detail': (context) {
+      final args = ModalRoute.of(context)!.settings.arguments;
+      String? id;
+      if (args is String) {
+        id = args;
+      } else if (args is Map) {
+        id = (args['id'] ?? args['meetingId'])?.toString();
+      }
+      return MeetingDetailScreen(meetingId: id);
+    },
 
     // ================= SETTINGS =================
     '/settings': (_) => const ThemeSettingsScreen(),
