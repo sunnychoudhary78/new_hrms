@@ -157,7 +157,12 @@ class _CreateMeetingSheetState extends ConsumerState<CreateMeetingSheet> {
       );
 
       if (_type == 'instant' && created.id.isNotEmpty) {
-        await joinMeetingById(context, ref, created.id);
+        await joinMeetingById(
+          context,
+          ref,
+          meetingId: created.id,
+          title: created.title,
+        );
       }
 
       if (!mounted) return;

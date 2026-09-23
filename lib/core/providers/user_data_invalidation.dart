@@ -14,6 +14,7 @@ import '../../features/notifications/presentation/providers/notifications_provid
 import '../../features/policy/presentation/providers/policy_provider.dart';
 import '../../features/resignation/presentation/providers/resignation_providers.dart';
 import '../../features/onboarding/presentation/providers/onboarding_providers.dart';
+import '../../features/meetings/presentation/providers/meeting_session_provider.dart';
 import '../../features/meetings/presentation/providers/meetings_providers.dart';
 import '../notifications/notification_action_notifier.dart';
 
@@ -57,4 +58,5 @@ void invalidateAllUserScopedData(WidgetRef ref) {
   ref.invalidate(meetingsTabProvider);
   ref.invalidate(meetingsListProvider);
   ref.invalidate(meetingEmployeesProvider);
+  ref.invalidate(meetingSessionProvider);
 }

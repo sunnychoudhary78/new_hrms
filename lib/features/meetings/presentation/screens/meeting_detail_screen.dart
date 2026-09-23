@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lms/features/meetings/data/models/meeting_model.dart';
 import 'package:lms/features/meetings/presentation/meeting_join.dart';
 import 'package:lms/features/meetings/presentation/meetings_access.dart';
+import 'package:lms/features/meetings/presentation/providers/meeting_session_provider.dart';
 import 'package:lms/features/meetings/presentation/providers/meetings_providers.dart';
 import 'package:lms/features/meetings/presentation/widgets/employee_picker.dart';
 import 'package:lms/features/meetings/presentation/widgets/guest_invite_sheet.dart';
@@ -100,11 +101,11 @@ class _MeetingDetailScreenState extends ConsumerState<MeetingDetailScreen> {
     });
   }
 
-  Future<void> _join(String id) async {
+  Future<void> _join(String id, {String? title}) async {
     if (_joining) return;
     setState(() => _joining = true);
     try {
-      await joinMeetingById(context, ref, id);
+      await joinMeetingById(context, ref, meetingId: id, title: title);
     } finally {
       if (mounted) setState(() => _joining = false);
     }
@@ -184,6 +185,7 @@ class _MeetingDetailScreenState extends ConsumerState<MeetingDetailScreen> {
     }
 
     final meetingAsync = ref.watch(meetingDetailProvider(id));
+    final session = ref.watch(meetingSessionProvider);
     final canEdit = ref.watch(canEditMeetingsProvider);
     final userId = currentUserId(ref);
     final scheme = Theme.of(context).colorScheme;
@@ -321,11 +323,16 @@ class _MeetingDetailScreenState extends ConsumerState<MeetingDetailScreen> {
                             child: FilledButton.icon(
                               onPressed: _joining
                                   ? null
-                                  : () => _join(meeting.id),
+                                  : () => _join(
+                                      meeting.id,
+                                      title: meeting.title,
+                                    ),
                               icon: const Icon(Icons.videocam_rounded),
                               label: Text(
                                 _joining
                                     ? 'Opening…'
+                                    : session.isFor(meeting.id)
+                                    ? 'Return to meeting'
                                     : isHost
                                     ? 'Join as host'
                                     : 'Join meeting',

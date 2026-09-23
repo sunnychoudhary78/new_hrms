@@ -16,6 +16,7 @@ import 'package:lms/core/theme/app_theme_provider.dart';
 import 'package:lms/core/theme/theme_mode_provider.dart';
 import 'package:lms/features/auth/presentation/providers/auth_provider.dart';
 import 'package:lms/features/onboarding/presentation/widgets/force_password_change_gate.dart';
+import 'package:lms/features/meetings/presentation/widgets/meeting_webview_overlay.dart';
 
 import 'package:lms/shared/widgets/global_error.dart';
 import 'package:lms/shared/widgets/global_loader.dart';
@@ -215,8 +216,9 @@ class MyApp extends ConsumerWidget {
             auth.profile != null && auth.mustChangePassword;
 
         return Stack(
+          clipBehavior: Clip.none,
           children: [
-            child!,
+            MeetingPersistentHost(child: child!),
 
             if (overlay.isLoading) GlobalLoader(message: overlay.message),
 

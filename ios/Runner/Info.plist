@@ -86,7 +86,10 @@
 	</array>
 
 	<key>NSCameraUsageDescription</key>
-	<string>This app uses camera for capturing employee photos and documents.</string>
+	<string>This app uses the camera for employee photos, documents, and joining internal meetings.</string>
+
+	<key>NSMicrophoneUsageDescription</key>
+	<string>This app uses the microphone so you can speak in internal meetings.</string>
 
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>This app uses photo library to upload employee images and documents.</string>

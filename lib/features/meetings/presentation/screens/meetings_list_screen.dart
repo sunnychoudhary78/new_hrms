@@ -5,6 +5,7 @@ import 'package:lms/features/home/presentation/widgets/app_drawer.dart';
 import 'package:lms/features/meetings/data/models/meeting_model.dart';
 import 'package:lms/features/meetings/presentation/meeting_join.dart';
 import 'package:lms/features/meetings/presentation/meetings_access.dart';
+import 'package:lms/features/meetings/presentation/providers/meeting_session_provider.dart';
 import 'package:lms/features/meetings/presentation/providers/meetings_providers.dart';
 import 'package:lms/features/meetings/presentation/widgets/create_meeting_sheet.dart';
 import 'package:lms/shared/widgets/app_bar.dart';
@@ -32,11 +33,11 @@ class _MeetingsListScreenState extends ConsumerState<MeetingsListScreen> {
     await ref.read(meetingsListProvider.future);
   }
 
-  Future<void> _join(String id) async {
+  Future<void> _join(String id, {String? title}) async {
     if (_joiningId != null) return;
     setState(() => _joiningId = id);
     try {
-      await joinMeetingById(context, ref, id);
+      await joinMeetingById(context, ref, meetingId: id, title: title);
     } finally {
       if (mounted) setState(() => _joiningId = null);
     }
@@ -51,6 +52,7 @@ class _MeetingsListScreenState extends ConsumerState<MeetingsListScreen> {
   @override
   Widget build(BuildContext context) {
     final listAsync = ref.watch(meetingsListProvider);
+    final session = ref.watch(meetingSessionProvider);
     final tab = ref.watch(meetingsTabProvider);
     final canCreate = ref.watch(canCreateMeetingsProvider);
     final scheme = Theme.of(context).colorScheme;
@@ -172,6 +174,7 @@ class _MeetingsListScreenState extends ConsumerState<MeetingsListScreen> {
                       return _MeetingTile(
                         meeting: meeting,
                         joining: _joiningId == meeting.id,
+                        inCall: session.isFor(meeting.id),
                         statusColor: _statusColor(meeting.status, scheme),
                         onOpen: () {
                           Navigator.pushNamed(
@@ -181,7 +184,7 @@ class _MeetingsListScreenState extends ConsumerState<MeetingsListScreen> {
                           );
                         },
                         onJoin: meeting.isScheduled
-                            ? () => _join(meeting.id)
+                            ? () => _join(meeting.id, title: meeting.title)
                             : null,
                       );
                     },
@@ -200,6 +203,7 @@ class _MeetingTile extends StatelessWidget {
   const _MeetingTile({
     required this.meeting,
     required this.joining,
+    required this.inCall,
     required this.statusColor,
     required this.onOpen,
     this.onJoin,
@@ -207,6 +211,7 @@ class _MeetingTile extends StatelessWidget {
 
   final Meeting meeting;
   final bool joining;
+  final bool inCall;
   final Color statusColor;
   final VoidCallback onOpen;
   final VoidCallback? onJoin;
@@ -278,7 +283,13 @@ class _MeetingTile extends StatelessWidget {
                     style: FilledButton.styleFrom(
                       visualDensity: VisualDensity.compact,
                     ),
-                    child: Text(joining ? 'Opening…' : 'Join'),
+                    child: Text(
+                      joining
+                          ? 'Opening…'
+                          : inCall
+                          ? 'Return'
+                          : 'Join',
+                    ),
                   ),
                 ],
               ],
