@@ -498,16 +498,10 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
                     Column(
                       children: [
                         _MeetingChrome(
-                          confirmingLeave: _confirmingLeave,
                           title: session.title ?? 'Meeting',
-                          onUseApp: () => ref
+                          onBack: () => ref
                               .read(meetingSessionProvider.notifier)
                               .minimize(),
-                          onLeavePressed: () =>
-                              setState(() => _confirmingLeave = true),
-                          onLeaveConfirm: _leaveMeeting,
-                          onLeaveCancel: () =>
-                              setState(() => _confirmingLeave = false),
                         ),
                         Expanded(child: _buildWebView()),
                       ],
@@ -541,20 +535,12 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
 
 class _MeetingChrome extends StatelessWidget {
   const _MeetingChrome({
-    required this.confirmingLeave,
     required this.title,
-    required this.onUseApp,
-    required this.onLeavePressed,
-    required this.onLeaveConfirm,
-    required this.onLeaveCancel,
+    required this.onBack,
   });
 
-  final bool confirmingLeave;
   final String title;
-  final VoidCallback onUseApp;
-  final VoidCallback onLeavePressed;
-  final VoidCallback onLeaveConfirm;
-  final VoidCallback onLeaveCancel;
+  final VoidCallback onBack;
 
   @override
   Widget build(BuildContext context) {
@@ -568,74 +554,32 @@ class _MeetingChrome extends StatelessWidget {
         bottom: false,
         child: SizedBox(
           height: 48,
-          child: confirmingLeave
-              ? Row(
-                  children: [
-                    Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        child: Text(
-                          'Leave this meeting?',
-                          style: TextStyle(
-                            color: iconColor,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                    ),
-                    TextButton(
-                      onPressed: onLeaveCancel,
-                      child: Text('Stay', style: TextStyle(color: iconColor)),
-                    ),
-                    TextButton(
-                      onPressed: onLeaveConfirm,
-                      child: Text(
-                        'Leave',
-                        style: TextStyle(color: scheme.error),
-                      ),
-                    ),
-                  ],
-                )
-              : Row(
-                  children: [
-                    GestureDetector(
-                      onTap: onUseApp,
-                      behavior: HitTestBehavior.opaque,
-                      child: Padding(
-                        padding: const EdgeInsets.all(12),
-                        child: Icon(
-                          Icons.arrow_back_rounded,
-                          color: iconColor,
-                        ),
-                      ),
-                    ),
-                    Expanded(
-                      child: Text(
-                        title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: iconColor,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                    TextButton(
-                      onPressed: onUseApp,
-                      child: Text(
-                        'Use app',
-                        style: TextStyle(color: scheme.primary),
-                      ),
-                    ),
-                    TextButton(
-                      onPressed: onLeavePressed,
-                      child: Text(
-                        'Leave',
-                        style: TextStyle(color: scheme.error),
-                      ),
-                    ),
-                  ],
+          child: Row(
+            children: [
+              GestureDetector(
+                onTap: onBack,
+                behavior: HitTestBehavior.opaque,
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Icon(
+                    Icons.arrow_back_rounded,
+                    color: iconColor,
+                  ),
                 ),
+              ),
+              Expanded(
+                child: Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: iconColor,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
