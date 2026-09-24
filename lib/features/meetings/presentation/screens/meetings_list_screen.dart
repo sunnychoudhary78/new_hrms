@@ -18,7 +18,8 @@ class MeetingsListScreen extends ConsumerStatefulWidget {
   ConsumerState<MeetingsListScreen> createState() => _MeetingsListScreenState();
 }
 
-class _MeetingsListScreenState extends ConsumerState<MeetingsListScreen> {
+class _MeetingsListScreenState extends ConsumerState<MeetingsListScreen>
+    with WidgetsBindingObserver {
   String? _joiningId;
 
   static const _tabs = [
@@ -28,9 +29,35 @@ class _MeetingsListScreenState extends ConsumerState<MeetingsListScreen> {
     ('all', 'All'),
   ];
 
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _refresh();
+    });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed || !mounted) return;
+    final route = ModalRoute.of(context);
+    if (route?.isCurrent == true) {
+      _refresh();
+    }
+  }
+
   Future<void> _refresh() async {
     ref.invalidate(meetingsListProvider);
-    await ref.read(meetingsListProvider.future);
+    try {
+      await ref.read(meetingsListProvider.future);
+    } catch (_) {}
   }
 
   Future<void> _join(String id, {String? title}) async {
@@ -68,8 +95,9 @@ class _MeetingsListScreenState extends ConsumerState<MeetingsListScreen> {
         actions: [
           IconButton(
             tooltip: 'Refresh',
+            color: scheme.onSurface,
             onPressed: _refresh,
-            icon: const Icon(Icons.refresh_rounded),
+            icon: Icon(Icons.refresh_rounded, color: scheme.onSurface),
           ),
         ],
       ),
@@ -130,6 +158,8 @@ class _MeetingsListScreenState extends ConsumerState<MeetingsListScreen> {
             child: RefreshIndicator(
               onRefresh: _refresh,
               child: listAsync.when(
+                skipLoadingOnReload: true,
+                skipLoadingOnRefresh: true,
                 loading: () => ListView(
                   physics: scrollPhysics,
                   children: const [
@@ -176,12 +206,13 @@ class _MeetingsListScreenState extends ConsumerState<MeetingsListScreen> {
                         joining: _joiningId == meeting.id,
                         inCall: session.isFor(meeting.id),
                         statusColor: _statusColor(meeting.status, scheme),
-                        onOpen: () {
-                          Navigator.pushNamed(
+                        onOpen: () async {
+                          await Navigator.pushNamed(
                             context,
                             '/meetings/detail',
                             arguments: meeting.id,
                           );
+                          if (mounted) _refresh();
                         },
                         onJoin: meeting.isScheduled
                             ? () => _join(meeting.id, title: meeting.title)

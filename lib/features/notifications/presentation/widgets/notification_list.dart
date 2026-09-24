@@ -14,6 +14,7 @@ import 'package:lms/features/notifications/presentation/providers/notifications_
 import 'package:lms/features/notifications/presentation/screens/notification_details_screen.dart';
 import 'package:lms/features/notifications/presentation/widgets/notification_tile.dart';
 import 'package:lms/features/dashboard/data/models/team_dashboard_model.dart';
+import 'package:lms/features/meetings/presentation/providers/meetings_providers.dart';
 
 class NotificationList extends ConsumerWidget {
   final List<dynamic> notifications;
@@ -352,6 +353,7 @@ class NotificationList extends ConsumerWidget {
 
               if (normalizedType.contains('meeting')) {
                 final meetingId = _meetingIdFromNotificationData(data);
+                invalidateMeetingsCaches(ref, meetingId: meetingId);
                 if (meetingId != null && meetingId.isNotEmpty) {
                   Navigator.pushNamed(
                     context,

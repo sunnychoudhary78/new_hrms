@@ -35,6 +35,18 @@ final meetingsListProvider = FutureProvider.autoDispose<MeetingsListResult>((
   return ref.read(meetingsRepositoryProvider).listMeetings(tab: tab);
 });
 
+void invalidateMeetingsCaches(WidgetRef ref, {String? meetingId}) {
+  ref.invalidate(meetingsListProvider);
+  if (meetingId != null && meetingId.isNotEmpty) {
+    ref.invalidate(meetingDetailProvider(meetingId));
+  }
+}
+
+bool isMeetingNotificationType(String? type) {
+  final t = (type ?? '').trim().toLowerCase();
+  return t.contains('meeting');
+}
+
 final meetingDetailProvider = FutureProvider.autoDispose.family<Meeting, String>(
   (ref, id) async {
     return ref.read(meetingsRepositoryProvider).getMeeting(id);

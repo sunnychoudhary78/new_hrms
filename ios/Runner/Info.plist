@@ -91,6 +91,11 @@
 	<key>NSMicrophoneUsageDescription</key>
 	<string>This app uses the microphone so you can speak in internal meetings.</string>
 
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>audio</string>
+	</array>
+
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>This app uses photo library to upload employee images and documents.</string>
 

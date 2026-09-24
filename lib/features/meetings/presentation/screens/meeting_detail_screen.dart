@@ -179,7 +179,7 @@ class _MeetingDetailScreenState extends ConsumerState<MeetingDetailScreen> {
     final id = _id;
     if (id == null) {
       return const Scaffold(
-        appBar: AppAppBar(title: 'Meeting'),
+        appBar: const AppAppBar(title: 'Meeting'),
         body: Center(child: Text('Meeting not found')),
       );
     }

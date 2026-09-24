@@ -16,6 +16,7 @@ import '../core/providers/notification_api_providers.dart';
 import '../features/auth/presentation/providers/auth_provider.dart';
 import '../features/auth/presentation/screens/login_screen.dart';
 import '../features/home/presentation/screens/home_screen.dart';
+import '../features/meetings/presentation/providers/meetings_providers.dart';
 
 class AppRoot extends ConsumerStatefulWidget {
   const AppRoot({super.key});
@@ -188,6 +189,13 @@ class _AppRootState extends ConsumerState<AppRoot> {
 
         // ✅ Safe refresh on tap
         ref.read(notificationProvider.notifier).refresh();
+        if (isMeetingNotificationType(data['type']?.toString())) {
+          invalidateMeetingsCaches(
+            ref,
+            meetingId: data['meetingId']?.toString() ??
+                data['meeting_id']?.toString(),
+          );
+        }
       },
 
       onForegroundNotification: (data) {
@@ -199,6 +207,13 @@ class _AppRootState extends ConsumerState<AppRoot> {
           "is_read": false,
           ...data,
         });
+        if (isMeetingNotificationType(data['type']?.toString())) {
+          invalidateMeetingsCaches(
+            ref,
+            meetingId: data['meetingId']?.toString() ??
+                data['meeting_id']?.toString(),
+          );
+        }
       },
 
       onTokenAvailable: (token) async {
@@ -290,6 +305,7 @@ class _AppRootState extends ConsumerState<AppRoot> {
         break;
 
       case OpenMeeting():
+        invalidateMeetingsCaches(ref, meetingId: action.meetingId);
         if (action.meetingId != null && action.meetingId!.isNotEmpty) {
           nav.pushNamed('/meetings/detail', arguments: action.meetingId);
         } else {

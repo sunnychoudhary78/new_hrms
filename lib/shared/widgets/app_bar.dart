@@ -20,6 +20,30 @@ class AppAppBar extends StatelessWidget implements PreferredSizeWidget {
     final scheme = Theme.of(context).colorScheme;
     final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
     final blurSigma = isIOS ? 10.0 : 12.0;
+    final iconColor = scheme.onSurface;
+    final scaffold = Scaffold.maybeOf(context);
+    final showDrawer = !showBack && (scaffold?.hasDrawer ?? false);
+
+    Widget? leading;
+    if (showBack) {
+      leading = IconButton(
+        tooltip: 'Back',
+        color: iconColor,
+        icon: Icon(
+          isIOS ? Icons.arrow_back_ios_new_rounded : Icons.arrow_back_rounded,
+          color: iconColor,
+        ),
+        padding: isIOS ? const EdgeInsetsDirectional.only(start: 10) : null,
+        onPressed: () => Navigator.of(context).maybePop(),
+      );
+    } else if (showDrawer) {
+      leading = IconButton(
+        tooltip: 'Menu',
+        color: iconColor,
+        icon: Icon(Icons.menu_rounded, color: iconColor),
+        onPressed: () => scaffold!.openDrawer(),
+      );
+    }
 
     return ClipRect(
       child: BackdropFilter(
@@ -27,46 +51,30 @@ class AppAppBar extends StatelessWidget implements PreferredSizeWidget {
         child: AppBar(
           elevation: 0,
           centerTitle: isIOS,
-
-          /// TRUE glass background
-          backgroundColor: scheme.surface.withOpacity(0.55),
-
-          foregroundColor: scheme.onSurface,
-
+          automaticallyImplyLeading: false,
+          backgroundColor: scheme.surface.withValues(alpha: 0.94),
+          foregroundColor: iconColor,
+          iconTheme: IconThemeData(color: iconColor, size: 24),
+          actionsIconTheme: IconThemeData(color: iconColor, size: 24),
           scrolledUnderElevation: 0,
-
           surfaceTintColor: Colors.transparent,
-
           shadowColor: Colors.transparent,
-
           title: Text(
             title,
-            style: const TextStyle(
+            style: TextStyle(
+              color: iconColor,
               fontWeight: FontWeight.w600,
               letterSpacing: -.2,
             ),
           ),
-
-          leading: showBack
-              ? IconButton(
-                  icon: Icon(
-                    isIOS
-                        ? Icons.arrow_back_ios_new_rounded
-                        : Icons.arrow_back_rounded,
-                  ),
-                  padding: isIOS
-                      ? const EdgeInsetsDirectional.only(start: 10)
-                      : null,
-                  onPressed: () => Navigator.of(context).maybePop(),
-                )
-              : null,
-
+          leading: leading,
           actions: actions,
-
-          /// Glass border highlight
           bottom: PreferredSize(
             preferredSize: const Size.fromHeight(1),
-            child: Container(height: 1, color: scheme.outline.withOpacity(.15)),
+            child: Container(
+              height: 1,
+              color: scheme.outline.withValues(alpha: .15),
+            ),
           ),
         ),
       ),
