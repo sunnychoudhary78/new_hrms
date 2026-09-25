@@ -5,6 +5,7 @@ class MeetingSessionState {
     this.meetingId,
     this.title,
     this.joinUrl,
+    this.displayName,
     this.expanded = false,
     this.connecting = false,
   });
@@ -12,6 +13,7 @@ class MeetingSessionState {
   final String? meetingId;
   final String? title;
   final String? joinUrl;
+  final String? displayName;
   final bool expanded;
   final bool connecting;
 
@@ -24,6 +26,7 @@ class MeetingSessionState {
     String? meetingId,
     String? title,
     String? joinUrl,
+    String? displayName,
     bool? expanded,
     bool? connecting,
     bool clear = false,
@@ -33,6 +36,7 @@ class MeetingSessionState {
       meetingId: meetingId ?? this.meetingId,
       title: title ?? this.title,
       joinUrl: joinUrl ?? this.joinUrl,
+      displayName: displayName ?? this.displayName,
       expanded: expanded ?? this.expanded,
       connecting: connecting ?? this.connecting,
     );
@@ -47,11 +51,13 @@ class MeetingSessionNotifier extends Notifier<MeetingSessionState> {
     required String meetingId,
     required String joinUrl,
     String? title,
+    String? displayName,
   }) {
     state = MeetingSessionState(
       meetingId: meetingId,
       title: title,
       joinUrl: joinUrl,
+      displayName: displayName,
       expanded: true,
       connecting: false,
     );
