@@ -36,6 +36,8 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
   VoidCallback? _hideCustomView;
   bool _sharing = false;
   bool _frameBusy = false;
+  bool _leaving = false;
+  bool _seenInCall = false;
   StreamSubscription<dynamic>? _shareFrames;
 
   static const _shareChannel = MethodChannel('hrms/screen_share');
@@ -98,6 +100,7 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
   }
 
   Future<void> _ensureController(String url) async {
+    _leaving = false;
     if (_controller != null && _loadedUrl == url) return;
 
     if (_controller != null) {
@@ -130,6 +133,16 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
           }
         },
       )
+      ..addJavaScriptChannel(
+        'HrmsMeeting',
+        onMessageReceived: (message) {
+          if (message.message == 'joined') {
+            _seenInCall = true;
+          } else if (message.message == 'left') {
+            _leaveMeeting();
+          }
+        },
+      )
       ..setNavigationDelegate(
         NavigationDelegate(
           onPageFinished: (_) {
@@ -138,6 +151,20 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
             _injectDisplayName();
             _injectRaiseHand();
             _injectScreenShare();
+            _injectLeaveHook();
+          },
+          onNavigationRequest: (request) {
+            if (_shouldExitOnUrl(request.url)) {
+              _leaveMeeting();
+              return NavigationDecision.prevent;
+            }
+            return NavigationDecision.navigate;
+          },
+          onUrlChange: (change) {
+            final url = change.url;
+            if (url != null && _shouldExitOnUrl(url)) {
+              _leaveMeeting();
+            }
           },
           onWebResourceError: (error) {
             debugPrint('Meeting WebView error: ${error.description}');
@@ -182,6 +209,7 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
     await _injectJitsiUiFixes();
     await _injectRaiseHand();
     await _injectScreenShare();
+    await _injectLeaveHook();
   }
 
   void _dismissCustomView() {
@@ -190,16 +218,40 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
     if (mounted) setState(() => _customView = null);
   }
 
+  bool _shouldExitOnUrl(String url) {
+    final lower = url.toLowerCase();
+    if (lower.contains('static/close') ||
+        lower.contains('close.html') ||
+        lower.contains('close2.html') ||
+        lower.contains('static/welcome')) {
+      return true;
+    }
+    if (!_seenInCall) return false;
+    final joinUri = Uri.tryParse(_loadedUrl ?? '');
+    final now = Uri.tryParse(url);
+    if (joinUri == null || now == null) return false;
+    if (joinUri.host != now.host) return false;
+    final joinRoom =
+        joinUri.pathSegments.where((segment) => segment.isNotEmpty).toList();
+    final nowRoom =
+        now.pathSegments.where((segment) => segment.isNotEmpty).toList();
+    return joinRoom.isNotEmpty && nowRoom.isEmpty;
+  }
+
   void _leaveMeeting() {
+    if (_leaving) return;
+    _leaving = true;
     _dismissCustomView();
     _stopNativeShare();
     MeetingCallKeepAlive.stop();
     ref.read(meetingSessionProvider.notifier).end();
+    if (!mounted) return;
     setState(() {
       _controller = null;
       _cachedWebView = null;
       _loadedUrl = null;
       _confirmingLeave = false;
+      _seenInCall = false;
     });
   }
 
@@ -229,7 +281,8 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
   }
 
   Future<void> _startNativeShare() async {
-    if (defaultTargetPlatform != TargetPlatform.android || _sharing) return;
+    if (defaultTargetPlatform != TargetPlatform.android) return;
+    if (_sharing) return;
     if (mounted) setState(() => _sharing = true);
     try {
       final ok = await _shareChannel.invokeMethod<bool>('start');
@@ -248,6 +301,14 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
       } catch (_) {}
     }
     if (mounted && _sharing) setState(() => _sharing = false);
+  }
+
+  Future<void> _injectLeaveHook() async {
+    final controller = _controller;
+    if (controller == null) return;
+    try {
+      await controller.runJavaScript(_jitsiLeaveHookJs);
+    } catch (_) {}
   }
 
   Future<void> _injectScreenShare() async {
@@ -283,6 +344,7 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
     } catch (_) {}
     await _injectKeepAlive();
     await _injectScreenShare();
+    await _injectLeaveHook();
   }
 
   /// Jitsi header icons (close / back / cancel) render as a white circle
@@ -597,9 +659,6 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
 
   static const _jitsiScreenShareJs = r'''
 (function () {
-  var SHARE_SVG = '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M20 18c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2H0v2h24v-2h-4zM4 6h16v10H4V6zm10 6.5V10l3.5 3.5L14 17v-2.5H8v-2h6z"/></svg>';
-  var placeTries = 0;
-
   function patch(obj) {
     if (!obj) return;
     ['isMobileBrowser', 'isMobileDevice'].forEach(function (name) {
@@ -613,14 +672,99 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
   function ensureDesktopInList(list) {
     if (!list || typeof list.indexOf !== 'function') return;
     if (list.indexOf('desktop') !== -1) return;
-    var mic = list.indexOf('microphone');
-    if (mic >= 0) list.splice(mic + 1, 0, 'desktop');
-    else list.push('desktop');
+    list.push('desktop');
+  }
+
+  function inOverflowMenu(el) {
+    return !!(el.closest('.overflow-menu') ||
+      el.closest('[class*="overflow-menu"]') ||
+      el.closest('[class*="OverflowMenu"]') ||
+      el.closest('[class*="drawer"]') ||
+      el.closest('[role="menu"]') ||
+      el.closest('[role="dialog"]') ||
+      el.closest('.toolbox-dialog'));
+  }
+
+  function isMenuContainer(el) {
+    if (!el || !el.getAttribute) return false;
+    var role = (el.getAttribute('role') || '').toLowerCase();
+    if (role === 'menu' || role === 'dialog' || role === 'listbox') return true;
+    var cls = ((el.className && el.className.toString()) || '').toLowerCase();
+    return cls.indexOf('overflow-menu') !== -1 && cls.indexOf('overflow-menu-item') === -1;
+  }
+
+  function isClickableItem(el) {
+    if (!el || el.nodeType !== 1) return false;
+    var tag = (el.tagName || '').toLowerCase();
+    var role = (el.getAttribute('role') || '').toLowerCase();
+    var cls = ((el.className && el.className.toString()) || '').toLowerCase();
+    return tag === 'button' || tag === 'a' || tag === 'li' ||
+      role === 'menuitem' || role === 'button' ||
+      cls.indexOf('overflow-menu-item') !== -1 ||
+      cls.indexOf('toolbox-button') !== -1;
+  }
+
+  function labelOf(el) {
+    if (!el) return '';
+    var aria = ((el.getAttribute && (el.getAttribute('aria-label') || el.getAttribute('title'))) || '');
+    var text = ((el.innerText || el.textContent || '').replace(/\s+/g, ' ')).trim();
+    if (text.length > 48) text = text.slice(0, 48);
+    return (aria + ' ' + text).toLowerCase();
+  }
+
+  function isShareLabel(label) {
+    label = (label || '').toLowerCase();
+    if (!label) return false;
+    if (label.indexOf('invite') !== -1 || label.indexOf('copy') !== -1) return false;
+    return label.indexOf('share your screen') !== -1 ||
+      label.indexOf('stop sharing your screen') !== -1 ||
+      label.indexOf('stop screen sharing') !== -1 ||
+      label.indexOf('screenshare') !== -1 ||
+      label.indexOf('screen share') !== -1 ||
+      label.indexOf('screen-sharing') !== -1 ||
+      (label.indexOf('desktop') !== -1 && label.indexOf('share') !== -1);
+  }
+
+  function findShareTarget(el) {
+    var cur = el;
+    for (var i = 0; i < 8 && cur && cur !== document.body; i++) {
+      if (isMenuContainer(cur)) break;
+      if (isClickableItem(cur) && isShareLabel(labelOf(cur))) return cur;
+      cur = cur.parentElement;
+    }
+    return null;
+  }
+
+  function removeBottomShareButton() {
+    var extra = document.getElementById('hrms-screen-share');
+    if (extra && extra.parentNode) extra.parentNode.removeChild(extra);
+    var nodes = document.querySelectorAll('.toolbox-content-items > button, .toolbox-content-items > span > button');
+    for (var i = 0; i < nodes.length; i++) {
+      var el = nodes[i];
+      if (inOverflowMenu(el)) continue;
+      if (!isShareLabel(labelOf(el))) continue;
+      el.style.setProperty('display', 'none', 'important');
+    }
+  }
+
+  function enableOverflowShareItems() {
+    var nodes = document.querySelectorAll('button, [role="menuitem"], [role="button"], li, a, div, span');
+    for (var i = 0; i < nodes.length; i++) {
+      var el = nodes[i];
+      if (!isShareLabel(labelOf(el))) continue;
+      try {
+        el.removeAttribute('disabled');
+        el.setAttribute('aria-disabled', 'false');
+        el.style.pointerEvents = 'auto';
+        el.style.opacity = '1';
+      } catch (e) {}
+    }
   }
 
   window.__hrmsEnableDesktopShare = function () {
     try { patch(window.JitsiMeetJS); } catch (e) {}
     try { patch(window.JitsiMeetJS && JitsiMeetJS.util && JitsiMeetJS.util.browser); } catch (e) {}
+    try { patch(window.JitsiMeetJS && JitsiMeetJS.util && JitsiMeetJS.util.BrowserDetection); } catch (e) {}
     try {
       if (window.JitsiMeetJS && typeof JitsiMeetJS.isDesktopSharingEnabled === 'function') {
         JitsiMeetJS.isDesktopSharingEnabled = function () { return true; };
@@ -629,6 +773,7 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
     try {
       if (window.config) {
         config.disableScreensharing = false;
+        config.desktopSharingEnabled = true;
         ensureDesktopInList(config.toolbarButtons);
       }
     } catch (e) {}
@@ -637,15 +782,13 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
         ensureDesktopInList(interfaceConfig.TOOLBAR_BUTTONS);
       }
     } catch (e) {}
+    removeBottomShareButton();
+    enableOverflowShareItems();
+    hookOverflowShareItems();
   };
 
   window.__hrmsMarkSharing = function (on) {
     window.__hrmsSharing = !!on;
-    var btn = document.getElementById('hrms-screen-share');
-    if (!btn) return;
-    btn.style.color = on ? '#34d399' : '#fff';
-    btn.setAttribute('aria-label', on ? 'Stop sharing your screen' : 'Share your screen');
-    btn.setAttribute('title', on ? 'Stop sharing your screen' : 'Share your screen');
   };
 
   window.__hrmsDrawScreen = function (b64) {
@@ -676,17 +819,26 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
   };
 
   window.__hrmsCanvasDisplayMedia = function () {
+    if (window.__hrmsScreenStream && window.__hrmsSharing) {
+      return Promise.resolve(window.__hrmsScreenStream);
+    }
     var canvas = window.__hrmsScreenCanvas || document.createElement('canvas');
     canvas.width = 960;
     canvas.height = 540;
     window.__hrmsScreenCanvas = canvas;
     window.__hrmsScreenCtx = canvas.getContext('2d', { alpha: false });
+    try {
+      var ctx = window.__hrmsScreenCtx;
+      ctx.fillStyle = '#111827';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    } catch (e) {}
     var stream = canvas.captureStream(12);
     window.__hrmsScreenStream = stream;
     window.__hrmsShareEnding = false;
     window.__hrmsMarkSharing(true);
     var track = stream.getVideoTracks()[0];
     if (track) {
+      try { track.contentHint = 'detail'; } catch (e) {}
       var origStop = track.stop.bind(track);
       track.stop = function () {
         try {
@@ -703,87 +855,124 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
     return Promise.resolve(stream);
   };
 
-  if (navigator.mediaDevices && window.__hrmsUseCanvasShare && !navigator.mediaDevices.__hrmsSharePatched) {
-    navigator.mediaDevices.__hrmsSharePatched = true;
-    navigator.mediaDevices.getDisplayMedia = function () {
-      return window.__hrmsCanvasDisplayMedia();
+  function attachDesktopTrack(stream) {
+    if (!stream || !window.JitsiMeetJS) return Promise.resolve();
+    var make = function () {
+      if (typeof JitsiMeetJS.createLocalTracksFromMediaStreams !== 'function') {
+        return Promise.reject(new Error('no factory'));
+      }
+      var made = JitsiMeetJS.createLocalTracksFromMediaStreams([{
+        stream: stream,
+        sourceType: 'window',
+        mediaType: 'video',
+        videoType: 'desktop'
+      }]);
+      return Promise.resolve(made);
+    };
+    return make().then(function (tracks) {
+      var track = tracks && tracks[0];
+      if (!track || !window.APP || !APP.conference) return;
+      if (typeof APP.conference.addTrack === 'function') return APP.conference.addTrack(track);
+      if (APP.conference._room && typeof APP.conference._room.addTrack === 'function') {
+        return APP.conference._room.addTrack(track);
+      }
+    });
+  }
+
+  window.__hrmsStartOrStopShare = function () {
+    patchDisplayMedia();
+    window.__hrmsEnableDesktopShare();
+    patchCreateLocalTracks();
+    if (window.__hrmsSharing) {
+      try {
+        if (window.APP && APP.conference && typeof APP.conference.toggleScreenSharing === 'function') {
+          var stop = APP.conference.toggleScreenSharing(false);
+          if (stop && typeof stop.catch === 'function') stop.catch(function () {});
+        }
+      } catch (e) {}
+      window.__hrmsCancelScreenShare();
+      try { if (window.HrmsScreenShare) HrmsScreenShare.postMessage('stop'); } catch (e) {}
+      return;
+    }
+    try { if (window.HrmsScreenShare) HrmsScreenShare.postMessage('start'); } catch (e) {}
+    var streamP = window.__hrmsCanvasDisplayMedia();
+    var usedToggle = false;
+    try {
+      if (window.APP && APP.conference && typeof APP.conference.toggleScreenSharing === 'function') {
+        usedToggle = true;
+        var result = APP.conference.toggleScreenSharing(true);
+        if (result && typeof result.catch === 'function') {
+          result.catch(function () {
+            streamP.then(attachDesktopTrack).catch(function () {});
+          });
+        }
+      }
+    } catch (e) {
+      usedToggle = false;
+    }
+    if (!usedToggle) {
+      streamP.then(attachDesktopTrack).catch(function () {});
+    }
+  };
+
+  function patchDisplayMedia() {
+    if (!window.__hrmsUseCanvasShare) return;
+    try {
+      if (navigator.mediaDevices) {
+        navigator.mediaDevices.getDisplayMedia = function () {
+          return window.__hrmsCanvasDisplayMedia();
+        };
+      }
+    } catch (e) {}
+    try {
+      navigator.getDisplayMedia = function () {
+        return window.__hrmsCanvasDisplayMedia();
+      };
+    } catch (e) {}
+  }
+
+  function patchCreateLocalTracks() {
+    if (!window.JitsiMeetJS || typeof JitsiMeetJS.createLocalTracks !== 'function') return;
+    if (JitsiMeetJS.__hrmsTracksWrapped) return;
+    JitsiMeetJS.__hrmsTracksWrapped = true;
+    var orig = JitsiMeetJS.createLocalTracks.bind(JitsiMeetJS);
+    JitsiMeetJS.createLocalTracks = function (options) {
+      var devices = (options && options.devices) || [];
+      if (window.__hrmsUseCanvasShare && devices.indexOf('desktop') !== -1) {
+        return window.__hrmsCanvasDisplayMedia().then(function (stream) {
+          if (typeof JitsiMeetJS.createLocalTracksFromMediaStreams === 'function') {
+            return Promise.resolve(JitsiMeetJS.createLocalTracksFromMediaStreams([{
+              stream: stream,
+              sourceType: 'window',
+              mediaType: 'video',
+              videoType: 'desktop'
+            }]));
+          }
+          return orig(options);
+        });
+      }
+      return orig(options);
     };
   }
 
-  function inCall() {
-    try {
-      if (window.APP && APP.conference && typeof APP.conference.isJoined === 'function' && APP.conference.isJoined()) return true;
-    } catch (e) {}
-    return !!(document.querySelector('#new-toolbox') || document.querySelector('.toolbox-content-items'));
-  }
-
-  function labelOf(el) {
-    return ((el.getAttribute('aria-label') || '') + ' ' + (el.getAttribute('title') || '')).toLowerCase();
-  }
-
-  function isShareLabel(label) {
-    return label.indexOf('share your screen') !== -1 ||
-      label.indexOf('stop sharing your screen') !== -1 ||
-      label.indexOf('stop screen sharing') !== -1 ||
-      label.indexOf('screenshare') !== -1 ||
-      label.indexOf('screen share') !== -1 ||
-      (label.indexOf('desktop') !== -1 && label.indexOf('share') !== -1);
-  }
-
-  function inBottomToolbox(el) {
-    return !!(el.closest('#new-toolbox') ||
-      el.closest('.new-toolbox') ||
-      el.closest('.toolbox-content-items') ||
-      el.closest('.toolbox-content'));
-  }
-
-  function hideTopShare() {
-    var nodes = document.querySelectorAll('button');
-    for (var i = 0; i < nodes.length; i++) {
-      var el = nodes[i];
-      if (el.id === 'hrms-screen-share') continue;
-      if (!isShareLabel(labelOf(el))) continue;
-      if (inBottomToolbox(el)) {
-        if (document.getElementById('hrms-screen-share')) {
-          el.style.setProperty('display', 'none', 'important');
-        }
-        continue;
-      }
-      el.style.setProperty('display', 'none', 'important');
+  function onShareGesture(e) {
+    var target = findShareTarget(e.target);
+    if (!target) return;
+    if (!inOverflowMenu(target) && target.closest && target.closest('.toolbox-content-items') && !target.closest('[role="menu"]')) {
+      return;
     }
-  }
-
-  function findChat() {
-    var nodes = document.querySelectorAll('button');
-    for (var i = 0; i < nodes.length; i++) {
-      var label = labelOf(nodes[i]);
-      if (label.indexOf('chat') !== -1 || label.indexOf('togglechat') !== -1) return nodes[i];
+    var now = Date.now();
+    if (window.__hrmsShareTapAt && now - window.__hrmsShareTapAt < 700) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+      return;
     }
-    return null;
-  }
-
-  function toggleShare() {
-    try {
-      if (window.APP && APP.conference && typeof APP.conference.toggleScreenSharing === 'function') {
-        var result = APP.conference.toggleScreenSharing();
-        if (result && typeof result.catch === 'function') result.catch(function () {});
-        return;
-      }
-    } catch (e) {}
-    var nodes = document.querySelectorAll('button');
-    for (var i = 0; i < nodes.length; i++) {
-      if (nodes[i].id === 'hrms-screen-share') continue;
-      if (isShareLabel(labelOf(nodes[i]))) {
-        nodes[i].click();
-        return;
-      }
-    }
-    try {
-      if (window.__hrmsUseCanvasShare) {
-        if (window.__hrmsSharing) window.__hrmsCancelScreenShare();
-        else window.__hrmsCanvasDisplayMedia();
-      }
-    } catch (e) {}
+    window.__hrmsShareTapAt = now;
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+    window.__hrmsStartOrStopShare();
   }
 
   function ensureStyle() {
@@ -791,73 +980,179 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
     var style = document.createElement('style');
     style.id = 'hrms-screen-share-style';
     style.textContent = [
-      '#hrms-screen-share{display:inline-flex!important;align-items:center;justify-content:center;width:48px;height:48px;margin:0 2px;border:0;border-radius:50%;background:transparent;color:#fff;padding:0;}',
-      '#hrms-screen-share svg{display:block;width:22px;height:22px;}',
-      'header button[aria-label*="Share your screen"],',
-      '.subject button[aria-label*="Share your screen"],',
-      '.invite-more-container button[aria-label*="Share your screen"],',
-      '.filmstrip button[aria-label*="Share your screen"]{display:none!important;}'
+      '#hrms-screen-share{display:none!important;}',
+      '#new-toolbox .toolbox-content-items > button[aria-label*="Share your screen"],',
+      '#new-toolbox .toolbox-content-items > span > button[aria-label*="Share your screen"],',
+      '.new-toolbox .toolbox-content-items > button[aria-label*="Share your screen"]{display:none!important;}'
     ].join('');
     document.head.appendChild(style);
   }
 
-  function place() {
-    hideTopShare();
-    if (!inCall()) return false;
-    if (document.getElementById('hrms-screen-share')) return true;
-    var chat = findChat();
-    var box = document.querySelector('.toolbox-content-items') || (chat && chat.parentNode);
-    if (!box) return false;
-    ensureStyle();
-    var btn = document.createElement('button');
-    btn.id = 'hrms-screen-share';
-    btn.type = 'button';
-    btn.setAttribute('aria-label', 'Share your screen');
-    btn.setAttribute('title', 'Share your screen');
-    btn.innerHTML = SHARE_SVG;
-    btn.addEventListener('click', function (e) {
-      e.preventDefault();
-      e.stopPropagation();
-      toggleShare();
-    });
-    if (chat && chat.parentNode === box) box.insertBefore(btn, chat);
-    else box.appendChild(btn);
-    window.__hrmsMarkSharing(!!window.__hrmsSharing);
-    hideTopShare();
-    return true;
+  function hookOverflowShareItems() {
+    var nodes = document.querySelectorAll('button, [role="menuitem"], [role="button"], li, a, div');
+    for (var i = 0; i < nodes.length; i++) {
+      var el = nodes[i];
+      if (el.getAttribute('data-hrms-share-hook') === '1') continue;
+      if (!isClickableItem(el) || !isShareLabel(labelOf(el))) continue;
+      el.setAttribute('data-hrms-share-hook', '1');
+      el.addEventListener('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+        window.__hrmsStartOrStopShare();
+      }, true);
+    }
   }
 
-  function waitPlace() {
-    if (place()) return;
-    if (++placeTries > 50) return;
-    setTimeout(waitPlace, 1200);
+  function hookGestures() {
+    if (window.__hrmsShareClickHooked || !document.addEventListener) return;
+    window.__hrmsShareClickHooked = true;
+    document.addEventListener('click', onShareGesture, true);
+    document.addEventListener('touchend', onShareGesture, true);
   }
 
+  patchDisplayMedia();
+  patchCreateLocalTracks();
   window.__hrmsEnableDesktopShare();
   ensureStyle();
-  waitPlace();
+  hookGestures();
   if (!window.__hrmsSharePatchTimer) {
-    var tries = 0;
     window.__hrmsSharePatchTimer = setInterval(function () {
+      patchDisplayMedia();
+      patchCreateLocalTracks();
       window.__hrmsEnableDesktopShare();
-      hideTopShare();
-      place();
-      if (++tries > 40) {
-        clearInterval(window.__hrmsSharePatchTimer);
-        window.__hrmsSharePatchTimer = null;
-      }
-    }, 500);
+      hookGestures();
+    }, 800);
   }
-  if (!window.__hrmsShareObserver && document.documentElement) {
-    var hideTimer = null;
-    window.__hrmsShareObserver = new MutationObserver(function () {
-      if (hideTimer) return;
-      hideTimer = setTimeout(function () {
-        hideTimer = null;
-        hideTopShare();
-      }, 400);
-    });
-    window.__hrmsShareObserver.observe(document.documentElement, { childList: true, subtree: true });
+})();
+''';
+
+  static const _jitsiLeaveHookJs = r'''
+(function () {
+  if (window.__hrmsLeaveHookReady) {
+    if (window.__hrmsArmLeaveHook) window.__hrmsArmLeaveHook();
+    return;
+  }
+  window.__hrmsLeaveHookReady = true;
+
+  function hideMeetingUi() {
+    try {
+      document.documentElement.style.background = '#000';
+      if (document.body) {
+        document.body.style.background = '#000';
+        document.body.style.opacity = '0';
+      }
+    } catch (e) {}
+  }
+
+  function notifyLeft() {
+    if (window.__hrmsLeftSent) return;
+    window.__hrmsLeftSent = true;
+    hideMeetingUi();
+    try { if (window.HrmsMeeting) HrmsMeeting.postMessage('left'); } catch (e) {}
+  }
+
+  function notifyJoined() {
+    if (window.__hrmsJoinedSent) return;
+    try {
+      if (window.APP && APP.conference && typeof APP.conference.isJoined === 'function' && APP.conference.isJoined()) {
+        window.__hrmsJoinedSent = true;
+        if (window.HrmsMeeting) HrmsMeeting.postMessage('joined');
+      }
+    } catch (e) {}
+  }
+
+  function wrapHangup() {
+    try {
+      if (!window.APP || !APP.conference || typeof APP.conference.hangup !== 'function') return;
+      if (APP.conference.__hrmsHangupWrapped) return;
+      APP.conference.__hrmsHangupWrapped = true;
+      var orig = APP.conference.hangup.bind(APP.conference);
+      APP.conference.hangup = function () {
+        notifyLeft();
+        return orig.apply(APP.conference, arguments);
+      };
+    } catch (e) {}
+  }
+
+  function listenConferenceLeft() {
+    try {
+      if (!window.APP || !APP.conference) return;
+      var room = APP.conference._room;
+      if (!room || typeof room.on !== 'function' || room.__hrmsLeftHooked) return;
+      if (!window.JitsiMeetJS || !JitsiMeetJS.events || !JitsiMeetJS.events.conference) return;
+      room.__hrmsLeftHooked = true;
+      room.on(JitsiMeetJS.events.conference.CONFERENCE_LEFT, notifyLeft);
+    } catch (e) {}
+  }
+
+  function disableClosePage() {
+    try {
+      if (window.config) {
+        config.enableClosePage = false;
+        config.enableWelcomePage = false;
+      }
+    } catch (e) {}
+    try {
+      if (window.interfaceConfig) {
+        interfaceConfig.SHOW_PROMOTIONAL_CLOSE_PAGE = false;
+      }
+    } catch (e) {}
+  }
+
+  function isHangupLabel(text) {
+    return text.indexOf('hang up') !== -1 ||
+      text.indexOf('leave the meeting') !== -1 ||
+      text.indexOf('leave meeting') !== -1 ||
+      text.indexOf('end meeting') !== -1 ||
+      text.indexOf('end call') !== -1;
+  }
+
+  function hookConfirmButtons() {
+    var nodes = document.querySelectorAll('button');
+    for (var i = 0; i < nodes.length; i++) {
+      var el = nodes[i];
+      if (el.getAttribute('data-hrms-hangup-confirm') === '1') continue;
+      var text = ((el.getAttribute('aria-label') || '') + ' ' + (el.getAttribute('title') || '') + ' ' + (el.textContent || '')).toLowerCase();
+      if (!isHangupLabel(text)) continue;
+      el.setAttribute('data-hrms-hangup-confirm', '1');
+      el.addEventListener('click', function () {
+        var inToolbar = !!(this.closest('#new-toolbox') || this.closest('.new-toolbox') || this.closest('.toolbox-content-items'));
+        if (!inToolbar) {
+          notifyLeft();
+          return;
+        }
+        setTimeout(function () {
+          try {
+            if (window.APP && APP.conference && typeof APP.conference.isJoined === 'function' && !APP.conference.isJoined() && window.__hrmsJoinedSent) {
+              notifyLeft();
+            }
+          } catch (e) {}
+        }, 250);
+      }, true);
+    }
+  }
+
+  function checkWelcomeAfterLeave() {
+    if (!window.__hrmsJoinedSent) return;
+    var path = (location.pathname || '').toLowerCase();
+    if (path.indexOf('close') !== -1 || path === '/' || path === '') notifyLeft();
+  }
+
+  window.__hrmsArmLeaveHook = function () {
+    disableClosePage();
+    wrapHangup();
+    listenConferenceLeft();
+    notifyJoined();
+    hookConfirmButtons();
+    checkWelcomeAfterLeave();
+  };
+
+  window.__hrmsArmLeaveHook();
+  if (!window.__hrmsLeaveHookTimer) {
+    window.__hrmsLeaveHookTimer = setInterval(function () {
+      window.__hrmsArmLeaveHook();
+    }, 700);
   }
 })();
 ''';
@@ -952,6 +1247,8 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
           _customView = null;
           _hideCustomView = null;
           _sharing = false;
+          _leaving = false;
+          _seenInCall = false;
         });
       });
     }
