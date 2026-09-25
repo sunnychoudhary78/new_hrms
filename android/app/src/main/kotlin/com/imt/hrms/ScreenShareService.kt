@@ -131,7 +131,7 @@ class ScreenShareService : Service() {
             val image = source.acquireLatestImage() ?: return@setOnImageAvailableListener
             try {
                 val now = System.currentTimeMillis()
-                if (now - lastFrameAt < 140) {
+                if (now - lastFrameAt < 90) {
                     return@setOnImageAvailableListener
                 }
                 lastFrameAt = now
@@ -198,7 +198,7 @@ class ScreenShareService : Service() {
             Bitmap.createScaledBitmap(cropped, targetW, targetH, true)
         }
         val out = ByteArrayOutputStream()
-        scaled.compress(Bitmap.CompressFormat.JPEG, 40, out)
+        scaled.compress(Bitmap.CompressFormat.JPEG, 52, out)
         if (scaled !== cropped) scaled.recycle()
         if (cropped !== bitmap) cropped.recycle()
         bitmap.recycle()
