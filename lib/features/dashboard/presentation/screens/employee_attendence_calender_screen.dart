@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:lms/features/attendance/view_attendance/utils/calendar_type_style.dart';
 import 'package:lms/shared/widgets/app_bar.dart';
 import 'package:lms/shared/widgets/attendance_calender_widget.dart';
 import 'package:lms/shared/widgets/attendance_day_detail_bottom_sheet.dart';
@@ -143,6 +144,19 @@ class _EmployeeAttendanceCalendarScreenState
                   selectedDay: _selectedDay,
                   statusResolver: resolveStatus,
                   typeLabelResolver: resolveTypeLabel,
+                  typeColorResolver: (day) {
+                    final key = DateFormat('yyyy-MM-dd').format(day);
+                    return attendanceMap[key]?.calendarCellColor;
+                  },
+                  typeLegend: CalendarTypeStyle.uniqueLegend(
+                    leaveNames: [
+                      for (final day in attendanceMap.values) ...day.leaveLabels,
+                    ],
+                    holidayNames: [
+                      for (final day in attendanceMap.values)
+                        if (day.holidayLabel != null) day.holidayLabel!,
+                    ],
+                  ),
 
                   onDaySelected: (selectedDay, focusedDay) {
                     setState(() {
@@ -227,19 +241,21 @@ class _LeaveTypeList extends StatelessWidget {
       if (type.isEmpty) continue;
       final days = item['days'];
       final daysLabel = days == null ? '' : ' · $days';
+      final color = CalendarTypeStyle.leaveColor(type);
+      final code = CalendarTypeStyle.leaveCode(type);
       chips.add(
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
-            color: const Color(0xFFA855F7).withValues(alpha: .12),
+            color: color.withValues(alpha: .12),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Text(
-            '$type$daysLabel',
-            style: const TextStyle(
+            '$code$daysLabel',
+            style: TextStyle(
               fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF7E22CE),
+              fontWeight: FontWeight.w700,
+              color: color,
             ),
           ),
         ),
@@ -290,7 +306,6 @@ class _HolidayNameList extends StatelessWidget {
 
     if (labels.isEmpty) return const SizedBox.shrink();
 
-    const color = Color(0xFF0891B2);
     return Padding(
       padding: const EdgeInsets.only(top: 16),
       child: Column(
@@ -308,23 +323,28 @@ class _HolidayNameList extends StatelessWidget {
             runSpacing: 8,
             children: [
               for (final label in labels)
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: color.withValues(alpha: .12),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    label,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: color,
-                    ),
-                  ),
+                Builder(
+                  builder: (context) {
+                    final color = CalendarTypeStyle.holidayColor(label);
+                    return Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: color.withValues(alpha: .12),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        label,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: color,
+                        ),
+                      ),
+                    );
+                  },
                 ),
             ],
           ),

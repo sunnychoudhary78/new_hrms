@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:lms/features/attendance/view_attendance/data/models/attendance_summary_model.dart';
 import 'package:lms/features/attendance/view_attendance/utils/attendance_status_color.dart';
+import 'package:lms/features/attendance/view_attendance/utils/calendar_type_style.dart';
 
 class AttendanceSummaryGrid extends StatelessWidget {
   final AttendanceSummary summary;
@@ -54,12 +55,13 @@ class AttendanceSummaryGrid extends StatelessWidget {
   Widget _leaveChip(BuildContext context, LeaveBreakdown lb) {
     final scheme = Theme.of(context).colorScheme;
     final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
-    final color = AttendanceStatusColor.fromStatus(context, "leave");
+    final color = CalendarTypeStyle.leaveColor(lb.type);
+    final code = CalendarTypeStyle.leaveCode(lb.type);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        color: color.withOpacity(.12),
+        color: color.withValues(alpha: .12),
         borderRadius: BorderRadius.circular(isIOS ? 10 : 12),
       ),
       child: Column(
@@ -67,11 +69,12 @@ class AttendanceSummaryGrid extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
-            lb.type,
+            code,
             style: TextStyle(
-              fontSize: 12,
-              color: scheme.onSurfaceVariant,
-              fontWeight: FontWeight.w500,
+              fontSize: 13,
+              color: color,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.3,
             ),
           ),
           const SizedBox(height: 4),
@@ -81,6 +84,15 @@ class AttendanceSummaryGrid extends StatelessWidget {
               fontSize: 16,
               fontWeight: FontWeight.bold,
               color: color,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            CalendarTypeStyle.displayName(lb.type),
+            style: TextStyle(
+              fontSize: 10,
+              color: scheme.onSurfaceVariant,
+              fontWeight: FontWeight.w500,
             ),
           ),
         ],
@@ -153,7 +165,7 @@ class AttendanceSummaryGrid extends StatelessWidget {
               context,
               "Holidays",
               "${summary.totalHolidays}",
-              Colors.deepOrange,
+              CalendarTypeStyle.holidayCategory,
             ),
           ],
         ),
@@ -187,7 +199,7 @@ class AttendanceSummaryGrid extends StatelessWidget {
             spacing: 8,
             runSpacing: 8,
             children: holidayLabels.map((label) {
-              const color = Color(0xFF0891B2);
+              final color = CalendarTypeStyle.holidayColor(label);
               return Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 12,
@@ -199,7 +211,7 @@ class AttendanceSummaryGrid extends StatelessWidget {
                 ),
                 child: Text(
                   label,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                     color: color,

@@ -58,7 +58,7 @@ class AttendanceMonthSummary extends StatelessWidget {
         _item(
           "Holiday",
           counts["Holiday"] ?? 0,
-          const Color(0xFF3B82F6),
+          const Color(0xFF0891B2),
           scheme,
         ),
         const SizedBox(width: 8),

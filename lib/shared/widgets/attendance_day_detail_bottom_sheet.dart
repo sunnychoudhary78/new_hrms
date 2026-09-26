@@ -8,6 +8,7 @@ import 'package:lms/core/network/api_constants.dart';
 import 'package:lms/core/storage/token_storage.dart';
 import 'package:lms/features/attendance/view_attendance/presentation/screens/selfie_preview_screen.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../features/attendance/view_attendance/utils/calendar_type_style.dart';
 import '../../features/dashboard/data/models/attendance_day_data.dart';
 
 class AttendanceDayDetailBottomSheet extends StatefulWidget {
@@ -82,7 +83,7 @@ class _AttendanceDayDetailBottomSheetState
         return scheme.error;
 
       case "holiday":
-        return const Color(0xFF0891B2);
+        return CalendarTypeStyle.holidayCategory;
 
       case "weekoff":
       case "week-off":
@@ -92,7 +93,7 @@ class _AttendanceDayDetailBottomSheetState
       case "on-leave":
       case "on leave":
       case "leave":
-        return Colors.purple;
+        return CalendarTypeStyle.leaveCategory;
 
       default:
         return scheme.outline;
@@ -187,11 +188,17 @@ class _AttendanceDayDetailBottomSheetState
                         if (holidayLabel != null)
                           _typeChip(
                             context,
-                            holidayLabel,
-                            const Color(0xFF0891B2),
+                            code: CalendarTypeStyle.holidayCode(holidayLabel),
+                            name: holidayLabel,
+                            color: CalendarTypeStyle.holidayColor(holidayLabel),
                           ),
                         for (final leave in leaveLabels)
-                          _typeChip(context, leave, Colors.purple),
+                          _typeChip(
+                            context,
+                            code: CalendarTypeStyle.leaveCode(leave),
+                            name: CalendarTypeStyle.displayName(leave),
+                            color: CalendarTypeStyle.leaveColor(leave),
+                          ),
                       ],
                     ),
                   ),
@@ -312,20 +319,29 @@ class _AttendanceDayDetailBottomSheetState
     );
   }
 
-  Widget _typeChip(BuildContext context, String label, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: .12),
-        borderRadius: BorderRadius.circular(30),
-        border: Border.all(color: color.withValues(alpha: .35)),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: color,
-          fontWeight: FontWeight.w700,
-          fontSize: 13,
+  Widget _typeChip(
+    BuildContext context, {
+    required String code,
+    required String name,
+    required Color color,
+  }) {
+    return Tooltip(
+      message: name,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: .12),
+          borderRadius: BorderRadius.circular(30),
+          border: Border.all(color: color.withValues(alpha: .35)),
+        ),
+        child: Text(
+          code,
+          style: TextStyle(
+            color: color,
+            fontWeight: FontWeight.w800,
+            fontSize: 13,
+            letterSpacing: 0.3,
+          ),
         ),
       ),
     );

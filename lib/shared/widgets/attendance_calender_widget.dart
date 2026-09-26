@@ -1,10 +1,12 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:lms/features/attendance/view_attendance/utils/calendar_type_style.dart';
 import 'package:table_calendar/table_calendar.dart';
 
 typedef AttendanceStatusResolver = String? Function(DateTime day);
 typedef AttendanceBoolResolver = bool Function(DateTime day);
 typedef AttendanceLabelResolver = String? Function(DateTime day);
+typedef AttendanceColorResolver = Color? Function(DateTime day);
 
 class AttendanceCalendarWidget extends StatelessWidget {
   final DateTime focusedDay;
@@ -13,8 +15,10 @@ class AttendanceCalendarWidget extends StatelessWidget {
   final Function(DateTime focusedDay)? onPageChanged;
   final AttendanceStatusResolver statusResolver;
   final AttendanceLabelResolver? typeLabelResolver;
+  final AttendanceColorResolver? typeColorResolver;
   final AttendanceBoolResolver? hasSelfie;
   final AttendanceBoolResolver? hasLocation;
+  final List<({String label, Color color})> typeLegend;
 
   const AttendanceCalendarWidget({
     super.key,
@@ -23,9 +27,11 @@ class AttendanceCalendarWidget extends StatelessWidget {
     required this.onDaySelected,
     required this.statusResolver,
     this.typeLabelResolver,
+    this.typeColorResolver,
     this.onPageChanged,
     this.hasSelfie,
     this.hasLocation,
+    this.typeLegend = const [],
   });
 
   /// Premium status colors
@@ -42,7 +48,7 @@ class AttendanceCalendarWidget extends StatelessWidget {
       case "absent":
         return const Color(0xFFEF4444); // red
       case "holiday":
-        return const Color(0xFF06B6D4); // cyan — uploaded holiday calendar
+        return CalendarTypeStyle.holidayCategory;
       case "weekoff":
       case "week-off":
       case "week off":
@@ -50,10 +56,15 @@ class AttendanceCalendarWidget extends StatelessWidget {
       case "on-leave":
       case "on leave":
       case "leave":
-        return const Color(0xFFA855F7); // purple
+        return CalendarTypeStyle.leaveCategory;
       default:
         return scheme.outlineVariant;
     }
+  }
+
+  Color _cellColor(DateTime day, String? status, ColorScheme scheme) {
+    return typeColorResolver?.call(day) ??
+        (status != null ? _statusColor(status, scheme) : scheme.outlineVariant);
   }
 
   @override
@@ -83,7 +94,7 @@ class AttendanceCalendarWidget extends StatelessWidget {
         firstDay: DateTime(2020),
         lastDay: DateTime.now(), // prevents future navigation
         focusedDay: DateTime(focusedDay.year, focusedDay.month, 1),
-        rowHeight: 62,
+        rowHeight: 54,
         selectedDayPredicate: (day) => isSameDay(day, selectedDay),
 
         onDaySelected: onDaySelected,
@@ -160,7 +171,7 @@ class AttendanceCalendarWidget extends StatelessWidget {
 
             if (status == null) return null;
 
-            final color = _statusColor(status, scheme);
+            final color = _cellColor(day, status, scheme);
 
             return _DayCell(
               day: day,
@@ -179,26 +190,25 @@ class AttendanceCalendarWidget extends StatelessWidget {
               day: day,
               status: status,
               scheme: scheme,
-              statusColor: status != null ? _statusColor(status, scheme) : null,
+              statusColor: _cellColor(day, status, scheme),
               typeLabel: typeLabelResolver?.call(day),
             );
           },
 
           selectedBuilder: (context, day, _) {
             final status = statusResolver(day);
-            final color = status != null ? _statusColor(status, scheme) : scheme.primary;
 
             return _SelectedDayCell(
               day: day,
               scheme: scheme,
               typeLabel: typeLabelResolver?.call(day),
-              labelColor: color,
+              labelColor: _cellColor(day, status, scheme),
             );
           },
         ),
           ),
           const SizedBox(height: 10),
-          const _StatusLegend(),
+          _StatusLegend(typeLegend: typeLegend),
         ],
       ),
     );
@@ -274,17 +284,21 @@ class _DayCell extends StatelessWidget {
         ),
         if (label != null && label.isNotEmpty)
           Padding(
-            padding: const EdgeInsets.only(top: 1),
-            child: Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 8,
-                height: 1.0,
-                fontWeight: FontWeight.w700,
-                color: color,
+            padding: const EdgeInsets.only(top: 2),
+            child: SizedBox(
+              width: double.infinity,
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.clip,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 9,
+                  height: 1.0,
+                  letterSpacing: 0.2,
+                  fontWeight: FontWeight.w800,
+                  color: color,
+                ),
               ),
             ),
           ),
@@ -358,17 +372,21 @@ class _TodayCell extends StatelessWidget {
         ),
         if (label != null && label.isNotEmpty)
           Padding(
-            padding: const EdgeInsets.only(top: 1),
-            child: Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 8,
-                height: 1.0,
-                fontWeight: FontWeight.w700,
-                color: statusColor ?? scheme.primary,
+            padding: const EdgeInsets.only(top: 2),
+            child: SizedBox(
+              width: double.infinity,
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.clip,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 9,
+                  height: 1.0,
+                  letterSpacing: 0.2,
+                  fontWeight: FontWeight.w800,
+                  color: statusColor ?? scheme.primary,
+                ),
               ),
             ),
           ),
@@ -416,17 +434,21 @@ class _SelectedDayCell extends StatelessWidget {
         ),
         if (label != null && label.isNotEmpty)
           Padding(
-            padding: const EdgeInsets.only(top: 1),
-            child: Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 8,
-                height: 1.0,
-                fontWeight: FontWeight.w700,
-                color: labelColor,
+            padding: const EdgeInsets.only(top: 2),
+            child: SizedBox(
+              width: double.infinity,
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.clip,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 9,
+                  height: 1.0,
+                  letterSpacing: 0.2,
+                  fontWeight: FontWeight.w800,
+                  color: labelColor,
+                ),
               ),
             ),
           ),
@@ -436,21 +458,28 @@ class _SelectedDayCell extends StatelessWidget {
 }
 
 class _StatusLegend extends StatelessWidget {
-  const _StatusLegend();
+  final List<({String label, Color color})> typeLegend;
+
+  const _StatusLegend({this.typeLegend = const []});
 
   @override
   Widget build(BuildContext context) {
-    return const Wrap(
+    return Wrap(
       alignment: WrapAlignment.center,
       spacing: 10,
       runSpacing: 6,
       children: [
-        _LegendItem(label: "Present", color: Color(0xFF22C55E)),
-        _LegendItem(label: "Late", color: Color(0xFFF59E0B)),
-        _LegendItem(label: "Absent", color: Color(0xFFEF4444)),
-        _LegendItem(label: "Leave", color: Color(0xFFA855F7)),
-        _LegendItem(label: "Holiday", color: Color(0xFF06B6D4)),
-        _LegendItem(label: "Week Off", color: Color(0xFF8B5CF6)),
+        const _LegendItem(label: "Present", color: Color(0xFF22C55E)),
+        const _LegendItem(label: "Late", color: Color(0xFFF59E0B)),
+        const _LegendItem(label: "Absent", color: Color(0xFFEF4444)),
+        const _LegendItem(label: "Leave", color: CalendarTypeStyle.leaveCategory),
+        const _LegendItem(
+          label: "Holiday",
+          color: CalendarTypeStyle.holidayCategory,
+        ),
+        const _LegendItem(label: "Week Off", color: Color(0xFF8B5CF6)),
+        for (final item in typeLegend)
+          _LegendItem(label: item.label, color: item.color),
       ],
     );
   }

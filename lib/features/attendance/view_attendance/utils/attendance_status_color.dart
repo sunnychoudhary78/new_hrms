@@ -17,10 +17,10 @@ class AttendanceStatusColor {
 
       case 'leave':
       case 'on-leave':
-        return Colors.purple;
+        return const Color(0xFFA855F7);
 
       case 'holiday':
-        return scheme.primaryContainer;
+        return const Color(0xFF0891B2);
 
       case 'weekoff':
       case 'week-off':

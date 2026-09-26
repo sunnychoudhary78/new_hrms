@@ -15,6 +15,7 @@ import 'package:lms/shared/widgets/attendance_calender_widget.dart';
 import 'package:lms/shared/widgets/attendance_day_detail_bottom_sheet.dart';
 
 import 'package:lms/features/dashboard/data/models/attendance_day_data.dart';
+import 'package:lms/features/attendance/view_attendance/utils/calendar_type_style.dart';
 import 'package:lms/features/attendance/view_attendance/utils/elapsed_month_summary.dart';
 
 import '../widgets/attendance_summary_grid.dart';
@@ -213,6 +214,22 @@ class _ViewAttendanceScreenState extends ConsumerState<ViewAttendanceScreen> {
                         final key = DateFormat('yyyy-MM-dd').format(day);
                         return attendanceMap[key]?.calendarCellLabel;
                       },
+
+                      typeColorResolver: (day) {
+                        final key = DateFormat('yyyy-MM-dd').format(day);
+                        return attendanceMap[key]?.calendarCellColor;
+                      },
+
+                      typeLegend: CalendarTypeStyle.uniqueLegend(
+                        leaveNames: [
+                          for (final day in attendanceMap.values)
+                            ...day.leaveLabels,
+                        ],
+                        holidayNames: [
+                          for (final day in attendanceMap.values)
+                            if (day.holidayLabel != null) day.holidayLabel!,
+                        ],
+                      ),
 
                       hasSelfie: (day) {
                         final key = DateFormat('yyyy-MM-dd').format(day);

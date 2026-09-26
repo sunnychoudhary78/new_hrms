@@ -1,3 +1,6 @@
+import 'package:flutter/material.dart';
+import 'package:lms/features/attendance/view_attendance/utils/calendar_type_style.dart';
+
 class AttendanceLeaveDetail {
   final String? part;
   final String typeName;
@@ -248,11 +251,11 @@ class AttendanceDayData {
 
     if (leaveDetails.isNotEmpty) {
       for (final detail in leaveDetails) {
-        final label = detail.sheetLabel.trim();
+        final label = detail.typeName.trim();
         if (label.isEmpty || _isGenericCategory(label)) continue;
         if (!labels.contains(label)) labels.add(label);
       }
-      return labels;
+      if (labels.isNotEmpty) return labels;
     }
 
     final type = leaveType?.trim() ?? '';
@@ -261,12 +264,19 @@ class AttendanceDayData {
     return labels;
   }
 
-  /// Short label drawn on the calendar cell: holiday name, otherwise leave type.
+  /// Compact calendar text: CL / SL / H — never the full type name.
   String? get calendarCellLabel {
     final holiday = holidayLabel;
-    if (holiday != null) return holiday;
+    if (holiday != null) return CalendarTypeStyle.holidayCode(holiday);
     if (leaveLabels.isEmpty) return null;
-    return leaveLabels.join(' + ');
+    return leaveLabels.map(CalendarTypeStyle.leaveCode).join('/');
+  }
+
+  Color? get calendarCellColor {
+    final holiday = holidayLabel;
+    if (holiday != null) return CalendarTypeStyle.holidayColor(holiday);
+    if (leaveLabels.isEmpty) return null;
+    return CalendarTypeStyle.leaveColor(leaveLabels.first);
   }
 
   double get totalHours {
