@@ -4,6 +4,7 @@ import 'package:table_calendar/table_calendar.dart';
 
 typedef AttendanceStatusResolver = String? Function(DateTime day);
 typedef AttendanceBoolResolver = bool Function(DateTime day);
+typedef AttendanceLabelResolver = String? Function(DateTime day);
 
 class AttendanceCalendarWidget extends StatelessWidget {
   final DateTime focusedDay;
@@ -11,6 +12,7 @@ class AttendanceCalendarWidget extends StatelessWidget {
   final Function(DateTime selectedDay, DateTime focusedDay) onDaySelected;
   final Function(DateTime focusedDay)? onPageChanged;
   final AttendanceStatusResolver statusResolver;
+  final AttendanceLabelResolver? typeLabelResolver;
   final AttendanceBoolResolver? hasSelfie;
   final AttendanceBoolResolver? hasLocation;
 
@@ -20,6 +22,7 @@ class AttendanceCalendarWidget extends StatelessWidget {
     required this.selectedDay,
     required this.onDaySelected,
     required this.statusResolver,
+    this.typeLabelResolver,
     this.onPageChanged,
     this.hasSelfie,
     this.hasLocation,
@@ -39,10 +42,11 @@ class AttendanceCalendarWidget extends StatelessWidget {
       case "absent":
         return const Color(0xFFEF4444); // red
       case "holiday":
+        return const Color(0xFF06B6D4); // cyan — uploaded holiday calendar
       case "weekoff":
       case "week-off":
       case "week off":
-        return const Color(0xFF3B82F6); // blue
+        return const Color(0xFF8B5CF6); // violet
       case "on-leave":
       case "on leave":
       case "leave":
@@ -73,10 +77,13 @@ class AttendanceCalendarWidget extends StatelessWidget {
           ),
         ],
       ),
-      child: TableCalendar(
+      child: Column(
+        children: [
+          TableCalendar(
         firstDay: DateTime(2020),
         lastDay: DateTime.now(), // prevents future navigation
         focusedDay: DateTime(focusedDay.year, focusedDay.month, 1),
+        rowHeight: 62,
         selectedDayPredicate: (day) => isSameDay(day, selectedDay),
 
         onDaySelected: onDaySelected,
@@ -161,6 +168,7 @@ class AttendanceCalendarWidget extends StatelessWidget {
               scheme: scheme,
               hasSelfie: hasSelfie?.call(day) ?? false,
               hasLocation: hasLocation?.call(day) ?? false,
+              typeLabel: typeLabelResolver?.call(day),
             );
           },
 
@@ -172,28 +180,26 @@ class AttendanceCalendarWidget extends StatelessWidget {
               status: status,
               scheme: scheme,
               statusColor: status != null ? _statusColor(status, scheme) : null,
+              typeLabel: typeLabelResolver?.call(day),
             );
           },
 
           selectedBuilder: (context, day, _) {
-            return Container(
-              margin: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: scheme.primary,
-                shape: BoxShape.circle,
-              ),
-              child: Center(
-                child: Text(
-                  "${day.day}",
-                  style: TextStyle(
-                    color: scheme.onPrimary,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
+            final status = statusResolver(day);
+            final color = status != null ? _statusColor(status, scheme) : scheme.primary;
+
+            return _SelectedDayCell(
+              day: day,
+              scheme: scheme,
+              typeLabel: typeLabelResolver?.call(day),
+              labelColor: color,
             );
           },
         ),
+          ),
+          const SizedBox(height: 10),
+          const _StatusLegend(),
+        ],
       ),
     );
   }
@@ -209,6 +215,7 @@ class _DayCell extends StatelessWidget {
   final ColorScheme scheme;
   final bool hasSelfie;
   final bool hasLocation;
+  final String? typeLabel;
 
   const _DayCell({
     required this.day,
@@ -216,27 +223,30 @@ class _DayCell extends StatelessWidget {
     required this.scheme,
     required this.hasSelfie,
     required this.hasLocation,
+    this.typeLabel,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.all(6),
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          Container(
-            width: 34,
-            height: 34,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: color.withOpacity(.22),
-            ),
-          ),
+    final label = typeLabel?.trim();
 
-          Column(
-            mainAxisAlignment: MainAxisAlignment.center,
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        SizedBox(
+          width: 30,
+          height: 30,
+          child: Stack(
+            alignment: Alignment.center,
             children: [
+              Container(
+                width: 30,
+                height: 30,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: color.withValues(alpha: .22),
+                ),
+              ),
               Text(
                 "${day.day}",
                 style: TextStyle(
@@ -245,26 +255,40 @@ class _DayCell extends StatelessWidget {
                   fontSize: 12,
                 ),
               ),
-
-              if (hasSelfie || hasLocation) const SizedBox(height: 2),
-
               if (hasSelfie || hasLocation)
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    if (hasSelfie)
-                      Icon(Icons.camera_alt, size: 8, color: color),
-
-                    if (hasSelfie && hasLocation) const SizedBox(width: 2),
-
-                    if (hasLocation)
-                      Icon(Icons.location_pin, size: 8, color: color),
-                  ],
+                Positioned(
+                  bottom: 1,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      if (hasSelfie)
+                        Icon(Icons.camera_alt, size: 7, color: color),
+                      if (hasSelfie && hasLocation) const SizedBox(width: 1),
+                      if (hasLocation)
+                        Icon(Icons.location_pin, size: 7, color: color),
+                    ],
+                  ),
                 ),
             ],
           ),
-        ],
-      ),
+        ),
+        if (label != null && label.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 1),
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 8,
+                height: 1.0,
+                fontWeight: FontWeight.w700,
+                color: color,
+              ),
+            ),
+          ),
+      ],
     );
   }
 }
@@ -278,50 +302,186 @@ class _TodayCell extends StatelessWidget {
   final String? status;
   final ColorScheme scheme;
   final Color? statusColor;
+  final String? typeLabel;
 
   const _TodayCell({
     required this.day,
     required this.status,
     required this.scheme,
     this.statusColor,
+    this.typeLabel,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.all(6),
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(color: scheme.primary, width: 2),
-            ),
-          ),
-          Text(
-            "${day.day}",
-            style: TextStyle(
-              fontWeight: FontWeight.w700,
-              color: scheme.primary,
-            ),
-          ),
-          if (statusColor != null)
-            Positioned(
-              bottom: 4,
-              child: Container(
-                width: 6,
-                height: 6,
+    final label = typeLabel?.trim();
+
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        SizedBox(
+          width: 32,
+          height: 32,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              Container(
+                width: 32,
+                height: 32,
                 decoration: BoxDecoration(
-                  color: statusColor,
                   shape: BoxShape.circle,
+                  border: Border.all(color: scheme.primary, width: 2),
                 ),
               ),
+              Text(
+                "${day.day}",
+                style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 12,
+                  color: scheme.primary,
+                ),
+              ),
+              if (statusColor != null)
+                Positioned(
+                  bottom: 2,
+                  child: Container(
+                    width: 5,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: statusColor,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+        if (label != null && label.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 1),
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 8,
+                height: 1.0,
+                fontWeight: FontWeight.w700,
+                color: statusColor ?? scheme.primary,
+              ),
             ),
-        ],
-      ),
+          ),
+      ],
+    );
+  }
+}
+
+class _SelectedDayCell extends StatelessWidget {
+  final DateTime day;
+  final ColorScheme scheme;
+  final String? typeLabel;
+  final Color labelColor;
+
+  const _SelectedDayCell({
+    required this.day,
+    required this.scheme,
+    required this.labelColor,
+    this.typeLabel,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final label = typeLabel?.trim();
+
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Container(
+          width: 30,
+          height: 30,
+          decoration: BoxDecoration(
+            color: scheme.primary,
+            shape: BoxShape.circle,
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            "${day.day}",
+            style: TextStyle(
+              color: scheme.onPrimary,
+              fontWeight: FontWeight.w600,
+              fontSize: 12,
+            ),
+          ),
+        ),
+        if (label != null && label.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 1),
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 8,
+                height: 1.0,
+                fontWeight: FontWeight.w700,
+                color: labelColor,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _StatusLegend extends StatelessWidget {
+  const _StatusLegend();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Wrap(
+      alignment: WrapAlignment.center,
+      spacing: 10,
+      runSpacing: 6,
+      children: [
+        _LegendItem(label: "Present", color: Color(0xFF22C55E)),
+        _LegendItem(label: "Late", color: Color(0xFFF59E0B)),
+        _LegendItem(label: "Absent", color: Color(0xFFEF4444)),
+        _LegendItem(label: "Leave", color: Color(0xFFA855F7)),
+        _LegendItem(label: "Holiday", color: Color(0xFF06B6D4)),
+        _LegendItem(label: "Week Off", color: Color(0xFF8B5CF6)),
+      ],
+    );
+  }
+}
+
+class _LegendItem extends StatelessWidget {
+  final String label;
+  final Color color;
+
+  const _LegendItem({required this.label, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 4),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+        ),
+      ],
     );
   }
 }

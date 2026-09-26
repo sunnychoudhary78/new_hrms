@@ -1,14 +1,59 @@
+class AttendanceLeaveDetail {
+  final String? part;
+  final String typeName;
+
+  const AttendanceLeaveDetail({this.part, required this.typeName});
+
+  /// "Casual Leave" or "Casual Leave (Half-Day AM)".
+  String get sheetLabel {
+    final name = typeName.trim().isEmpty ? 'Leave' : typeName.trim();
+    final p = (part ?? '').trim().toUpperCase();
+    if (p == 'AM' || p == 'PM') return '$name (Half-Day $p)';
+    return name;
+  }
+
+  static List<AttendanceLeaveDetail> listFrom(dynamic raw) {
+    if (raw is! List) return const [];
+
+    final out = <AttendanceLeaveDetail>[];
+    for (final item in raw) {
+      if (item is! Map) continue;
+      final map = Map<String, dynamic>.from(item);
+      final type = (map['typeName'] ?? map['type'] ?? map['name'] ?? '')
+          .toString()
+          .trim();
+      if (type.isEmpty) continue;
+
+      final partRaw = map['part'] ?? map['halfDayPart'] ?? map['half_day_part'];
+      final part = partRaw?.toString().trim();
+      out.add(
+        AttendanceLeaveDetail(
+          part: (part == null || part.isEmpty) ? null : part,
+          typeName: type,
+        ),
+      );
+    }
+    return out;
+  }
+}
+
 class AttendanceDayData {
   final String date;
   final String status;
   final int totalMinutes;
   final List<AttendanceSessionData> sessions;
+  final String? leaveType;
+  final String? holidayName;
+  final List<AttendanceLeaveDetail> leaveDetails;
 
   AttendanceDayData({
     required this.date,
     required this.status,
     required this.totalMinutes,
     required this.sessions,
+    this.leaveType,
+    this.holidayName,
+    this.leaveDetails = const [],
   });
 
   ////////////////////////////////////////////////////////////
@@ -150,6 +195,13 @@ class AttendanceDayData {
         status: safeStatus,
         totalMinutes: safeMinutes,
         sessions: safeSessions,
+        leaveType: _cleanLabel(aggregate['leaveType'] ?? aggregate['leave_type']),
+        holidayName: _cleanLabel(
+          aggregate['holidayName'] ?? aggregate['holiday_name'],
+        ),
+        leaveDetails: AttendanceLeaveDetail.listFrom(
+          aggregate['leaveDetails'] ?? aggregate['leave_details'],
+        ),
       );
     } catch (_) {
       return AttendanceDayData(
@@ -159,6 +211,62 @@ class AttendanceDayData {
         sessions: [],
       );
     }
+  }
+
+  static String? _cleanLabel(dynamic value) {
+    final text = _asString(value).trim();
+    if (text.isEmpty || text.toLowerCase() == 'null') return null;
+    return text;
+  }
+
+  static bool _isGenericCategory(String value) {
+    switch (value.trim().toLowerCase()) {
+      case 'leave':
+      case 'on-leave':
+      case 'on leave':
+      case 'holiday':
+      case 'weekoff':
+      case 'week-off':
+      case 'week off':
+        return true;
+      default:
+        return false;
+    }
+  }
+
+  /// Holiday name from the uploaded holiday calendar, when it is more specific
+  /// than the generic "Holiday" status.
+  String? get holidayLabel {
+    final name = holidayName?.trim() ?? '';
+    if (name.isEmpty || _isGenericCategory(name)) return null;
+    return name;
+  }
+
+  /// Leave type names for this day (Casual Leave, Sick Leave, half-day part).
+  List<String> get leaveLabels {
+    final labels = <String>[];
+
+    if (leaveDetails.isNotEmpty) {
+      for (final detail in leaveDetails) {
+        final label = detail.sheetLabel.trim();
+        if (label.isEmpty || _isGenericCategory(label)) continue;
+        if (!labels.contains(label)) labels.add(label);
+      }
+      return labels;
+    }
+
+    final type = leaveType?.trim() ?? '';
+    if (type.isEmpty || _isGenericCategory(type)) return labels;
+    labels.add(type);
+    return labels;
+  }
+
+  /// Short label drawn on the calendar cell: holiday name, otherwise leave type.
+  String? get calendarCellLabel {
+    final holiday = holidayLabel;
+    if (holiday != null) return holiday;
+    if (leaveLabels.isEmpty) return null;
+    return leaveLabels.join(' + ');
   }
 
   double get totalHours {

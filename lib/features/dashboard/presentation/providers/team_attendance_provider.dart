@@ -146,6 +146,9 @@ final employeeAttendanceProvider =
               'totalMinutes':
                   d['fullWorked'] ?? d['totalMinutes'] ?? d['workCredit'] ?? 0,
               'status': d['status'], // ✅ REAL STATUS
+              'leaveType': d['leaveType'],
+              'holidayName': d['holidayName'],
+              'leaveDetails': d['leaveDetails'],
             },
             sessionsJson: daySessions,
           );

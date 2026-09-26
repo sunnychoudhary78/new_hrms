@@ -5,8 +5,13 @@ import 'package:lms/features/attendance/view_attendance/utils/attendance_status_
 
 class AttendanceSummaryGrid extends StatelessWidget {
   final AttendanceSummary summary;
+  final List<String> holidayLabels;
 
-  const AttendanceSummaryGrid({super.key, required this.summary});
+  const AttendanceSummaryGrid({
+    super.key,
+    required this.summary,
+    this.holidayLabels = const [],
+  });
 
   String _formatNumber(num value) =>
       value == value.truncateToDouble() ? value.toInt().toString() : '$value';
@@ -167,6 +172,41 @@ class AttendanceSummaryGrid extends StatelessWidget {
             children: summary.leaveBreakdown
                 .map((lb) => _leaveChip(context, lb))
                 .toList(),
+          ),
+        ],
+        if (holidayLabels.isNotEmpty) ...[
+          const SizedBox(height: 20),
+          Text(
+            "Holiday Calendar",
+            style: Theme.of(
+              context,
+            ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: holidayLabels.map((label) {
+              const color = Color(0xFF0891B2);
+              return Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: .12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: color,
+                  ),
+                ),
+              );
+            }).toList(),
           ),
         ],
       ],

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import 'package:lms/features/attendance/correction_attendance/presentation/dialogs/request_correction_dialog.dart';
+import 'package:lms/features/attendance/view_attendance/data/models/attendance_aggregate_model.dart';
 import 'package:lms/features/attendance/view_attendance/presentation/providers/view_attendance_provider.dart';
 import 'package:lms/features/attendance/view_attendance/presentation/widgets/view_attendance_header.dart';
 import 'package:lms/features/dashboard/presentation/providers/team_attendance_provider.dart';
@@ -71,6 +72,12 @@ class _ViewAttendanceScreenState extends ConsumerState<ViewAttendanceScreen> {
     return null;
   }
 
+  String? _holidaySummaryLabel(AttendanceAggregate day) {
+    final name = day.holidayName?.trim() ?? '';
+    if (name.isEmpty || name.toLowerCase() == 'holiday') return null;
+    return '${DateFormat('dd MMM').format(day.date)} · $name';
+  }
+
   Map<String, AttendanceDayData> _buildAttendanceMap(
     List aggregates,
     Map<String, AttendanceDayData> sessionMap,
@@ -90,6 +97,11 @@ class _ViewAttendanceScreenState extends ConsumerState<ViewAttendanceScreen> {
         ),
         totalMinutes: sessionData?.totalMinutes ?? 0,
         sessions: sessions,
+        leaveType: agg.leaveType ?? sessionData?.leaveType,
+        holidayName: agg.holidayName ?? sessionData?.holidayName,
+        leaveDetails: agg.leaveDetails.isNotEmpty
+            ? agg.leaveDetails
+            : (sessionData?.leaveDetails ?? const []),
       );
     }
 
@@ -197,6 +209,11 @@ class _ViewAttendanceScreenState extends ConsumerState<ViewAttendanceScreen> {
                         return attendanceMap[key]?.status;
                       },
 
+                      typeLabelResolver: (day) {
+                        final key = DateFormat('yyyy-MM-dd').format(day);
+                        return attendanceMap[key]?.calendarCellLabel;
+                      },
+
                       hasSelfie: (day) {
                         final key = DateFormat('yyyy-MM-dd').format(day);
                         final data = attendanceMap[key];
@@ -300,7 +317,13 @@ class _ViewAttendanceScreenState extends ConsumerState<ViewAttendanceScreen> {
                   _Section(
                     title: "Monthly Summary",
 
-                    child: AttendanceSummaryGrid(summary: displaySummary),
+                    child: AttendanceSummaryGrid(
+                      summary: displaySummary,
+                      holidayLabels: state.days
+                          .map(_holidaySummaryLabel)
+                          .whereType<String>()
+                          .toList(),
+                    ),
                   ),
 
                   const SizedBox(height: 28),

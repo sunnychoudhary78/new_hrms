@@ -82,10 +82,12 @@ class _AttendanceDayDetailBottomSheetState
         return scheme.error;
 
       case "holiday":
+        return const Color(0xFF0891B2);
+
       case "weekoff":
       case "week-off":
       case "week off":
-        return Colors.blue;
+        return const Color(0xFF7C3AED);
 
       case "on-leave":
       case "on leave":
@@ -119,6 +121,8 @@ class _AttendanceDayDetailBottomSheetState
     final formattedDate = DateFormat('EEEE, dd MMM yyyy').format(widget.date);
 
     final status = widget.data?.status ?? "No Data";
+    final holidayLabel = widget.data?.holidayLabel;
+    final leaveLabels = widget.data?.leaveLabels ?? const <String>[];
 
     final hours = widget.data?.totalHours ?? 0;
 
@@ -172,10 +176,27 @@ class _AttendanceDayDetailBottomSheetState
               // STATUS + HOURS
               //////////////////////////////////////////////////////
               Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _statusBadge(context, status),
+                  Expanded(
+                    child: Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        _statusBadge(context, status),
+                        if (holidayLabel != null)
+                          _typeChip(
+                            context,
+                            holidayLabel,
+                            const Color(0xFF0891B2),
+                          ),
+                        for (final leave in leaveLabels)
+                          _typeChip(context, leave, Colors.purple),
+                      ],
+                    ),
+                  ),
 
-                  const Spacer(),
+                  const SizedBox(width: 12),
 
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
@@ -287,6 +308,25 @@ class _AttendanceDayDetailBottomSheetState
       child: Text(
         status,
         style: TextStyle(color: color, fontWeight: FontWeight.w600),
+      ),
+    );
+  }
+
+  Widget _typeChip(BuildContext context, String label, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: .12),
+        borderRadius: BorderRadius.circular(30),
+        border: Border.all(color: color.withValues(alpha: .35)),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: color,
+          fontWeight: FontWeight.w700,
+          fontSize: 13,
+        ),
       ),
     );
   }

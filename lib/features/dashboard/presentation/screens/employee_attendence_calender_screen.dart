@@ -6,6 +6,7 @@ import 'package:lms/shared/widgets/app_bar.dart';
 import 'package:lms/shared/widgets/attendance_calender_widget.dart';
 import 'package:lms/shared/widgets/attendance_day_detail_bottom_sheet.dart';
 import 'package:lms/shared/widgets/attendance_month_summary.dart';
+import '../../data/models/attendance_day_data.dart';
 import '../../data/models/team_dashboard_model.dart';
 import '../providers/team_attendance_provider.dart';
 
@@ -81,6 +82,11 @@ class _EmployeeAttendanceCalendarScreenState
             return attendanceMap[key]?.status;
           }
 
+          String? resolveTypeLabel(DateTime day) {
+            final key = DateFormat('yyyy-MM-dd').format(day);
+            return attendanceMap[key]?.calendarCellLabel;
+          }
+
           ////////////////////////////////////////////////////////////
           // ✅ USE BACKEND SUMMARY (FIX)
           ////////////////////////////////////////////////////////////
@@ -117,7 +123,14 @@ class _EmployeeAttendanceCalendarScreenState
                   loading: () =>
                       const Center(child: CircularProgressIndicator()),
                   error: (_, __) => const SizedBox(),
-                  data: (_) => AttendanceMonthSummary(counts: counts),
+                  data: (_) => Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      AttendanceMonthSummary(counts: counts),
+                      _LeaveTypeList(summary: summary),
+                      _HolidayNameList(attendanceMap: attendanceMap),
+                    ],
+                  ),
                 ),
 
                 const SizedBox(height: 24),
@@ -129,6 +142,7 @@ class _EmployeeAttendanceCalendarScreenState
                   focusedDay: _focusedDay,
                   selectedDay: _selectedDay,
                   statusResolver: resolveStatus,
+                  typeLabelResolver: resolveTypeLabel,
 
                   onDaySelected: (selectedDay, focusedDay) {
                     setState(() {
@@ -195,6 +209,130 @@ class _EmployeeAttendanceCalendarScreenState
 }
 
 //////////////////////////////////////////////////////////////
+
+class _LeaveTypeList extends StatelessWidget {
+  final Map<String, dynamic> summary;
+
+  const _LeaveTypeList({required this.summary});
+
+  @override
+  Widget build(BuildContext context) {
+    final raw = summary['leaveBreakdown'];
+    if (raw is! List || raw.isEmpty) return const SizedBox.shrink();
+
+    final chips = <Widget>[];
+    for (final item in raw) {
+      if (item is! Map) continue;
+      final type = (item['type'] ?? '').toString().trim();
+      if (type.isEmpty) continue;
+      final days = item['days'];
+      final daysLabel = days == null ? '' : ' · $days';
+      chips.add(
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: const Color(0xFFA855F7).withValues(alpha: .12),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Text(
+            '$type$daysLabel',
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF7E22CE),
+            ),
+          ),
+        ),
+      );
+    }
+
+    if (chips.isEmpty) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            "Leave Types",
+            style: Theme.of(
+              context,
+            ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 10),
+          Wrap(spacing: 8, runSpacing: 8, children: chips),
+        ],
+      ),
+    );
+  }
+}
+
+class _HolidayNameList extends StatelessWidget {
+  final Map<String, AttendanceDayData> attendanceMap;
+
+  const _HolidayNameList({required this.attendanceMap});
+
+  @override
+  Widget build(BuildContext context) {
+    final entries = attendanceMap.entries.toList()
+      ..sort((a, b) => a.key.compareTo(b.key));
+
+    final labels = <String>[];
+    for (final entry in entries) {
+      final name = entry.value.holidayLabel;
+      if (name == null) continue;
+      final parsed = DateTime.tryParse(entry.key);
+      final when = parsed == null
+          ? entry.key
+          : DateFormat('dd MMM').format(parsed.toLocal());
+      labels.add('$when · $name');
+    }
+
+    if (labels.isEmpty) return const SizedBox.shrink();
+
+    const color = Color(0xFF0891B2);
+    return Padding(
+      padding: const EdgeInsets.only(top: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            "Holiday Calendar",
+            style: Theme.of(
+              context,
+            ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final label in labels)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: .12),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    label,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: color,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 class _EmployeeHeader extends StatelessWidget {
   final TeamEmployee employee;
