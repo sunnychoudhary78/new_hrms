@@ -295,13 +295,19 @@ class _HolidayNameList extends StatelessWidget {
 
     final labels = <String>[];
     for (final entry in entries) {
-      final name = entry.value.holidayLabel;
-      if (name == null) continue;
+      final day = entry.value;
+      final isHoliday =
+          day.status.trim().toLowerCase() == 'holiday' ||
+          day.holidayName != null;
+      if (!isHoliday) continue;
+
+      final name = day.holidayLabel;
+      final displayName = name ?? 'Holiday';
       final parsed = DateTime.tryParse(entry.key);
       final when = parsed == null
           ? entry.key
           : DateFormat('dd MMM').format(parsed.toLocal());
-      labels.add('$when · $name');
+      labels.add('$when · $displayName');
     }
 
     if (labels.isEmpty) return const SizedBox.shrink();

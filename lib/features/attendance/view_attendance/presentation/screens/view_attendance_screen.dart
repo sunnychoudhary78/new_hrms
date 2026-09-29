@@ -74,9 +74,13 @@ class _ViewAttendanceScreenState extends ConsumerState<ViewAttendanceScreen> {
   }
 
   String? _holidaySummaryLabel(AttendanceAggregate day) {
+    final status = day.status.trim().toLowerCase();
+    if (status != 'holiday') return null;
+
     final name = day.holidayName?.trim() ?? '';
-    if (name.isEmpty || name.toLowerCase() == 'holiday') return null;
-    return '${DateFormat('dd MMM').format(day.date)} · $name';
+    final displayName =
+        (name.isEmpty || name.toLowerCase() == 'holiday') ? 'Holiday' : name;
+    return '${DateFormat('dd MMM').format(day.date)} · $displayName';
   }
 
   Map<String, AttendanceDayData> _buildAttendanceMap(
