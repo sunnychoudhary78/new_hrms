@@ -100,6 +100,20 @@ class _AttendanceDayDetailBottomSheetState
     }
   }
 
+  /// Holidays / week-offs are not worked days — don't show a misleading 0.0 h.
+  bool _isNonWorkingStatus(String? status) {
+    final normalized = (status ?? '').trim().toLowerCase();
+    return normalized == 'holiday' ||
+        normalized == 'weekoff' ||
+        normalized == 'week-off' ||
+        normalized == 'week off';
+  }
+
+  String _hoursDisplay(String? status, double hours) {
+    if (_isNonWorkingStatus(status) && hours <= 0) return '—';
+    return '${hours.toStringAsFixed(1)} h';
+  }
+
   ////////////////////////////////////////////////////////////
   // TIME FORMAT
   ////////////////////////////////////////////////////////////
@@ -220,7 +234,7 @@ class _AttendanceDayDetailBottomSheetState
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       Text(
-                        "${hours.toStringAsFixed(1)} h",
+                        _hoursDisplay(status, hours),
                         style: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
