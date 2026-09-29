@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 /// Short codes and distinct colors for leave vs holiday on the calendar.
-/// Leave types use a warm/jewel palette. Holidays stay on a cyan/teal palette.
+/// Leave types use a warm/jewel palette. All holidays share [holidayCategory].
 class CalendarTypeStyle {
   CalendarTypeStyle._();
 
@@ -71,14 +71,6 @@ class CalendarTypeStyle {
     Color(0xFFC2410C),
   ];
 
-  static const List<Color> _holidayPalette = [
-    Color(0xFF0891B2),
-    Color(0xFF0E7490),
-    Color(0xFF155E75),
-    Color(0xFF06B6D4),
-    Color(0xFF0F766E),
-  ];
-
   static const Set<String> _skipWords = {
     'leave',
     'day',
@@ -141,15 +133,14 @@ class CalendarTypeStyle {
         _leaveFallback[_stableIndex(code, _leaveFallback.length)];
   }
 
-  static Color holidayColor([String? raw]) {
-    final name = (raw ?? '').trim();
-    if (name.isEmpty) return holidayCategory;
-    return _holidayPalette[_stableIndex(holidayCode(name), _holidayPalette.length)];
-  }
+  /// All holidays use the single designated [holidayCategory] colour.
+  static Color holidayColor([String? raw]) => holidayCategory;
 
   static List<({String label, Color color})> uniqueLegend({
     required Iterable<String> leaveNames,
-    required Iterable<String> holidayNames,
+    // Kept for call-site compatibility. Holidays use the shared "Holiday"
+    // legend item only — no TE/RB/… entries under the calendar.
+    Iterable<String> holidayNames = const [],
   }) {
     final seen = <String>{};
     final items = <({String label, Color color})>[];
@@ -162,20 +153,12 @@ class CalendarTypeStyle {
       items.add((label: code, color: leaveColor(trimmed)));
     }
 
-    for (final name in holidayNames) {
-      final trimmed = name.trim();
-      if (trimmed.isEmpty) continue;
-      final code = holidayCode(trimmed);
-      if (!seen.add('H:$code')) continue;
-      items.add((label: code, color: holidayColor(trimmed)));
-    }
-
     return items;
   }
 
   static Color? typeColor({String? leaveName, String? holidayName}) {
     final holiday = holidayName?.trim() ?? '';
-    if (holiday.isNotEmpty) return holidayColor(holiday);
+    if (holiday.isNotEmpty) return holidayCategory;
 
     final leave = leaveName?.trim() ?? '';
     if (leave.isNotEmpty) return leaveColor(leave);
