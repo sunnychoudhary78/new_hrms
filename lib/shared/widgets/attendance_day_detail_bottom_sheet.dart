@@ -79,6 +79,12 @@ class _AttendanceDayDetailBottomSheetState
       case "late":
         return Colors.orange;
 
+      case "half-day":
+      case "half day":
+      case "1st half working":
+      case "2nd half working":
+        return const Color(0xFFEAB308);
+
       case "absent":
         return scheme.error;
 
@@ -208,22 +214,33 @@ class _AttendanceDayDetailBottomSheetState
                             name: holidayLabel,
                             color: CalendarTypeStyle.holidayColor(holidayLabel),
                           ),
-                        for (final leave in leaveLabels)
+                        for (final detail
+                            in widget.data?.leaveDetails ??
+                                const <AttendanceLeaveDetail>[])
                           _typeChip(
                             context,
-                            code: CalendarTypeStyle.leaveCode(leave),
-                            name: CalendarTypeStyle.displayName(leave),
-                            color: CalendarTypeStyle.leaveColor(leave),
+                            code: CalendarTypeStyle.leaveCode(detail.typeName),
+                            name: detail.sheetLabel,
+                            color: CalendarTypeStyle.leaveColor(detail.typeName),
                           ),
-                        for (final duration in leaveDurationLabels)
-                          _typeChip(
-                            context,
-                            code: duration.toLowerCase().startsWith('half')
-                                ? 'HD'
-                                : 'FD',
-                            name: duration,
-                            color: CalendarTypeStyle.leaveCategory,
-                          ),
+                        if ((widget.data?.leaveDetails ?? const []).isEmpty) ...[
+                          for (final leave in leaveLabels)
+                            _typeChip(
+                              context,
+                              code: CalendarTypeStyle.leaveCode(leave),
+                              name: CalendarTypeStyle.displayName(leave),
+                              color: CalendarTypeStyle.leaveColor(leave),
+                            ),
+                          for (final duration in leaveDurationLabels)
+                            _typeChip(
+                              context,
+                              code: duration.toLowerCase().startsWith('half')
+                                  ? 'HD'
+                                  : 'FD',
+                              name: duration,
+                              color: CalendarTypeStyle.leaveCategory,
+                            ),
+                        ],
                       ],
                     ),
                   ),

@@ -35,6 +35,8 @@ class AttendanceCalendarWidget extends StatelessWidget {
   });
 
   /// Premium status colors
+  static const Color halfDayColor = Color(0xFFEAB308); // yellow
+
   Color _statusColor(String status, ColorScheme scheme) {
     final normalized = status.trim().toLowerCase();
 
@@ -45,6 +47,11 @@ class AttendanceCalendarWidget extends StatelessWidget {
         return const Color(0xFF22C55E); // emerald
       case "late":
         return const Color(0xFFF59E0B); // amber
+      case "half-day":
+      case "half day":
+      case "1st half working":
+      case "2nd half working":
+        return halfDayColor;
       case "absent":
         return const Color(0xFFEF4444); // red
       case "holiday":
@@ -62,7 +69,19 @@ class AttendanceCalendarWidget extends StatelessWidget {
     }
   }
 
+  bool _isHalfDayStatus(String? status) {
+    final normalized = (status ?? '').trim().toLowerCase();
+    return normalized == 'half-day' ||
+        normalized == 'half day' ||
+        normalized == '1st half working' ||
+        normalized == '2nd half working';
+  }
+
   Color _cellColor(DateTime day, String? status, ColorScheme scheme) {
+    // Half-day must always use yellow — don't let leave-type colours override it.
+    if (_isHalfDayStatus(status)) {
+      return halfDayColor;
+    }
     return typeColorResolver?.call(day) ??
         (status != null ? _statusColor(status, scheme) : scheme.outlineVariant);
   }
@@ -471,6 +490,10 @@ class _StatusLegend extends StatelessWidget {
       children: [
         const _LegendItem(label: "Present", color: Color(0xFF22C55E)),
         const _LegendItem(label: "Late", color: Color(0xFFF59E0B)),
+        const _LegendItem(
+          label: "Half Day",
+          color: AttendanceCalendarWidget.halfDayColor,
+        ),
         const _LegendItem(label: "Absent", color: Color(0xFFEF4444)),
         const _LegendItem(label: "Leave", color: CalendarTypeStyle.leaveCategory),
         const _LegendItem(

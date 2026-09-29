@@ -7,12 +7,12 @@ class AttendanceLeaveDetail {
 
   const AttendanceLeaveDetail({this.part, required this.typeName});
 
-  /// "Casual Leave" or "Casual Leave (Half-Day AM)".
+  /// "Casual Leave (Full Day)" or "Casual Leave (Half-Day AM)".
   String get sheetLabel {
     final name = typeName.trim().isEmpty ? 'Leave' : typeName.trim();
     final p = (part ?? '').trim().toUpperCase();
     if (p == 'AM' || p == 'PM') return '$name (Half-Day $p)';
-    return name;
+    return '$name (Full Day)';
   }
 
   static List<AttendanceLeaveDetail> listFrom(dynamic raw) {
@@ -277,12 +277,44 @@ class AttendanceDayData {
     return labels;
   }
 
-  /// Compact calendar text: CL / SL / H — never the full type name.
+  /// Compact calendar text: CL, or "CL + EL" when both halves have leave.
   String? get calendarCellLabel {
     final holiday = holidayLabel;
     if (holiday != null) return CalendarTypeStyle.holidayCode(holiday);
+
+    final halfCodes = _orderedHalfDayLeaveCodes;
+    if (halfCodes.length >= 2) {
+      return halfCodes.join(' + ');
+    }
+
     if (leaveLabels.isEmpty) return null;
-    return leaveLabels.map(CalendarTypeStyle.leaveCode).join('/');
+    final codes = leaveLabels.map(CalendarTypeStyle.leaveCode).toList();
+    if (codes.length >= 2) return codes.join(' + ');
+    return codes.first;
+  }
+
+  /// AM first, then PM — so two half-day leaves read as "CL + EL".
+  List<String> get _orderedHalfDayLeaveCodes {
+    final halves = leaveDetails.where((d) {
+      final p = (d.part ?? '').trim().toUpperCase();
+      final name = d.typeName.trim();
+      return (p == 'AM' || p == 'PM') &&
+          name.isNotEmpty &&
+          !_isGenericCategory(name);
+    }).toList();
+
+    halves.sort((a, b) {
+      final ap = (a.part ?? '').trim().toUpperCase();
+      final bp = (b.part ?? '').trim().toUpperCase();
+      if (ap == bp) return 0;
+      if (ap == 'AM') return -1;
+      if (bp == 'AM') return 1;
+      return ap.compareTo(bp);
+    });
+
+    return [
+      for (final d in halves) CalendarTypeStyle.leaveCode(d.typeName),
+    ];
   }
 
   Color? get calendarCellColor {

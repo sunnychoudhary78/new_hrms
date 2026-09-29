@@ -11,9 +11,13 @@ class AttendanceStatusColor {
         return scheme.primary;
 
       case 'late':
+        return Colors.orange;
+
       case 'half-day':
       case 'half day':
-        return Colors.orange;
+      case '1st half working':
+      case '2nd half working':
+        return const Color(0xFFEAB308);
 
       case 'leave':
       case 'on-leave':
