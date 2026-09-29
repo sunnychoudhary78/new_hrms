@@ -95,7 +95,12 @@ class _LastFiveDaysAttendanceCardState
         )
         .reduce((a, b) => a > b ? a : b);
 
-    return ((maxMinutes / 60) * 1.2).ceilToDouble();
+    // Keep Y-axis ticks on the same 2h interval (avoid top labels like 17h).
+    const interval = 2.0;
+    final rawHours = (maxMinutes / 60) * 1.2;
+    final snapped =
+        (rawHours / interval).ceilToDouble() * interval;
+    return snapped < 8 ? 8 : snapped;
   }
 
   void _goPrevious() {
