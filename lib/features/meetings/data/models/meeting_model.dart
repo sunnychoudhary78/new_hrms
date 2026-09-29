@@ -104,6 +104,7 @@ class MeetingJoinInfo {
 
 class MeetingGuestInvite {
   final String inviteUrl;
+  final String? shortCode;
   final String? inviteToken;
   final String? role;
   final bool jwtRequired;
@@ -112,6 +113,7 @@ class MeetingGuestInvite {
 
   const MeetingGuestInvite({
     required this.inviteUrl,
+    this.shortCode,
     this.inviteToken,
     this.role,
     this.jwtRequired = true,
@@ -122,6 +124,7 @@ class MeetingGuestInvite {
   factory MeetingGuestInvite.fromJson(Map<String, dynamic> json) {
     return MeetingGuestInvite(
       inviteUrl: json['invite_url']?.toString() ?? '',
+      shortCode: json['short_code']?.toString(),
       inviteToken: json['invite_token']?.toString(),
       role: json['role']?.toString(),
       jwtRequired: json['jwt_required'] != false,
@@ -135,12 +138,51 @@ class MeetingsListResult {
   final List<Meeting> meetings;
   final bool canCreate;
   final bool canManage;
+  final bool transcription;
 
   const MeetingsListResult({
     required this.meetings,
     this.canCreate = false,
     this.canManage = false,
+    this.transcription = false,
   });
+}
+
+/// Lightweight summary attached to meeting list/detail when the user has
+/// `meeting.recording.view` (see FLUTTER_INTERNAL_MEETINGS_API.md §5.1).
+class MeetingRecordingSummary {
+  final int count;
+  final String? latestId;
+  final DateTime? latestRecordedAt;
+  final String? latestTranscriptStatus;
+
+  const MeetingRecordingSummary({
+    this.count = 0,
+    this.latestId,
+    this.latestRecordedAt,
+    this.latestTranscriptStatus,
+  });
+
+  factory MeetingRecordingSummary.fromJson(Map<String, dynamic> json) {
+    final latest = json['latest'];
+    String? latestId;
+    DateTime? latestRecordedAt;
+    String? latestTranscriptStatus;
+    if (latest is Map) {
+      latestId = latest['id']?.toString();
+      final rawAt = latest['recorded_at']?.toString();
+      if (rawAt != null && rawAt.isNotEmpty) {
+        latestRecordedAt = DateTime.tryParse(rawAt)?.toUtc();
+      }
+      latestTranscriptStatus = latest['transcript_status']?.toString();
+    }
+    return MeetingRecordingSummary(
+      count: int.tryParse(json['count']?.toString() ?? '') ?? 0,
+      latestId: latestId,
+      latestRecordedAt: latestRecordedAt,
+      latestTranscriptStatus: latestTranscriptStatus,
+    );
+  }
 }
 
 class Meeting {
@@ -162,6 +204,7 @@ class Meeting {
   final bool isActive;
   final MeetingUser? creator;
   final List<MeetingParticipant> participants;
+  final MeetingRecordingSummary? recordingSummary;
 
   const Meeting({
     required this.id,
@@ -182,6 +225,7 @@ class Meeting {
     this.isActive = true,
     this.creator,
     this.participants = const [],
+    this.recordingSummary,
   });
 
   bool get isRecurring => type == 'recurring';

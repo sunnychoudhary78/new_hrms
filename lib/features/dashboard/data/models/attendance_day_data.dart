@@ -245,7 +245,7 @@ class AttendanceDayData {
     return name;
   }
 
-  /// Leave type names for this day (Casual Leave, Sick Leave, half-day part).
+  /// Leave type names for this day (Casual Leave, Sick Leave).
   List<String> get leaveLabels {
     final labels = <String>[];
 
@@ -261,6 +261,19 @@ class AttendanceDayData {
     final type = leaveType?.trim() ?? '';
     if (type.isEmpty || _isGenericCategory(type)) return labels;
     labels.add(type);
+    return labels;
+  }
+
+  /// Half Day (AM/PM) or Full Day labels for the attendance day detail sheet.
+  List<String> get leaveDurationLabels {
+    if (leaveDetails.isEmpty) return const [];
+
+    final labels = <String>[];
+    for (final detail in leaveDetails) {
+      final p = (detail.part ?? '').trim().toUpperCase();
+      final label = (p == 'AM' || p == 'PM') ? 'Half Day ($p)' : 'Full Day';
+      if (!labels.contains(label)) labels.add(label);
+    }
     return labels;
   }
 

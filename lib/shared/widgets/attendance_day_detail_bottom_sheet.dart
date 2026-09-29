@@ -124,6 +124,8 @@ class _AttendanceDayDetailBottomSheetState
     final status = widget.data?.status ?? "No Data";
     final holidayLabel = widget.data?.holidayLabel;
     final leaveLabels = widget.data?.leaveLabels ?? const <String>[];
+    final leaveDurationLabels =
+        widget.data?.leaveDurationLabels ?? const <String>[];
 
     final hours = widget.data?.totalHours ?? 0;
 
@@ -198,6 +200,15 @@ class _AttendanceDayDetailBottomSheetState
                             code: CalendarTypeStyle.leaveCode(leave),
                             name: CalendarTypeStyle.displayName(leave),
                             color: CalendarTypeStyle.leaveColor(leave),
+                          ),
+                        for (final duration in leaveDurationLabels)
+                          _typeChip(
+                            context,
+                            code: duration.toLowerCase().startsWith('half')
+                                ? 'HD'
+                                : 'FD',
+                            name: duration,
+                            color: CalendarTypeStyle.leaveCategory,
                           ),
                       ],
                     ),
