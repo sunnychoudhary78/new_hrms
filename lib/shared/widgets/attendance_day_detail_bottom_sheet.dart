@@ -325,23 +325,21 @@ class _AttendanceDayDetailBottomSheetState
     required String name,
     required Color color,
   }) {
-    return Tooltip(
-      message: name,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: .12),
-          borderRadius: BorderRadius.circular(30),
-          border: Border.all(color: color.withValues(alpha: .35)),
-        ),
-        child: Text(
-          code,
-          style: TextStyle(
-            color: color,
-            fontWeight: FontWeight.w800,
-            fontSize: 13,
-            letterSpacing: 0.3,
-          ),
+    // Detail sheet shows the full leave/holiday name; calendar keeps short codes.
+    final label = name.trim().isEmpty ? code : name.trim();
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: .12),
+        borderRadius: BorderRadius.circular(30),
+        border: Border.all(color: color.withValues(alpha: .35)),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: color,
+          fontWeight: FontWeight.w700,
+          fontSize: 13,
         ),
       ),
     );
