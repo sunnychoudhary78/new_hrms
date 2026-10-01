@@ -138,22 +138,11 @@ class CalendarTypeStyle {
 
   static List<({String label, Color color})> uniqueLegend({
     required Iterable<String> leaveNames,
-    // Kept for call-site compatibility. Holidays use the shared "Holiday"
-    // legend item only — no TE/RB/… entries under the calendar.
+    // Leave and Holiday already have their own legend items.
+    // Do not add per-type codes (CL, EL, TE, RB, …).
     Iterable<String> holidayNames = const [],
   }) {
-    final seen = <String>{};
-    final items = <({String label, Color color})>[];
-
-    for (final name in leaveNames) {
-      final trimmed = name.trim();
-      if (trimmed.isEmpty) continue;
-      final code = leaveCode(trimmed);
-      if (!seen.add('L:$code')) continue;
-      items.add((label: code, color: leaveColor(trimmed)));
-    }
-
-    return items;
+    return const [];
   }
 
   static Color? typeColor({String? leaveName, String? holidayName}) {

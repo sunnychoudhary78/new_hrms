@@ -45,12 +45,6 @@ class _EmployeeAttendanceCalendarScreenState
     _focusedDay = DateTime(initial.year, initial.month);
   }
 
-  bool _isFutureMonth(DateTime day) {
-    final now = DateTime.now();
-    return day.year > now.year ||
-        (day.year == now.year && day.month > now.month);
-  }
-
   ////////////////////////////////////////////////////////////////
 
   @override
@@ -148,15 +142,6 @@ class _EmployeeAttendanceCalendarScreenState
                     final key = DateFormat('yyyy-MM-dd').format(day);
                     return attendanceMap[key]?.calendarCellColor;
                   },
-                  typeLegend: CalendarTypeStyle.uniqueLegend(
-                    leaveNames: [
-                      for (final day in attendanceMap.values) ...day.leaveLabels,
-                    ],
-                    holidayNames: [
-                      for (final day in attendanceMap.values)
-                        if (day.holidayLabel != null) day.holidayLabel!,
-                    ],
-                  ),
 
                   onDaySelected: (selectedDay, focusedDay) {
                     setState(() {
@@ -179,8 +164,6 @@ class _EmployeeAttendanceCalendarScreenState
                       focusedDay.year,
                       focusedDay.month,
                     );
-
-                    if (_isFutureMonth(normalized)) return;
 
                     if (_focusedDay.year == normalized.year &&
                         _focusedDay.month == normalized.month) {

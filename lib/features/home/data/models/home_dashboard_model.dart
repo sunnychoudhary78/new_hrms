@@ -141,7 +141,7 @@ class AttendanceDistribution {
     required this.late,
   });
 
-  double get total => worked + leave + absent + late;
+  double get total => worked + leave + absent;
 
   double percent(double value) {
     if (total == 0) return 0;

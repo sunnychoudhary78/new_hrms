@@ -18,7 +18,6 @@ class AttendanceCalendarWidget extends StatelessWidget {
   final AttendanceColorResolver? typeColorResolver;
   final AttendanceBoolResolver? hasSelfie;
   final AttendanceBoolResolver? hasLocation;
-  final List<({String label, Color color})> typeLegend;
 
   const AttendanceCalendarWidget({
     super.key,
@@ -31,7 +30,6 @@ class AttendanceCalendarWidget extends StatelessWidget {
     this.onPageChanged,
     this.hasSelfie,
     this.hasLocation,
-    this.typeLegend = const [],
   });
 
   /// Premium status colors
@@ -77,10 +75,18 @@ class AttendanceCalendarWidget extends StatelessWidget {
         normalized == '2nd half working';
   }
 
+  bool _isHolidayStatus(String? status) {
+    return (status ?? '').trim().toLowerCase() == 'holiday';
+  }
+
   Color _cellColor(DateTime day, String? status, ColorScheme scheme) {
     // Half-day must always use yellow — don't let leave-type colours override it.
     if (_isHalfDayStatus(status)) {
       return halfDayColor;
+    }
+    // Holidays always use the single designated holiday colour.
+    if (_isHolidayStatus(status)) {
+      return CalendarTypeStyle.holidayCategory;
     }
     return typeColorResolver?.call(day) ??
         (status != null ? _statusColor(status, scheme) : scheme.outlineVariant);
@@ -111,7 +117,8 @@ class AttendanceCalendarWidget extends StatelessWidget {
         children: [
           TableCalendar(
         firstDay: DateTime(2020),
-        lastDay: DateTime.now(), // prevents future navigation
+        // Allow the next year so upcoming leave (e.g. 1 Oct) can be opened.
+        lastDay: DateTime(DateTime.now().year + 1, 12, 31),
         focusedDay: DateTime(focusedDay.year, focusedDay.month, 1),
         rowHeight: 54,
         selectedDayPredicate: (day) => isSameDay(day, selectedDay),
@@ -227,7 +234,7 @@ class AttendanceCalendarWidget extends StatelessWidget {
         ),
           ),
           const SizedBox(height: 10),
-          _StatusLegend(typeLegend: typeLegend),
+          const _StatusLegend(),
         ],
       ),
     );
@@ -477,9 +484,7 @@ class _SelectedDayCell extends StatelessWidget {
 }
 
 class _StatusLegend extends StatelessWidget {
-  final List<({String label, Color color})> typeLegend;
-
-  const _StatusLegend({this.typeLegend = const []});
+  const _StatusLegend();
 
   @override
   Widget build(BuildContext context) {
@@ -501,8 +506,6 @@ class _StatusLegend extends StatelessWidget {
           color: CalendarTypeStyle.holidayCategory,
         ),
         const _LegendItem(label: "Week Off", color: Color(0xFF8B5CF6)),
-        for (final item in typeLegend)
-          _LegendItem(label: item.label, color: item.color),
       ],
     );
   }

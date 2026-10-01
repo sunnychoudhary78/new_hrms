@@ -90,11 +90,6 @@ class _AttendancePieChart extends StatelessWidget {
         color: AttendanceColors.absent,
         total: total,
       ),
-      _section(
-        value: distribution.late,
-        color: AttendanceColors.late,
-        total: total,
-      ),
     ].whereType<PieChartSectionData>().toList();
 
     if (sections.isEmpty) {
@@ -151,7 +146,7 @@ class _PieLegend extends StatelessWidget {
       children: [
         _LegendItem(
           color: AttendanceColors.worked,
-          label: 'Worked',
+          label: 'Working Days',
           value: distribution.worked,
         ),
         const SizedBox(height: 10),
@@ -166,12 +161,14 @@ class _PieLegend extends StatelessWidget {
           label: 'Absent',
           value: distribution.absent,
         ),
-        const SizedBox(height: 10),
-        _LegendItem(
-          color: AttendanceColors.late,
-          label: 'Late',
-          value: distribution.late,
-        ),
+        if (distribution.late > 0) ...[
+          const SizedBox(height: 10),
+          _LegendItem(
+            color: AttendanceColors.late,
+            label: 'Late',
+            value: distribution.late,
+          ),
+        ],
         const SizedBox(height: 12),
         Text(
           "Tracked: ${distribution.total.toStringAsFixed(0)} days",
@@ -193,6 +190,13 @@ class _LegendItem extends StatelessWidget {
     required this.value,
   });
 
+  String _formatCount(double value) {
+    if (value == value.roundToDouble()) {
+      return value.toStringAsFixed(0);
+    }
+    return value.toStringAsFixed(1);
+  }
+
   @override
   Widget build(BuildContext context) {
     if (value <= 0) return const SizedBox.shrink();
@@ -207,7 +211,7 @@ class _LegendItem extends StatelessWidget {
         ),
         const SizedBox(width: 6),
         Text(
-          "$label (${value.toStringAsFixed(0)})",
+          "$label (${_formatCount(value)})",
           style: const TextStyle(fontSize: 12),
         ),
       ],

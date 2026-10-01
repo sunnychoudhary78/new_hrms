@@ -74,8 +74,6 @@ class HomeDashboardRepository {
       year: now.year,
     );
 
-    final datesWithCheckIn = _datesWithCheckIn(monthSessions);
-
     final AttendanceSummary summary = res.summary;
 
     print(
@@ -89,48 +87,19 @@ class HomeDashboardRepository {
       expectedMinutes: summary.expectedWorkingHours * 60,
     );
 
-    // 4️⃣ QUICK STATS (absent aligned with pie once computed below)
-
-    // 5️⃣ DISTRIBUTION (exclusive buckets for elapsed month days)
-    final today = DateTime(now.year, now.month, now.day);
-    int presentLikeDays = 0;
-    int leaveDays = 0;
-    int trackedWorkingDays = 0;
-
-    for (final day in res.days) {
-      final date = DateTime(day.date.year, day.date.month, day.date.day);
-      if (date.isAfter(today)) continue;
-      if (date.weekday == DateTime.sunday) continue;
-
-      if (_isNonWorkingStatus(day.status)) continue;
-      trackedWorkingDays++;
-
-      if (_isLeaveStatus(day.status)) {
-        leaveDays++;
-      } else if (_effectivePresentLike(day.status, date, datesWithCheckIn)) {
-        presentLikeDays++;
-      }
-    }
-
-    // Late is a subset of present-like; keep pie slices mutually exclusive.
-    final lateDays = summary.lateDays.clamp(0, presentLikeDays);
-    final workedDays = (presentLikeDays - lateDays).clamp(0, presentLikeDays);
-    final absentDays = (trackedWorkingDays - presentLikeDays - leaveDays).clamp(
-      0,
-      trackedWorkingDays,
-    );
-
+    // Same buckets as the web attendance summary (API values, not a local recount).
+    // Late days are already included in workingDays, so they are not a pie slice.
     final distribution = AttendanceDistribution(
-      worked: workedDays.toDouble(),
-      leave: leaveDays.toDouble(),
-      absent: absentDays.toDouble(),
-      late: lateDays.toDouble(),
+      worked: summary.workingDays.toDouble(),
+      leave: summary.totalLeaves.toDouble(),
+      absent: summary.absentDays.toDouble(),
+      late: summary.lateDays.toDouble(),
     );
 
     final stats = HomeStats(
       payableDays: summary.payableDays.toDouble(),
       lateDays: summary.lateDays,
-      absentDays: distribution.absent.round(),
+      absentDays: summary.absentDays.round(),
       totalLeaves: summary.totalLeaves,
     );
 
@@ -173,59 +142,6 @@ class HomeDashboardRepository {
       todayStatus: todayStatus,
       lastFiveDays: lastFiveDays,
     );
-  }
-
-  bool _isNonWorkingStatus(String rawStatus) {
-    final status = rawStatus.trim().toLowerCase();
-    return status.contains('week off') ||
-        status.contains('weekoff') ||
-        status.contains('week-off') ||
-        status.contains('holiday');
-  }
-
-  bool _isLeaveStatus(String rawStatus) {
-    final status = rawStatus.trim().toLowerCase();
-    return status.contains('leave');
-  }
-
-  bool _isPresentLikeStatus(String rawStatus) {
-    final status = rawStatus.trim().toLowerCase();
-    return status.contains('present') ||
-        status.contains('on-time') ||
-        status.contains('ontime') ||
-        status.contains('late');
-  }
-
-  String _calendarDateKey(DateTime d) =>
-      '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
-
-  Set<String> _datesWithCheckIn(List<AttendanceSession> sessions) {
-    final set = <String>{};
-    for (final s in sessions) {
-      final d = DateTime(
-        s.checkInTime.year,
-        s.checkInTime.month,
-        s.checkInTime.day,
-      );
-      set.add(_calendarDateKey(d));
-    }
-    return set;
-  }
-
-  /// Counts as present when summary says so, or when session data proves check-in
-  /// even if the summary row is still "absent" before checkout.
-  bool _effectivePresentLike(
-    String dayStatus,
-    DateTime dayDate,
-    Set<String> datesWithCheckIn,
-  ) {
-    final key = _calendarDateKey(dayDate);
-    if (datesWithCheckIn.contains(key)) {
-      if (_isNonWorkingStatus(dayStatus)) return false;
-      if (_isLeaveStatus(dayStatus)) return false;
-      return true;
-    }
-    return _isPresentLikeStatus(dayStatus);
   }
 
   // ─────────────────────────────────────────────
