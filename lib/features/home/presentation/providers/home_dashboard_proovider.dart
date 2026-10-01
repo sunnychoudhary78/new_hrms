@@ -145,4 +145,25 @@ class HomeDashboardNotifier extends AsyncNotifier<HomeDashboardModel> {
       rethrow;
     }
   }
+
+  /// Loads a previous (or later, up to this month) attendance month
+  /// into the overview chart and the monthly summary. Punch status stays.
+  Future<void> selectAttendanceMonth(DateTime month) async {
+    final current = state.value;
+    if (current == null || current.userName.isEmpty) return;
+
+    final target = DateTime(month.year, month.month);
+    final now = DateTime.now();
+    final thisMonth = DateTime(now.year, now.month);
+    if (target.isAfter(thisMonth)) return;
+    if (target.year < 2020) return;
+    if (target.year == current.attendanceMonth.year &&
+        target.month == current.attendanceMonth.month) {
+      return;
+    }
+
+    final repo = ref.read(homeDashboardRepositoryProvider);
+    final updated = await repo.loadAttendanceMonth(current, target);
+    state = AsyncData(updated);
+  }
 }

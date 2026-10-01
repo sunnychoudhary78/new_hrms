@@ -15,6 +15,7 @@ class HomeDashboardModel {
   final AttendanceDistribution distribution;
   final TodayAttendanceStatus todayStatus;
   final List<WeeklyAttendanceBar> lastFiveDays;
+  final DateTime attendanceMonth;
 
   const HomeDashboardModel({
     required this.userName,
@@ -25,7 +26,28 @@ class HomeDashboardModel {
     required this.distribution,
     required this.todayStatus,
     required this.lastFiveDays,
+    required this.attendanceMonth,
   });
+
+  HomeDashboardModel copyWith({
+    AttendanceOverview? attendance,
+    HomeStats? stats,
+    AttendanceDistribution? distribution,
+    List<WeeklyAttendanceBar>? lastFiveDays,
+    DateTime? attendanceMonth,
+  }) {
+    return HomeDashboardModel(
+      userName: userName,
+      designation: designation,
+      profileImageUrl: profileImageUrl,
+      attendance: attendance ?? this.attendance,
+      stats: stats ?? this.stats,
+      distribution: distribution ?? this.distribution,
+      todayStatus: todayStatus,
+      lastFiveDays: lastFiveDays ?? this.lastFiveDays,
+      attendanceMonth: attendanceMonth ?? this.attendanceMonth,
+    );
+  }
 
   factory HomeDashboardModel.empty() {
     return HomeDashboardModel(
@@ -50,6 +72,7 @@ class HomeDashboardModel {
       ),
       todayStatus: const TodayAttendanceStatus(isCheckedIn: false),
       lastFiveDays: const [],
+      attendanceMonth: DateTime(DateTime.now().year, DateTime.now().month),
     );
   }
 }

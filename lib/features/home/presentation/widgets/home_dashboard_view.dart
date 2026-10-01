@@ -18,6 +18,16 @@ class HomeDashboardView extends ConsumerStatefulWidget {
 }
 
 class _HomeDashboardViewState extends ConsumerState<HomeDashboardView> {
+  bool _canGoToPreviousMonth(DateTime month) {
+    return DateTime(month.year, month.month).isAfter(DateTime(2020));
+  }
+
+  bool _canGoToNextMonth(DateTime month) {
+    final now = DateTime.now();
+    final selected = DateTime(month.year, month.month);
+    final current = DateTime(now.year, now.month);
+    return selected.isBefore(current);
+  }
   @override
   void initState() {
     super.initState();
@@ -69,7 +79,30 @@ class _HomeDashboardViewState extends ConsumerState<HomeDashboardView> {
               ),
               const SizedBox(height: 16),
 
-              LastFiveDaysAttendanceCard(days: dashboard.lastFiveDays),
+              LastFiveDaysAttendanceCard(
+                days: dashboard.lastFiveDays,
+                month: dashboard.attendanceMonth,
+                canGoToPreviousMonth: _canGoToPreviousMonth(
+                  dashboard.attendanceMonth,
+                ),
+                canGoToNextMonth: _canGoToNextMonth(dashboard.attendanceMonth),
+                onPreviousMonth: () {
+                  final month = dashboard.attendanceMonth;
+                  ref
+                      .read(homeDashboardProvider.notifier)
+                      .selectAttendanceMonth(
+                        DateTime(month.year, month.month - 1),
+                      );
+                },
+                onNextMonth: () {
+                  final month = dashboard.attendanceMonth;
+                  ref
+                      .read(homeDashboardProvider.notifier)
+                      .selectAttendanceMonth(
+                        DateTime(month.year, month.month + 1),
+                      );
+                },
+              ),
               const SizedBox(height: 16),
 
               AttendanceOverviewCard(dashboard: dashboard),

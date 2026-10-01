@@ -23,7 +23,45 @@ class HomeDashboardRepository {
   // ─────────────────────────────────────────────
   // LOAD HOME DASHBOARD DATA
   // ─────────────────────────────────────────────
-  Future<HomeDashboardModel> loadDashboard() async {
+  Future<HomeDashboardModel> loadDashboard({DateTime? month}) async {
+    final profile = await _loadProfile();
+    final todayStatus = await _loadTodayAttendance();
+    final target = month ?? DateTime.now();
+    final attendanceMonth = DateTime(target.year, target.month);
+
+    final attendance = await _loadMonthAttendance(attendanceMonth);
+
+    return HomeDashboardModel(
+      userName: profile.userName,
+      designation: profile.designation,
+      profileImageUrl: profile.profileImageUrl,
+      attendance: attendance.overview,
+      stats: attendance.stats,
+      distribution: attendance.distribution,
+      todayStatus: todayStatus,
+      lastFiveDays: attendance.bars,
+      attendanceMonth: attendanceMonth,
+    );
+  }
+
+  /// Reloads only the month charts. Profile and today's punch stay as they are.
+  Future<HomeDashboardModel> loadAttendanceMonth(
+    HomeDashboardModel current,
+    DateTime month,
+  ) async {
+    final attendanceMonth = DateTime(month.year, month.month);
+    final attendance = await _loadMonthAttendance(attendanceMonth);
+    return current.copyWith(
+      attendance: attendance.overview,
+      stats: attendance.stats,
+      distribution: attendance.distribution,
+      lastFiveDays: attendance.bars,
+      attendanceMonth: attendanceMonth,
+    );
+  }
+
+  Future<({String userName, String designation, String? profileImageUrl})>
+  _loadProfile() async {
     // 1️⃣ PROFILE
     final profileJson = await authApi.fetchProfile();
 
@@ -61,34 +99,40 @@ class HomeDashboardRepository {
     print("DesignationFinal: $designation");
     print("ProfileImageUrl: $profileImageUrl");
 
-    // 2️⃣ ATTENDANCE SUMMARY (MONTH)
-    final now = DateTime.now();
+    return (
+      userName: userName,
+      designation: designation,
+      profileImageUrl: profileImageUrl,
+    );
+  }
 
+  Future<
+    ({
+      AttendanceOverview overview,
+      AttendanceDistribution distribution,
+      HomeStats stats,
+      List<WeeklyAttendanceBar> bars,
+    })
+  >
+  _loadMonthAttendance(DateTime month) async {
     final res = await attendanceRepo.fetchAttendance(
-      month: now.month,
-      year: now.year,
+      month: month.month,
+      year: month.year,
     );
 
     final monthSessions = await attendanceRepo.fetchMonthSessions(
-      month: now.month,
-      year: now.year,
+      month: month.month,
+      year: month.year,
     );
 
     final AttendanceSummary summary = res.summary;
 
-    print(
-      '📦 Summary → workedMin=${summary.totalMinutes} '
-      'expectedHrs=${summary.expectedWorkingHours}',
-    );
-
-    // 3️⃣ ATTENDANCE OVERVIEW
-    final attendanceOverview = AttendanceOverview(
+    final overview = AttendanceOverview(
       workedMinutes: summary.totalMinutes,
       expectedMinutes: summary.expectedWorkingHours * 60,
     );
 
     // Same buckets as the web attendance summary (API values, not a local recount).
-    // Late days are already included in workingDays, so they are not a pie slice.
     final distribution = AttendanceDistribution(
       worked: summary.workingDays.toDouble(),
       leave: summary.totalLeaves.toDouble(),
@@ -103,45 +147,44 @@ class HomeDashboardRepository {
       totalLeaves: summary.totalLeaves,
     );
 
-    // 6️⃣ TODAY STATUS
-    final todayStatus = await _loadTodayAttendance();
-
-    // 7️⃣ MONTH WORKING DAYS BARS
     final companySettings = await companySettingsRepo.fetchCompanySettings();
     final expectedMinutesPerDay = expectedMinutesFromOfficeHours(
       companySettings.officeStart,
       companySettings.officeEnd,
     );
-    if (expectedMinutesPerDay <= 0) {
-      print(
-        '📊 Using summary expected hours fallback for bar chart',
-      );
-    }
     final effectiveExpectedPerDay = expectedMinutesPerDay > 0
         ? expectedMinutesPerDay
-        : summary.expectedWorkingHours * 60;
+        : (summary.expectedWorkingHours <= 0
+              ? 0
+              : (summary.expectedWorkingHours * 60 /
+                        _workingDayCount(month, res.days))
+                    .round());
 
-    print(
-      '📊 Loading month working days bars (expected=$effectiveExpectedPerDay min)',
-    );
-
-    final lastFiveDays = _loadLastFiveDaysBars(
+    final bars = _loadLastFiveDaysBars(
+      month,
       effectiveExpectedPerDay,
       companySettings.autoCloseBufferMinutes,
       monthSessions,
       res.days,
     );
 
-    return HomeDashboardModel(
-      userName: userName,
-      designation: designation,
-      profileImageUrl: profileImageUrl,
-      attendance: attendanceOverview,
-      stats: stats,
+    return (
+      overview: overview,
       distribution: distribution,
-      todayStatus: todayStatus,
-      lastFiveDays: lastFiveDays,
+      stats: stats,
+      bars: bars,
     );
+  }
+
+  /// Days in [month] that the backend treats as working days, for the
+  /// per-day expected baseline when office hours are missing.
+  int _workingDayCount(DateTime month, List<AttendanceAggregate> days) {
+    final count = days.where((d) {
+      final status = d.status.toLowerCase();
+      return !status.contains('week') && !status.contains('holiday');
+    }).length;
+    if (count > 0) return count;
+    return _allWorkingDaysOfMonth(month).length;
   }
 
   // ─────────────────────────────────────────────
@@ -185,14 +228,11 @@ class HomeDashboardRepository {
   // ─────────────────────────────────────────────
   // ALL WORKING DAYS OF CURRENT MONTH (SKIP SUNDAY)
   // ─────────────────────────────────────────────
-  List<DateTime> _allWorkingDaysOfMonth() {
-    final now = DateTime.now();
-
-    final firstDay = DateTime(now.year, now.month, 1);
-    final lastDay = DateTime(now.year, now.month + 1, 0);
+  List<DateTime> _allWorkingDaysOfMonth(DateTime month) {
+    final firstDay = DateTime(month.year, month.month, 1);
+    final lastDay = DateTime(month.year, month.month + 1, 0);
 
     final days = <DateTime>[];
-
     var cursor = firstDay;
 
     while (!cursor.isAfter(lastDay)) {
@@ -202,41 +242,36 @@ class HomeDashboardRepository {
       cursor = cursor.add(const Duration(days: 1));
     }
 
-    print(
-      '📅 All working days → '
-      '${days.map((d) => d.toIso8601String().split("T").first).join(", ")}',
-    );
-
     return days;
   }
 
-  // ─────────────────────────────────────────────
-  // BUILD BARS FOR MONTH WORKING DAYS
-  // ─────────────────────────────────────────────
   List<WeeklyAttendanceBar> _loadLastFiveDaysBars(
+    DateTime month,
     int expectedMinsPerDay,
     int autoCloseBufferMinutes,
     List<AttendanceSession> sessions,
     List<AttendanceAggregate> summaryDays,
   ) {
-    print('📦 Sessions fetched = ${sessions.length}');
-
     final statusByDate = <String, String>{};
+    final workedByDate = <String, int>{};
     for (final day in summaryDays) {
-      statusByDate[dateKeyFromDateTime(day.date)] = day.status;
+      final key = dateKeyFromDateTime(day.date);
+      statusByDate[key] = day.status;
+      if (day.fullWorked > 0) {
+        workedByDate[key] = day.fullWorked;
+      }
     }
 
     final sessionsByDate = groupSessionsByDate(sessions);
+    final workingDays = _allWorkingDaysOfMonth(month);
 
-    final workingDays = _allWorkingDaysOfMonth();
-
-    final bars = workingDays.map((day) {
+    return workingDays.map((day) {
       final key = dateKeyFromDateTime(day);
-      final dayStatus = statusByDate[key] ?? 'present';
+      final dayStatus = statusByDate[key] ?? '';
       final daySessions = sessionsByDate[key] ?? [];
 
       final expectedForDate = expectedMinutesForDate(
-        dayStatus: dayStatus,
+        dayStatus: dayStatus.isEmpty ? 'present' : dayStatus,
         expectedMinsPerDay: expectedMinsPerDay,
       );
 
@@ -247,17 +282,20 @@ class HomeDashboardRepository {
         autoCloseBufferMinutes: autoCloseBufferMinutes,
       );
 
+      // Prefer backend worked minutes (fullWorked / totalMinutes) when present.
+      final backendWorked = workedByDate[key];
+      final workedMinutes = backendWorked ?? result.workedMinutes;
+
       return WeeklyAttendanceBar(
         date: day,
-        workedMinutes: result.workedMinutes,
+        workedMinutes: workedMinutes,
         expectedMinutes: result.expectedMinutes,
-        estimatedOtMinutes: result.estimatedOtMinutes,
+        estimatedOtMinutes: (workedMinutes - result.expectedMinutes).clamp(
+          0,
+          workedMinutes,
+        ),
         isCapped: result.isAutoCloseCapped,
       );
     }).toList();
-
-    print(' Final bars count → ${bars.length}');
-
-    return bars;
   }
 }

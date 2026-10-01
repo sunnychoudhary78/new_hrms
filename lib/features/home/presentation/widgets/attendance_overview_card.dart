@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:intl/intl.dart';
 import 'package:lms/features/home/data/models/home_dashboard_model.dart';
 
 class AttendanceColors {
@@ -35,6 +36,15 @@ class AttendanceOverviewCard extends StatelessWidget {
             const Text(
               'Attendance Monthly Overview',
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              DateFormat('MMMM yyyy').format(dashboard.attendanceMonth),
+              style: TextStyle(
+                fontSize: 13,
+                color: scheme.onSurfaceVariant,
+                fontWeight: FontWeight.w500,
+              ),
             ),
             const SizedBox(height: 16),
             SizedBox(

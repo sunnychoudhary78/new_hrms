@@ -13,8 +13,21 @@ class AttendanceColors {
 
 class LastFiveDaysAttendanceCard extends StatefulWidget {
   final List<WeeklyAttendanceBar> days;
+  final bool canGoToPreviousMonth;
+  final bool canGoToNextMonth;
+  final VoidCallback? onPreviousMonth;
+  final VoidCallback? onNextMonth;
+  final DateTime month;
 
-  const LastFiveDaysAttendanceCard({super.key, required this.days});
+  const LastFiveDaysAttendanceCard({
+    super.key,
+    required this.days,
+    required this.month,
+    this.canGoToPreviousMonth = false,
+    this.canGoToNextMonth = false,
+    this.onPreviousMonth,
+    this.onNextMonth,
+  });
 
   @override
   State<LastFiveDaysAttendanceCard> createState() =>
@@ -104,7 +117,10 @@ class _LastFiveDaysAttendanceCardState
   }
 
   void _goPrevious() {
-    if (startIndex == 0) return;
+    if (startIndex == 0) {
+      widget.onPreviousMonth?.call();
+      return;
+    }
 
     setState(() {
       startIndex = (startIndex - visibleDays).clamp(0, widget.days.length);
@@ -113,7 +129,10 @@ class _LastFiveDaysAttendanceCardState
   }
 
   void _goNext() {
-    if (startIndex + visibleDays >= widget.days.length) return;
+    if (startIndex + visibleDays >= widget.days.length) {
+      widget.onNextMonth?.call();
+      return;
+    }
 
     setState(() {
       startIndex = (startIndex + visibleDays).clamp(0, widget.days.length);
@@ -122,14 +141,11 @@ class _LastFiveDaysAttendanceCardState
   }
 
   String get currentMonthText {
-    if (visibleList.isEmpty) return "";
-    return DateFormat('MMMM yyyy').format(visibleList.last.date);
+    return DateFormat('MMMM yyyy').format(widget.month);
   }
 
   @override
   Widget build(BuildContext context) {
-    if (widget.days.isEmpty) return const SizedBox();
-
     final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
     final scheme = Theme.of(context).colorScheme;
 
@@ -174,7 +190,10 @@ class _LastFiveDaysAttendanceCardState
                     children: [
                       IconButton(
                         icon: const Icon(Icons.chevron_left),
-                        onPressed: startIndex == 0 ? null : _goPrevious,
+                        onPressed: startIndex == 0 &&
+                                !widget.canGoToPreviousMonth
+                            ? null
+                            : _goPrevious,
                         visualDensity: VisualDensity.compact,
                         style: IconButton.styleFrom(
                           splashFactory: isIOS
@@ -185,8 +204,9 @@ class _LastFiveDaysAttendanceCardState
 
                       IconButton(
                         icon: const Icon(Icons.chevron_right),
-                        onPressed:
-                            startIndex + visibleDays >= widget.days.length
+                        onPressed: startIndex + visibleDays >=
+                                    widget.days.length &&
+                                !widget.canGoToNextMonth
                             ? null
                             : _goNext,
                         visualDensity: VisualDensity.compact,
