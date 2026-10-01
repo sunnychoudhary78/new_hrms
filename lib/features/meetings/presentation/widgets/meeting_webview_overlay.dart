@@ -38,7 +38,16 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
   bool _frameBusy = false;
   bool _leaving = false;
   bool _seenInCall = false;
+  bool _cookiesReady = false;
+  int _exitReloads = 0;
+  DateTime? _joinedAt;
   StreamSubscription<dynamic>? _shareFrames;
+
+  /// Chrome mobile, without the WebView `wv` token. Jitsi treats `wv` as an
+  /// embedded browser and redirects to static/close before config.js runs.
+  static const _androidMeetUserAgent =
+      'Mozilla/5.0 (Linux; Android 13; Mobile) AppleWebKit/537.36 '
+      '(KHTML, like Gecko) Chrome/122.0.0.0 Mobile Safari/537.36';
 
   static const _shareChannel = MethodChannel('hrms/screen_share');
 
@@ -102,6 +111,9 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
   Future<void> _ensureController(String url) async {
     _leaving = false;
     if (_controller != null && _loadedUrl == url) return;
+    _seenInCall = false;
+    _joinedAt = null;
+    _exitReloads = 0;
 
     if (_controller != null) {
       await _controller!.loadRequest(Uri.parse(url));
@@ -138,6 +150,7 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
         onMessageReceived: (message) {
           if (message.message == 'joined') {
             _seenInCall = true;
+            _joinedAt ??= DateTime.now();
           } else if (message.message == 'left') {
             _leaveMeeting();
           }
@@ -145,7 +158,11 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
       )
       ..setNavigationDelegate(
         NavigationDelegate(
+          onPageStarted: (_) {
+            _allowMeetCookies();
+          },
           onPageFinished: (_) {
+            _allowMeetCookies();
             _injectKeepAlive();
             _injectJitsiUiFixes();
             _injectDisplayName();
@@ -154,17 +171,14 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
             _injectLeaveHook();
           },
           onNavigationRequest: (request) {
-            if (_shouldExitOnUrl(request.url)) {
-              _leaveMeeting();
+            if (_handleExitNavigation(request.url)) {
               return NavigationDecision.prevent;
             }
             return NavigationDecision.navigate;
           },
           onUrlChange: (change) {
             final url = change.url;
-            if (url != null && _shouldExitOnUrl(url)) {
-              _leaveMeeting();
-            }
+            if (url != null) _handleExitNavigation(url);
           },
           onWebResourceError: (error) {
             debugPrint('Meeting WebView error: ${error.description}');
@@ -196,6 +210,9 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
       });
     }
 
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      await controller.setUserAgent(_androidMeetUserAgent);
+    }
     await controller.loadRequest(Uri.parse(url));
     if (!mounted) return;
     setState(() {
@@ -218,14 +235,23 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
     if (mounted) setState(() => _customView = null);
   }
 
-  bool _shouldExitOnUrl(String url) {
-    final lower = url.toLowerCase();
-    if (lower.contains('static/close') ||
-        lower.contains('close.html') ||
-        lower.contains('close2.html') ||
-        lower.contains('static/welcome')) {
+  bool _isJitsiExitUrl(String url) {
+    final uri = Uri.tryParse(url);
+    final scheme = (uri?.scheme ?? '').toLowerCase();
+    if (scheme == 'intent' ||
+        scheme == 'jitsi-meet' ||
+        scheme == 'org.jitsi.meet') {
       return true;
     }
+    final path = (uri?.path ?? url).toLowerCase();
+    return path.contains('static/close') ||
+        path.contains('close.html') ||
+        path.contains('close2.html') ||
+        path.contains('close3.html') ||
+        path.contains('static/welcome');
+  }
+
+  bool _roomWasCleared(String url) {
     if (!_seenInCall) return false;
     final joinUri = Uri.tryParse(_loadedUrl ?? '');
     final now = Uri.tryParse(url);
@@ -236,6 +262,55 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
     final nowRoom =
         now.pathSegments.where((segment) => segment.isNotEmpty).toList();
     return joinRoom.isNotEmpty && nowRoom.isEmpty;
+  }
+
+  bool _inJoinGrace() {
+    final joinedAt = _joinedAt;
+    if (joinedAt == null) return true;
+    return DateTime.now().difference(joinedAt) < const Duration(seconds: 8);
+  }
+
+  /// Returns true when the navigation must be cancelled.
+  ///
+  /// The lobby affiliation fix on the Meet server can bounce a WebView
+  /// through the close page while the participant is still being admitted.
+  /// Reload the fresh join URL during that window instead of ending the call.
+  bool _handleExitNavigation(String url) {
+    final exit = _isJitsiExitUrl(url) || _roomWasCleared(url);
+    if (!exit) return false;
+    if (_seenInCall && !_inJoinGrace()) {
+      _leaveMeeting();
+      return true;
+    }
+    _reloadJoinUrl();
+    return true;
+  }
+
+  void _reloadJoinUrl() {
+    if (_exitReloads >= 2 || _leaving) return;
+    final join = _loadedUrl;
+    final controller = _controller;
+    if (join == null || join.isEmpty || controller == null) return;
+    _exitReloads++;
+    Future<void>.delayed(const Duration(milliseconds: 250), () {
+      if (!mounted || _leaving) return;
+      controller.loadRequest(Uri.parse(join));
+    });
+  }
+
+  Future<void> _allowMeetCookies() async {
+    if (_cookiesReady) return;
+    final platform = _controller?.platform;
+    if (platform is! AndroidWebViewController) return;
+    try {
+      final cookies = AndroidWebViewCookieManager(
+        const PlatformWebViewCookieManagerCreationParams(),
+      );
+      await cookies.setAcceptThirdPartyCookies(platform, true);
+      _cookiesReady = true;
+    } catch (e) {
+      debugPrint('Meeting cookies: $e');
+    }
   }
 
   void _leaveMeeting() {
@@ -252,6 +327,9 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
       _loadedUrl = null;
       _confirmingLeave = false;
       _seenInCall = false;
+      _joinedAt = null;
+      _exitReloads = 0;
+      _cookiesReady = false;
     });
   }
 
@@ -1046,20 +1124,46 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
   }
 
   function notifyLeft() {
-    if (window.__hrmsLeftSent) return;
+    if (window.__hrmsLeftSent || !window.__hrmsJoinedSent) return;
     window.__hrmsLeftSent = true;
+    if (window.__hrmsLeftTimer) {
+      clearTimeout(window.__hrmsLeftTimer);
+      window.__hrmsLeftTimer = null;
+    }
     hideMeetingUi();
     try { if (window.HrmsMeeting) HrmsMeeting.postMessage('left'); } catch (e) {}
   }
 
-  function notifyJoined() {
-    if (window.__hrmsJoinedSent) return;
+  function stillInCall() {
     try {
-      if (window.APP && APP.conference && typeof APP.conference.isJoined === 'function' && APP.conference.isJoined()) {
-        window.__hrmsJoinedSent = true;
-        if (window.HrmsMeeting) HrmsMeeting.postMessage('joined');
-      }
-    } catch (e) {}
+      return !!(window.APP && APP.conference && typeof APP.conference.isJoined === 'function' && APP.conference.isJoined());
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function notifyJoined() {
+    if (!stillInCall()) return;
+    window.__hrmsJoinedSent = true;
+    if (window.__hrmsLeftTimer) {
+      clearTimeout(window.__hrmsLeftTimer);
+      window.__hrmsLeftTimer = null;
+    }
+    if (window.__hrmsJoinedPosted) return;
+    window.__hrmsJoinedPosted = true;
+    try { if (window.HrmsMeeting) HrmsMeeting.postMessage('joined'); } catch (e) {}
+  }
+
+  // Prosody sets member/owner affiliation while the occupant joins (lobby bypass).
+  // That emits CONFERENCE_LEFT and then joins again. Wait before closing HRMS.
+  function scheduleLeft() {
+    if (!window.__hrmsJoinedSent || window.__hrmsLeftSent) return;
+    if (window.__hrmsLeftTimer) clearTimeout(window.__hrmsLeftTimer);
+    window.__hrmsLeftTimer = setTimeout(function () {
+      window.__hrmsLeftTimer = null;
+      if (stillInCall()) return;
+      notifyLeft();
+    }, 2500);
   }
 
   function wrapHangup() {
@@ -1069,7 +1173,7 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
       APP.conference.__hrmsHangupWrapped = true;
       var orig = APP.conference.hangup.bind(APP.conference);
       APP.conference.hangup = function () {
-        notifyLeft();
+        scheduleLeft();
         return orig.apply(APP.conference, arguments);
       };
     } catch (e) {}
@@ -1082,7 +1186,10 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
       if (!room || typeof room.on !== 'function' || room.__hrmsLeftHooked) return;
       if (!window.JitsiMeetJS || !JitsiMeetJS.events || !JitsiMeetJS.events.conference) return;
       room.__hrmsLeftHooked = true;
-      room.on(JitsiMeetJS.events.conference.CONFERENCE_LEFT, notifyLeft);
+      room.on(JitsiMeetJS.events.conference.CONFERENCE_LEFT, scheduleLeft);
+      if (JitsiMeetJS.events.conference.CONFERENCE_JOINED) {
+        room.on(JitsiMeetJS.events.conference.CONFERENCE_JOINED, notifyJoined);
+      }
     } catch (e) {}
   }
 
@@ -1122,13 +1229,7 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
           notifyLeft();
           return;
         }
-        setTimeout(function () {
-          try {
-            if (window.APP && APP.conference && typeof APP.conference.isJoined === 'function' && !APP.conference.isJoined() && window.__hrmsJoinedSent) {
-              notifyLeft();
-            }
-          } catch (e) {}
-        }, 250);
+        scheduleLeft();
       }, true);
     }
   }
@@ -1136,7 +1237,7 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
   function checkWelcomeAfterLeave() {
     if (!window.__hrmsJoinedSent) return;
     var path = (location.pathname || '').toLowerCase();
-    if (path.indexOf('close') !== -1 || path === '/' || path === '') notifyLeft();
+    if (path.indexOf('close') !== -1) scheduleLeft();
   }
 
   window.__hrmsArmLeaveHook = function () {
@@ -1249,6 +1350,9 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
           _sharing = false;
           _leaving = false;
           _seenInCall = false;
+          _joinedAt = null;
+          _exitReloads = 0;
+          _cookiesReady = false;
         });
       });
     }

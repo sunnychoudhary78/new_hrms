@@ -67,6 +67,7 @@ class ApiEndpoints {
 
   // ───────── INTERNAL MEETINGS ─────────
   static const String meetings = 'meetings';
+  static const String meetRecordings = 'meet-recordings';
   static const String employeesMinimal = 'employees/all/minimal';
 
   // ───────── RESIGNATION ─────────

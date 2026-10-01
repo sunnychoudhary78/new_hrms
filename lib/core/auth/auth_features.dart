@@ -143,6 +143,8 @@ bool hasAnyPermission(List<String> mine, List<String> required) {
 const meetingJoinPermission = 'meeting.join';
 const meetingCreatePermission = 'meeting.create';
 const meetingManagePermission = 'meeting.manage';
+const meetingRecordingViewPermission = 'meeting.recording.view';
+const meetingRecordingDeletePermission = 'meeting.recording.delete';
 const meetingsFeatureKey = 'meetings';
 
 /// Web sidebar: `perms: ["meeting.join", "meeting.create"]` (any).
@@ -177,4 +179,12 @@ bool canCreateMeetings(List<String> permissions, {bool? metaCanCreate}) {
 bool canEditMeetings(List<String> permissions) {
   return permissions.contains(meetingCreatePermission) ||
       permissions.contains(meetingManagePermission);
+}
+
+bool canViewMeetingRecordings(List<String> permissions) {
+  return permissions.contains(meetingRecordingViewPermission);
+}
+
+bool canDeleteMeetingRecordings(List<String> permissions) {
+  return permissions.contains(meetingRecordingDeletePermission);
 }

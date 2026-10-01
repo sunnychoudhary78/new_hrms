@@ -58,5 +58,6 @@ void invalidateAllUserScopedData(WidgetRef ref) {
   ref.invalidate(meetingsTabProvider);
   ref.invalidate(meetingsListProvider);
   ref.invalidate(meetingEmployeesProvider);
+  ref.invalidate(recordingsListProvider);
   ref.invalidate(meetingSessionProvider);
 }

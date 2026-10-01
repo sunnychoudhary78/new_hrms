@@ -8,6 +8,7 @@ import 'package:lms/features/meetings/presentation/meetings_access.dart';
 import 'package:lms/features/meetings/presentation/providers/meeting_session_provider.dart';
 import 'package:lms/features/meetings/presentation/providers/meetings_providers.dart';
 import 'package:lms/features/meetings/presentation/widgets/create_meeting_sheet.dart';
+import 'package:lms/features/meetings/presentation/widgets/recording_transcript_button.dart';
 import 'package:lms/shared/widgets/app_bar.dart';
 import 'package:lms/shared/widgets/premium_feature_components.dart';
 
@@ -82,6 +83,7 @@ class _MeetingsListScreenState extends ConsumerState<MeetingsListScreen>
     final session = ref.watch(meetingSessionProvider);
     final tab = ref.watch(meetingsTabProvider);
     final canCreate = ref.watch(canCreateMeetingsProvider);
+    final canViewRecordings = ref.watch(canViewMeetingRecordingsProvider);
     final scheme = Theme.of(context).colorScheme;
     final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
     final scrollPhysics = isIOS
@@ -217,6 +219,8 @@ class _MeetingsListScreenState extends ConsumerState<MeetingsListScreen>
                         onJoin: meeting.isScheduled
                             ? () => _join(meeting.id, title: meeting.title)
                             : null,
+                        showRecordings: canViewRecordings,
+                        transcriptionEnabled: result.transcription,
                       );
                     },
                   );
@@ -238,6 +242,8 @@ class _MeetingTile extends StatelessWidget {
     required this.statusColor,
     required this.onOpen,
     this.onJoin,
+    this.showRecordings = false,
+    this.transcriptionEnabled = false,
   });
 
   final Meeting meeting;
@@ -246,6 +252,8 @@ class _MeetingTile extends StatelessWidget {
   final Color statusColor;
   final VoidCallback onOpen;
   final VoidCallback? onJoin;
+  final bool showRecordings;
+  final bool transcriptionEnabled;
 
   @override
   Widget build(BuildContext context) {
@@ -296,6 +304,42 @@ class _MeetingTile extends StatelessWidget {
                       fontSize: 12,
                     ),
                   ),
+                  if (meeting.autoTranscribe) ...[
+                    const SizedBox(height: 6),
+                    const Text(
+                      'Auto transcript',
+                      style: TextStyle(
+                        color: Color(0xFF0369A1),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                  if (showRecordings &&
+                      (meeting.recordingSummary?.count ?? 0) > 0) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      '${meeting.recordingSummary!.count} recording${meeting.recordingSummary!.count == 1 ? '' : 's'}',
+                      style: TextStyle(
+                        color: scheme.onSurfaceVariant,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                  if (showRecordings &&
+                      (meeting.recordingSummary?.latestId?.isNotEmpty ??
+                          false)) ...[
+                    const SizedBox(height: 8),
+                    RecordingTranscriptButton(
+                      recordingId: meeting.recordingSummary!.latestId!,
+                      title: meeting.title,
+                      status:
+                          meeting.recordingSummary!.latestTranscriptStatus ??
+                          'none',
+                      enabled: transcriptionEnabled,
+                      compact: true,
+                    ),
+                  ],
                 ],
               ),
             ),

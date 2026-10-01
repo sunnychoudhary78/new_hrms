@@ -204,6 +204,19 @@ class _AppDrawerState extends ConsumerState<AppDrawer>
                         },
                       ),
 
+                    if (showMeetings &&
+                        ref.watch(canViewMeetingRecordingsProvider))
+                      DrawerTile(
+                        index: index++,
+                        icon: Icons.video_library_rounded,
+                        title: "Recordings",
+                        isActive: route == "/meetings/recordings",
+                        onTap: () {
+                          Navigator.pop(context);
+                          Navigator.pushNamed(context, "/meetings/recordings");
+                        },
+                      ),
+
                     _sectionLabel('HR'),
 
                     if (hasAnyKraPermission)

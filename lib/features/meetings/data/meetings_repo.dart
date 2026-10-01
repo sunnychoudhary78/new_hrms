@@ -1,4 +1,5 @@
 import 'package:lms/features/meetings/data/meetings_api_service.dart';
+import 'package:lms/features/meetings/data/models/meet_recording_model.dart';
 import 'package:lms/features/meetings/data/models/meeting_model.dart';
 
 class MeetingsRepository {
@@ -87,6 +88,67 @@ class MeetingsRepository {
   Future<List<MeetingEmployee>> getMinimalEmployees() async {
     final res = await api.getMinimalEmployees();
     return employeesFromMinimalResponse(res);
+  }
+
+  Future<RecordingsPageResult> listRecordings({
+    int page = 1,
+    int limit = 20,
+    String? search,
+    String? sourceType,
+    String? meetingId,
+  }) async {
+    final res = await api.listRecordings(
+      page: page,
+      limit: limit,
+      search: search,
+      sourceType: sourceType,
+      meetingId: meetingId,
+    );
+    return recordingsPageFromResponse(res);
+  }
+
+  Future<MeetRecording> getRecording(String id) async {
+    final res = await api.getRecording(id);
+    final recording = recordingFromResponse(res);
+    if (recording == null || recording.id.isEmpty) {
+      throw Exception('Recording not found');
+    }
+    return recording;
+  }
+
+  Future<RecordingPlayLinks> getRecordingPlayUrl(String id) async {
+    final res = await api.getRecordingPlayUrl(id);
+    final links = playLinksFromResponse(res);
+    if (links.streamUrl.isEmpty) {
+      throw Exception('Could not open recording');
+    }
+    return links;
+  }
+
+  Future<void> deleteRecording(String id) async {
+    await api.deleteRecording(id);
+  }
+
+  Future<MeetRecording> transcribeRecording(String id) async {
+    final res = await api.transcribeRecording(id);
+    final recording = recordingFromResponse(res);
+    if (recording == null || recording.id.isEmpty) {
+      return MeetRecording(
+        id: id,
+        title: 'Recording',
+        transcriptStatus: 'processing',
+      );
+    }
+    return recording;
+  }
+
+  Future<MeetTranscript> getRecordingTranscript(String id) async {
+    final res = await api.getRecordingTranscript(id);
+    final transcript = transcriptFromResponse(res);
+    if (transcript == null) {
+      throw Exception('Transcript is not ready');
+    }
+    return transcript;
   }
 
   Future<Map<String, dynamic>> getCompanySettings() async {

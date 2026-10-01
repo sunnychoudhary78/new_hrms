@@ -4,6 +4,7 @@ import 'package:lms/core/providers/network_providers.dart';
 import 'package:lms/features/auth/presentation/providers/auth_provider.dart';
 import 'package:lms/features/meetings/data/meetings_api_service.dart';
 import 'package:lms/features/meetings/data/meetings_repo.dart';
+import 'package:lms/features/meetings/data/models/meet_recording_model.dart';
 import 'package:lms/features/meetings/data/models/meeting_model.dart';
 
 final meetingsApiServiceProvider = Provider<MeetingsApiService>((ref) {
@@ -79,6 +80,52 @@ final canCreateMeetingsProvider = Provider<bool>((ref) {
 final canEditMeetingsProvider = Provider<bool>((ref) {
   return canEditMeetings(ref.watch(authProvider).permissions);
 });
+
+final canViewMeetingRecordingsProvider = Provider<bool>((ref) {
+  return canViewMeetingRecordings(ref.watch(authProvider).permissions);
+});
+
+final canDeleteMeetingRecordingsProvider = Provider<bool>((ref) {
+  return canDeleteMeetingRecordings(ref.watch(authProvider).permissions);
+});
+
+class RecordingsQuery {
+  const RecordingsQuery({
+    this.meetingId,
+    this.search = '',
+    this.sourceType,
+    this.page = 1,
+  });
+
+  final String? meetingId;
+  final String search;
+  final String? sourceType;
+  final int page;
+
+  @override
+  bool operator ==(Object other) {
+    return other is RecordingsQuery &&
+        other.meetingId == meetingId &&
+        other.search == search &&
+        other.sourceType == sourceType &&
+        other.page == page;
+  }
+
+  @override
+  int get hashCode => Object.hash(meetingId, search, sourceType, page);
+}
+
+final recordingsListProvider = FutureProvider.autoDispose
+    .family<RecordingsPageResult, RecordingsQuery>((ref, query) {
+      return ref
+          .read(meetingsRepositoryProvider)
+          .listRecordings(
+            page: query.page,
+            search: query.search,
+            sourceType: query.sourceType,
+            meetingId: query.meetingId,
+          );
+    });
 
 String? currentUserId(WidgetRef ref) {
   final auth = ref.read(authProvider);

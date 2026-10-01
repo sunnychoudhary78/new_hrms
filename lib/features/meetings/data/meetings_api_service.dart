@@ -47,4 +47,43 @@ class MeetingsApiService {
   Future<dynamic> getCompanySettings() {
     return api.get(ApiEndpoints.companySettings);
   }
+
+  Future<dynamic> listRecordings({
+    int page = 1,
+    int limit = 20,
+    String? search,
+    String? sourceType,
+    String? meetingId,
+  }) {
+    final query = <String, dynamic>{'page': page, 'limit': limit};
+    final q = search?.trim();
+    if (q != null && q.isNotEmpty) query['search'] = q;
+    if (sourceType != null && sourceType.isNotEmpty) {
+      query['source_type'] = sourceType;
+    }
+    if (meetingId != null && meetingId.isNotEmpty) {
+      query['meeting_id'] = meetingId;
+    }
+    return api.get(ApiEndpoints.meetRecordings, queryParams: query);
+  }
+
+  Future<dynamic> getRecording(String id) {
+    return api.get('${ApiEndpoints.meetRecordings}/$id');
+  }
+
+  Future<dynamic> getRecordingPlayUrl(String id) {
+    return api.post('${ApiEndpoints.meetRecordings}/$id/play-url', {});
+  }
+
+  Future<dynamic> deleteRecording(String id) {
+    return api.deleteNoBody('${ApiEndpoints.meetRecordings}/$id');
+  }
+
+  Future<dynamic> transcribeRecording(String id) {
+    return api.post('${ApiEndpoints.meetRecordings}/$id/transcribe', {});
+  }
+
+  Future<dynamic> getRecordingTranscript(String id) {
+    return api.get('${ApiEndpoints.meetRecordings}/$id/transcript');
+  }
 }

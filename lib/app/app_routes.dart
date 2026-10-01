@@ -62,6 +62,9 @@ import 'package:lms/features/resignation/presentation/screens/resignation_dashbo
 // ================= MEETINGS =================
 import 'package:lms/features/meetings/presentation/screens/meetings_list_screen.dart';
 import 'package:lms/features/meetings/presentation/screens/meeting_detail_screen.dart';
+import 'package:lms/features/meetings/presentation/screens/recordings_screen.dart';
+import 'package:lms/features/meetings/presentation/screens/recording_player_screen.dart';
+import 'package:lms/features/meetings/presentation/screens/recording_transcript_screen.dart';
 
 class AppRoutes {
   static Map<String, WidgetBuilder> routes = {
@@ -134,6 +137,33 @@ class AppRoutes {
         id = (args['id'] ?? args['meetingId'])?.toString();
       }
       return MeetingDetailScreen(meetingId: id);
+    },
+    '/meetings/recordings': (context) {
+      final args = ModalRoute.of(context)?.settings.arguments;
+      String? meetingId;
+      if (args is String) {
+        meetingId = args;
+      } else if (args is Map) {
+        meetingId = (args['meetingId'] ?? args['id'])?.toString();
+      }
+      return RecordingsScreen(meetingId: meetingId);
+    },
+    '/meetings/recording-player': (context) {
+      final args = ModalRoute.of(context)?.settings.arguments;
+      final map = args is Map ? args : const {};
+      return RecordingPlayerScreen(
+        recordingId: map['id']?.toString() ?? '',
+        title: map['title']?.toString(),
+        audioOnly: map['audioOnly'] == true,
+      );
+    },
+    '/meetings/recording-transcript': (context) {
+      final args = ModalRoute.of(context)?.settings.arguments;
+      final map = args is Map ? args : const {};
+      return RecordingTranscriptScreen(
+        recordingId: map['id']?.toString() ?? '',
+        title: map['title']?.toString(),
+      );
     },
 
     // ================= SETTINGS =================

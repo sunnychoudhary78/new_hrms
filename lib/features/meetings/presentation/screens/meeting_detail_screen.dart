@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lms/features/meetings/data/models/meet_recording_model.dart';
 import 'package:lms/features/meetings/data/models/meeting_model.dart';
 import 'package:lms/features/meetings/presentation/meeting_join.dart';
 import 'package:lms/features/meetings/presentation/meetings_access.dart';
@@ -8,6 +9,7 @@ import 'package:lms/features/meetings/presentation/providers/meeting_session_pro
 import 'package:lms/features/meetings/presentation/providers/meetings_providers.dart';
 import 'package:lms/features/meetings/presentation/widgets/employee_picker.dart';
 import 'package:lms/features/meetings/presentation/widgets/guest_invite_sheet.dart';
+import 'package:lms/features/meetings/presentation/widgets/recording_transcript_button.dart';
 import 'package:lms/shared/utils/app_snackbar.dart';
 import 'package:lms/shared/widgets/app_bar.dart';
 import 'package:lms/shared/widgets/premium_feature_components.dart';
@@ -34,6 +36,8 @@ class _MeetingDetailScreenState extends ConsumerState<MeetingDetailScreen> {
   bool _hydrated = false;
   bool _joining = false;
   bool _saving = false;
+  bool _autoTranscribe = false;
+  bool _togglingTranscript = false;
 
   String? get _id {
     if (widget.meetingId != null && widget.meetingId!.isNotEmpty) {
@@ -71,6 +75,7 @@ class _MeetingDetailScreenState extends ConsumerState<MeetingDetailScreen> {
         ? List<int>.from(meeting.recurrenceDays)
         : [1, 2, 3, 4, 5];
     _selectedIds = meeting.attendeeUserIds;
+    _autoTranscribe = meeting.autoTranscribe;
     _hydrated = true;
   }
 
@@ -123,6 +128,7 @@ class _MeetingDetailScreenState extends ConsumerState<MeetingDetailScreen> {
             : _description.text.trim(),
         'duration_minutes': n < 5 ? 5 : (n > 480 ? 480 : n),
         'participant_ids': List<String>.from(_selectedIds),
+        'auto_transcribe': _autoTranscribe,
       };
       if (meeting.isRecurring) {
         payload['recurrence_time'] = hhmm(
@@ -187,6 +193,11 @@ class _MeetingDetailScreenState extends ConsumerState<MeetingDetailScreen> {
     final meetingAsync = ref.watch(meetingDetailProvider(id));
     final session = ref.watch(meetingSessionProvider);
     final canEdit = ref.watch(canEditMeetingsProvider);
+    final canViewRecordings = ref.watch(canViewMeetingRecordingsProvider);
+    final listMeta = ref.watch(meetingsListProvider).asData?.value;
+    final recordings = canViewRecordings
+        ? ref.watch(recordingsListProvider(RecordingsQuery(meetingId: id)))
+        : null;
     final userId = currentUserId(ref);
     final scheme = Theme.of(context).colorScheme;
     final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
@@ -212,6 +223,10 @@ class _MeetingDetailScreenState extends ConsumerState<MeetingDetailScreen> {
           final cancelled = meeting.isCancelled;
           final isHost = meeting.isHostOf(userId);
           final canInviteGuests = !cancelled && (isHost || canEdit);
+          final autoAvailable =
+              (listMeta?.autoTranscribeAvailable ?? false) ||
+              meeting.autoTranscribe;
+          final transcriptionEnabled = listMeta?.transcription ?? false;
           final statusColor = cancelled
               ? scheme.error
               : meeting.isEnded
@@ -250,13 +265,13 @@ class _MeetingDetailScreenState extends ConsumerState<MeetingDetailScreen> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Host: ${meeting.creator?.name ?? '—'} · ${meeting.durationMinutes} min',
+                      'Host: ${meeting.creator?.name ?? '—'} · ${meeting.durationMinutes} min${meeting.autoTranscribe ? ' · Auto transcript on' : ''}',
                       style: TextStyle(color: scheme.onSurfaceVariant),
                     ),
                     if (!cancelled) ...[
                       const SizedBox(height: 10),
                       Text(
-                        'Guests and attendees wait in the Meet lobby until the host admits them. Join as host first, then admit from Participants.',
+                        'Attendees joining from HRMS go straight in. Anyone using the meeting link waits in the lobby until the host admits them. Only the host can mute others, stop their video, or remove participants.',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: scheme.onSurfaceVariant,
                         ),
@@ -304,8 +319,72 @@ class _MeetingDetailScreenState extends ConsumerState<MeetingDetailScreen> {
                     ),
                     if (!cancelled) ...[
                       const SizedBox(height: 16),
+                      if (canEdit && autoAvailable) ...[
+                        SwitchListTile(
+                          contentPadding: EdgeInsets.zero,
+                          title: const Text('Auto transcript'),
+                          subtitle: const Text(
+                            'Audio is captured when you join as host. No video is kept.',
+                          ),
+                          value: _hydrated
+                              ? _autoTranscribe
+                              : meeting.autoTranscribe,
+                          onChanged: _togglingTranscript
+                              ? null
+                              : (value) async {
+                                  setState(() {
+                                    _autoTranscribe = value;
+                                    _togglingTranscript = true;
+                                  });
+                                  try {
+                                    await ref
+                                        .read(meetingsRepositoryProvider)
+                                        .updateMeeting(meeting.id, {
+                                          'auto_transcribe': value,
+                                        });
+                                    ref.invalidate(
+                                      meetingDetailProvider(meeting.id),
+                                    );
+                                    ref.invalidate(meetingsListProvider);
+                                    if (context.mounted) {
+                                      AppSnackbar.success(
+                                        context,
+                                        value
+                                            ? 'Auto transcript on — audio is captured when you join as host'
+                                            : 'Auto transcript off',
+                                      );
+                                    }
+                                  } catch (e) {
+                                    if (mounted) {
+                                      setState(() => _autoTranscribe = !value);
+                                      AppSnackbar.error(
+                                        context,
+                                        cleanApiError(e),
+                                      );
+                                    }
+                                  } finally {
+                                    if (mounted) {
+                                      setState(() => _togglingTranscript = false);
+                                    }
+                                  }
+                                },
+                        ),
+                      ],
                       Row(
                         children: [
+                          if (canViewRecordings)
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed: () => Navigator.pushNamed(
+                                  context,
+                                  '/meetings/recordings',
+                                  arguments: meeting.id,
+                                ),
+                                icon: const Icon(Icons.video_library_outlined),
+                                label: const Text('Recordings'),
+                              ),
+                            ),
+                          if (canViewRecordings) const SizedBox(width: 8),
                           if (canInviteGuests)
                             Expanded(
                               child: OutlinedButton.icon(
@@ -315,36 +394,119 @@ class _MeetingDetailScreenState extends ConsumerState<MeetingDetailScreen> {
                                   meeting.id,
                                 ),
                                 icon: const Icon(Icons.link_rounded),
-                                label: const Text('Invite guest'),
+                                label: const Text('Meeting link'),
                               ),
                             ),
-                          if (canInviteGuests) const SizedBox(width: 8),
-                          Expanded(
-                            child: FilledButton.icon(
-                              onPressed: _joining
-                                  ? null
-                                  : () => _join(
-                                      meeting.id,
-                                      title: meeting.title,
-                                    ),
-                              icon: const Icon(Icons.videocam_rounded),
-                              label: Text(
-                                _joining
-                                    ? 'Opening…'
-                                    : session.isFor(meeting.id)
-                                    ? 'Return to meeting'
-                                    : isHost
-                                    ? 'Join as host'
-                                    : 'Join meeting',
-                              ),
-                            ),
-                          ),
                         ],
+                      ),
+                      const SizedBox(height: 8),
+                      FilledButton.icon(
+                        onPressed: _joining
+                            ? null
+                            : () => _join(
+                                meeting.id,
+                                title: meeting.title,
+                              ),
+                        icon: const Icon(Icons.videocam_rounded),
+                        label: Text(
+                          _joining
+                              ? 'Opening…'
+                              : session.isFor(meeting.id)
+                              ? 'Return to meeting'
+                              : isHost
+                              ? 'Join as host'
+                              : 'Join meeting',
+                        ),
                       ),
                     ],
                   ],
                 ),
               ),
+              if (recordings != null) ...[
+                const SizedBox(height: 16),
+                recordings.when(
+                  loading: () => const SizedBox.shrink(),
+                  error: (_, __) => const SizedBox.shrink(),
+                  data: (page) {
+                    if (page.recordings.isEmpty) return const SizedBox.shrink();
+                    return PremiumCard(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Recordings & transcriptions',
+                            style: Theme.of(context).textTheme.titleMedium
+                                ?.copyWith(fontWeight: FontWeight.w800),
+                          ),
+                          const SizedBox(height: 8),
+                          ...page.recordings.map(
+                            (rec) => Padding(
+                              padding: const EdgeInsets.only(bottom: 12),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    rec.whenLabel,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  Text(
+                                    rec.durationSeconds == null
+                                        ? (rec.isAudioOnly
+                                              ? 'Transcript only'
+                                              : 'Recording')
+                                        : 'Length ${formatRecordingClock(rec.durationSeconds)}',
+                                    style: TextStyle(
+                                      color: scheme.onSurfaceVariant,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Wrap(
+                                    spacing: 8,
+                                    runSpacing: 8,
+                                    children: [
+                                      OutlinedButton.icon(
+                                        onPressed: () => Navigator.pushNamed(
+                                          context,
+                                          '/meetings/recording-player',
+                                          arguments: {
+                                            'id': rec.id,
+                                            'title': meeting.title,
+                                            'audioOnly': rec.isAudioOnly,
+                                          },
+                                        ),
+                                        icon: const Icon(
+                                          Icons.play_arrow_rounded,
+                                          size: 18,
+                                        ),
+                                        label: Text(
+                                          rec.isAudioOnly ? 'Play audio' : 'Watch',
+                                        ),
+                                      ),
+                                      RecordingTranscriptButton(
+                                        recordingId: rec.id,
+                                        title: meeting.title,
+                                        status: rec.transcriptStatus,
+                                        error: rec.transcriptError,
+                                        enabled:
+                                            transcriptionEnabled ||
+                                            page.transcription,
+                                        compact: true,
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ],
               if (!cancelled && canEdit) ...[
                 const SizedBox(height: 16),
                 PremiumCard(

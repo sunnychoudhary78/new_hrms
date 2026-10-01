@@ -16,15 +16,32 @@ String meetingUserDisplayName(WidgetRef ref) {
   return '';
 }
 
-String withJitsiDisplayName(String url, String name) {
+/// Jitsi reads these from the URL hash before the app boots.
+///
+/// They must be on the raw URL. [Uri.replace] percent-encodes the fragment
+/// and Jitsi then ignores `disableDeepLinking`, so Android WebView is sent
+/// to the close/welcome page and the meeting overlay closes.
+String withJitsiJoinOverrides(String url, String name) {
+  final hash = url.indexOf('#');
+  final base = hash == -1 ? url : url.substring(0, hash);
+  final existing = hash == -1 ? '' : url.substring(hash + 1);
+  final parts = <String>[
+    if (!existing.contains('config.disableDeepLinking'))
+      'config.disableDeepLinking=true',
+    if (!existing.contains('config.deeplinking.disabled'))
+      'config.deeplinking.disabled=true',
+    if (!existing.contains('config.enableClosePage'))
+      'config.enableClosePage=false',
+  ];
   final trimmed = name.trim();
-  if (trimmed.isEmpty) return url;
-  final uri = Uri.tryParse(url);
-  if (uri == null) return url;
-  if (uri.fragment.contains('userInfo.displayName')) return url;
-  final extra = 'userInfo.displayName="${Uri.encodeComponent(trimmed)}"';
-  final fragment = uri.fragment.isEmpty ? extra : '${uri.fragment}&$extra';
-  return uri.replace(fragment: fragment).toString();
+  if (trimmed.isNotEmpty && !existing.contains('userInfo.displayName')) {
+    parts.add('userInfo.displayName="${Uri.encodeComponent(trimmed)}"');
+  }
+  if (parts.isEmpty) return url;
+  final fragment = existing.isEmpty
+      ? parts.join('&')
+      : '$existing&${parts.join('&')}';
+  return '$base#$fragment';
 }
 
 Future<bool> joinMeetingById(
@@ -86,7 +103,7 @@ Future<bool> joinMeetingById(
     final displayName = meetingUserDisplayName(ref);
     ref.read(meetingSessionProvider.notifier).start(
           meetingId: meetingId,
-          joinUrl: withJitsiDisplayName(info.url, displayName),
+          joinUrl: withJitsiJoinOverrides(info.url, displayName),
           title: title,
           displayName: displayName,
         );

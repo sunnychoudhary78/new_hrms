@@ -41,6 +41,7 @@ class _CreateMeetingSheetState extends ConsumerState<CreateMeetingSheet> {
   final List<String> _participantIds = [];
   String _employeeFilter = '';
   bool _saving = false;
+  bool _autoTranscribe = false;
 
   @override
   void initState() {
@@ -134,6 +135,14 @@ class _CreateMeetingSheetState extends ConsumerState<CreateMeetingSheet> {
         'participant_ids': List<String>.from(_participantIds),
         'start_now': _type == 'instant',
       };
+      final autoAvailable = ref
+          .read(meetingsListProvider)
+          .asData
+          ?.value
+          .autoTranscribeAvailable;
+      if (autoAvailable == true) {
+        payload['auto_transcribe'] = _autoTranscribe;
+      }
       if (_type == 'one_time' && _startsAt != null) {
         payload['starts_at'] = _startsAt!.toUtc().toIso8601String();
       }
@@ -181,6 +190,9 @@ class _CreateMeetingSheetState extends ConsumerState<CreateMeetingSheet> {
   @override
   Widget build(BuildContext context) {
     final employeesAsync = ref.watch(meetingEmployeesProvider);
+    final autoAvailable =
+        ref.watch(meetingsListProvider).asData?.value.autoTranscribeAvailable ??
+        false;
     final isInstant = _type == 'instant';
     final scheme = Theme.of(context).colorScheme;
     final viewInsets = MediaQuery.of(context).viewInsets.bottom;
@@ -274,6 +286,18 @@ class _CreateMeetingSheetState extends ConsumerState<CreateMeetingSheet> {
               ),
             ),
             const SizedBox(height: 16),
+            if (autoAvailable)
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Auto transcript (audio only)'),
+                subtitle: const Text(
+                  'Audio is captured when you join as host. No video is kept. The transcript is ready a few minutes after the call.',
+                ),
+                value: _autoTranscribe,
+                onChanged: _saving
+                    ? null
+                    : (value) => setState(() => _autoTranscribe = value),
+              ),
             employeesAsync.when(
               loading: () => const Padding(
                 padding: EdgeInsets.symmetric(vertical: 16),

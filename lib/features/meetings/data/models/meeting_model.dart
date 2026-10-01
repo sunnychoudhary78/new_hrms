@@ -139,12 +139,14 @@ class MeetingsListResult {
   final bool canCreate;
   final bool canManage;
   final bool transcription;
+  final bool autoTranscribeAvailable;
 
   const MeetingsListResult({
     required this.meetings,
     this.canCreate = false,
     this.canManage = false,
     this.transcription = false,
+    this.autoTranscribeAvailable = false,
   });
 }
 
@@ -205,6 +207,7 @@ class Meeting {
   final MeetingUser? creator;
   final List<MeetingParticipant> participants;
   final MeetingRecordingSummary? recordingSummary;
+  final bool autoTranscribe;
 
   const Meeting({
     required this.id,
@@ -226,6 +229,7 @@ class Meeting {
     this.creator,
     this.participants = const [],
     this.recordingSummary,
+    this.autoTranscribe = false,
   });
 
   bool get isRecurring => type == 'recurring';
@@ -353,6 +357,12 @@ class Meeting {
           ? MeetingUser.fromJson(Map<String, dynamic>.from(json['creator'] as Map))
           : null,
       participants: participants,
+      recordingSummary: json['recording_summary'] is Map
+          ? MeetingRecordingSummary.fromJson(
+              Map<String, dynamic>.from(json['recording_summary'] as Map),
+            )
+          : null,
+      autoTranscribe: json['auto_transcribe'] == true,
     );
   }
 }
@@ -384,14 +394,20 @@ MeetingsListResult meetingsListFromResponse(dynamic res) {
   final meta = map['meta'];
   var canCreate = false;
   var canManage = false;
+  var transcription = false;
+  var autoTranscribeAvailable = false;
   if (meta is Map) {
     canCreate = meta['canCreate'] == true;
     canManage = meta['canManage'] == true;
+    transcription = meta['transcription'] == true;
+    autoTranscribeAvailable = meta['autoTranscribeAvailable'] == true;
   }
   return MeetingsListResult(
     meetings: meetingsFromListResponse(res),
     canCreate: canCreate,
     canManage: canManage,
+    transcription: transcription,
+    autoTranscribeAvailable: autoTranscribeAvailable,
   );
 }
 
