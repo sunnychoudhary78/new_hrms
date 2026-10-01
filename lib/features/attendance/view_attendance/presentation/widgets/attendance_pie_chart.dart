@@ -5,7 +5,7 @@ import 'package:fl_chart/fl_chart.dart';
 class AttendancePieChart extends StatelessWidget {
   final num present;
   final num absent;
-  final int late;
+  final num late;
   final num leave;
 
   const AttendancePieChart({
@@ -17,6 +17,11 @@ class AttendancePieChart extends StatelessWidget {
   });
 
   num get total => present + absent + late + leave;
+
+  String _format(num value) {
+    if (value == value.roundToDouble()) return value.toInt().toString();
+    return value.toStringAsFixed(1);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -89,7 +94,7 @@ class AttendancePieChart extends StatelessWidget {
           decoration: BoxDecoration(color: c, shape: BoxShape.circle),
         ),
         const SizedBox(width: 6),
-        Text("$t ($v)"),
+        Text("$t (${_format(v)})"),
       ],
     );
   }

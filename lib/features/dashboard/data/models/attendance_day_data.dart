@@ -240,9 +240,10 @@ class AttendanceDayData {
       (s) => s.source.trim().toLowerCase() == 'correction',
     );
 
-    if (hasLeave || hasCorrection) return status;
+    if (isShiftHalfDay && (hasLeave || hasCorrection)) return status;
     if (isLate) return 'Late';
-    return 'Present';
+    if (isShiftHalfDay) return 'Present';
+    return status;
   }
 
   static String? _cleanLabel(dynamic value) {

@@ -15,6 +15,9 @@ import 'package:lms/shared/widgets/attendance_calender_widget.dart';
 import 'package:lms/shared/widgets/attendance_day_detail_bottom_sheet.dart';
 
 import 'package:lms/features/dashboard/data/models/attendance_day_data.dart';
+import 'package:lms/features/attendance/mark_attendance/data/models/company_settings_model.dart';
+import 'package:lms/features/attendance/mark_attendance/presentation/providers/company_settings_provider.dart';
+import 'package:lms/features/attendance/shared/utils/overtime_estimate_utils.dart';
 import 'package:lms/features/attendance/view_attendance/utils/elapsed_month_summary.dart';
 
 import '../widgets/attendance_summary_grid.dart';
@@ -106,11 +109,39 @@ class _ViewAttendanceScreenState extends ConsumerState<ViewAttendanceScreen> {
         leaveDetails: agg.leaveDetails.isNotEmpty
             ? agg.leaveDetails
             : (sessionData?.leaveDetails ?? const []),
-        isLate: agg.isLate || (sessionData?.isLate ?? false),
+        isLate: _isLateForSchedule(
+          sessions,
+          ref.watch(companySettingsProvider).asData?.value,
+          agg.isLate,
+        ),
       );
     }
 
     return map;
+  }
+
+  bool _isLateForSchedule(
+    List<AttendanceSessionData> sessions,
+    CompanySettings? settings,
+    bool apiLate,
+  ) {
+    final start = settings?.officeStart?.trim() ?? '';
+    final grace = settings?.lateGraceMinutes;
+    if (start.isEmpty || grace == null) return apiLate;
+
+    DateTime? first;
+    for (final session in sessions) {
+      final checkIn = session.checkIn;
+      if (checkIn == null) continue;
+      if (first == null || checkIn.isBefore(first)) first = checkIn;
+    }
+    if (first == null) return apiLate;
+
+    return isCheckInLate(
+      checkIn: first,
+      officeStart: start,
+      graceMinutes: grace,
+    );
   }
 
   ////////////////////////////////////////////////////////////////
@@ -345,13 +376,10 @@ class _ViewAttendanceScreenState extends ConsumerState<ViewAttendanceScreen> {
                     title: "Attendance Breakdown",
 
                     child: AttendancePieChart(
-                      present: displaySummary.workingDays.toInt(),
-
+                      present: displaySummary.workingDays,
                       absent: displaySummary.absentDays,
-
-                      late: displaySummary.lateDays.toInt(),
-
-                      leave: displaySummary.totalLeaves.toInt(),
+                      late: displaySummary.lateDays,
+                      leave: displaySummary.totalLeaves,
                     ),
                   ),
                 ],

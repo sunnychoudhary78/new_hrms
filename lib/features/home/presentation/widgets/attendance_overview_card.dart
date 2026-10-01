@@ -212,12 +212,6 @@ class _PieLegend extends StatelessWidget {
           label: 'Holiday',
           value: distribution.holiday,
         ),
-        if (distribution.late > 0)
-          _LegendItem(
-            color: AttendanceColors.late,
-            label: 'Late',
-            value: distribution.late,
-          ),
         const SizedBox(height: 8),
         Text(
           "Tracked: $daysInMonth days",

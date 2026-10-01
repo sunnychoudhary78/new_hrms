@@ -2,6 +2,7 @@ class CompanySettings {
   final String? officeStart;
   final String? officeEnd;
   final int autoCloseBufferMinutes;
+  final int? lateGraceMinutes;
 
   final double? officeLat;
   final double? officeLng;
@@ -11,6 +12,7 @@ class CompanySettings {
     this.officeStart,
     this.officeEnd,
     this.autoCloseBufferMinutes = 30,
+    this.lateGraceMinutes,
     this.officeLat,
     this.officeLng,
     this.officeRadius,
@@ -23,6 +25,11 @@ class CompanySettings {
       autoCloseBufferMinutes:
           int.tryParse(json['auto_close_buffer_minutes']?.toString() ?? '') ??
           30,
+      lateGraceMinutes: int.tryParse(
+        (json['late_grace_period_minutes'] ?? json['lateGracePeriodMinutes'])
+                ?.toString() ??
+            '',
+      ),
 
       officeLat: json['office_lat'] != null
           ? double.tryParse(json['office_lat'].toString())

@@ -132,12 +132,13 @@ class HomeDashboardRepository {
       expectedMinutes: summary.expectedWorkingHours * 60,
     );
 
-    // Same buckets as the web attendance summary (API values, not a local recount).
+    final companySettings = await companySettingsRepo.fetchCompanySettings();
+
     final distribution = AttendanceDistribution(
       worked: summary.workingDays.toDouble(),
       leave: summary.totalLeaves.toDouble(),
       absent: summary.absentDays.toDouble(),
-      late: summary.lateDays.toDouble(),
+      late: 0,
       weekOff: summary.totalWeekoffs.toDouble(),
       holiday: summary.totalHolidays.toDouble(),
     );
@@ -148,8 +149,6 @@ class HomeDashboardRepository {
       absentDays: summary.absentDays.round(),
       totalLeaves: summary.totalLeaves,
     );
-
-    final companySettings = await companySettingsRepo.fetchCompanySettings();
     final expectedMinutesPerDay = expectedMinutesFromOfficeHours(
       companySettings.officeStart,
       companySettings.officeEnd,

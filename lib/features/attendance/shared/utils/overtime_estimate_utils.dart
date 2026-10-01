@@ -8,6 +8,18 @@ int parseOfficeTimeToMinutes(String? timeStr) {
   return h * 60 + m;
 }
 
+/// Check-in is on time through office start + grace (inclusive).
+/// 9:30 with 15 minutes grace → 9:45 is on time, 9:46 is late.
+bool isCheckInLate({
+  required DateTime checkIn,
+  required String officeStart,
+  required int graceMinutes,
+}) {
+  final start = parseOfficeTimeToMinutes(officeStart);
+  final check = checkIn.hour * 60 + checkIn.minute;
+  return check > start + graceMinutes;
+}
+
 /// Expected shift duration from office start/end (matches shiftService.getExpectedMinutesPerDay).
 int expectedMinutesFromOfficeHours(String? officeStart, String? officeEnd) {
   final startM = parseOfficeTimeToMinutes(officeStart);
