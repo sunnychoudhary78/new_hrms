@@ -50,19 +50,33 @@ class AttendanceOverviewCard extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             SizedBox(
-              height: 210,
+              height: 220,
               child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Expanded(
                     flex: 5,
-                    child: _AttendancePieChart(
-                      distribution: dashboard.distribution,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 8,
+                        horizontal: 4,
+                      ),
+                      child: _AttendancePieChart(
+                        distribution: dashboard.distribution,
+                      ),
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 8),
                   Expanded(
                     flex: 4,
-                    child: _PieLegend(distribution: dashboard.distribution),
+                    child: _PieLegend(
+                      distribution: dashboard.distribution,
+                      daysInMonth: DateTime(
+                        dashboard.attendanceMonth.year,
+                        dashboard.attendanceMonth.month + 1,
+                        0,
+                      ).day,
+                    ),
                   ),
                 ],
               ),
@@ -125,8 +139,9 @@ class _AttendancePieChart extends StatelessWidget {
 
     return PieChart(
       PieChartData(
-        sectionsSpace: 2,
-        centerSpaceRadius: 40,
+        sectionsSpace: 1,
+        centerSpaceRadius: 34,
+        startDegreeOffset: -90,
         sections: sections,
       ),
     );
@@ -143,13 +158,15 @@ class _AttendancePieChart extends StatelessWidget {
     return PieChartSectionData(
       value: value,
       color: color,
-      radius: 45,
+      radius: 38,
       showTitle: true,
       title: "$percent%",
+      titlePositionPercentageOffset: 0.55,
       titleStyle: const TextStyle(
         fontSize: 10,
         fontWeight: FontWeight.w700,
         color: Colors.white,
+        height: 1,
       ),
     );
   }
@@ -157,8 +174,12 @@ class _AttendancePieChart extends StatelessWidget {
 
 class _PieLegend extends StatelessWidget {
   final AttendanceDistribution distribution;
+  final int daysInMonth;
 
-  const _PieLegend({required this.distribution});
+  const _PieLegend({
+    required this.distribution,
+    required this.daysInMonth,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -171,42 +192,40 @@ class _PieLegend extends StatelessWidget {
           label: 'Working Days',
           value: distribution.worked,
         ),
-        const SizedBox(height: 10),
         _LegendItem(
           color: AttendanceColors.leave,
           label: 'Leave',
           value: distribution.leave,
         ),
-        const SizedBox(height: 10),
         _LegendItem(
           color: AttendanceColors.absent,
           label: 'Absent',
           value: distribution.absent,
         ),
-        const SizedBox(height: 10),
         _LegendItem(
           color: AttendanceColors.weekOff,
           label: 'Week Off',
           value: distribution.weekOff,
         ),
-        const SizedBox(height: 10),
         _LegendItem(
           color: AttendanceColors.holiday,
           label: 'Holiday',
           value: distribution.holiday,
         ),
-        if (distribution.late > 0) ...[
-          const SizedBox(height: 10),
+        if (distribution.late > 0)
           _LegendItem(
             color: AttendanceColors.late,
             label: 'Late',
             value: distribution.late,
           ),
-        ],
-        const SizedBox(height: 12),
+        const SizedBox(height: 8),
         Text(
-          "Tracked: ${distribution.total.toStringAsFixed(0)} days",
-          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+          "Tracked: $daysInMonth days",
+          style: const TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            height: 1.2,
+          ),
         ),
       ],
     );
@@ -235,23 +254,27 @@ class _LegendItem extends StatelessWidget {
   Widget build(BuildContext context) {
     if (value <= 0) return const SizedBox.shrink();
 
-    return Row(
-      children: [
-        Container(
-          width: 10,
-          height: 10,
-          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-        ),
-        const SizedBox(width: 6),
-        Expanded(
-          child: Text(
-            "$label (${_formatCount(value)})",
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 12),
+    return SizedBox(
+      height: 22,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Container(
+            width: 10,
+            height: 10,
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
           ),
-        ),
-      ],
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              "$label (${_formatCount(value)})",
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 12, height: 1.1),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
