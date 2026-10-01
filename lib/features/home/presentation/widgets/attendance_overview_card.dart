@@ -10,6 +10,8 @@ class AttendanceColors {
   static const leave = Color(0xFFF59E0B);
   static const absent = Color(0xFFDC2626);
   static const late = Color(0xFF7C3AED);
+  static const weekOff = Color(0xFF8B5CF6);
+  static const holiday = Color(0xFF0891B2);
   static const expected = Color(0xFF94A3B8);
 }
 
@@ -48,18 +50,18 @@ class AttendanceOverviewCard extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             SizedBox(
-              height: 180,
+              height: 210,
               child: Row(
                 children: [
                   Expanded(
-                    flex: 3,
+                    flex: 5,
                     child: _AttendancePieChart(
                       distribution: dashboard.distribution,
                     ),
                   ),
-                  const SizedBox(width: 30),
+                  const SizedBox(width: 12),
                   Expanded(
-                    flex: 2,
+                    flex: 4,
                     child: _PieLegend(distribution: dashboard.distribution),
                   ),
                 ],
@@ -98,6 +100,16 @@ class _AttendancePieChart extends StatelessWidget {
       _section(
         value: distribution.absent,
         color: AttendanceColors.absent,
+        total: total,
+      ),
+      _section(
+        value: distribution.weekOff,
+        color: AttendanceColors.weekOff,
+        total: total,
+      ),
+      _section(
+        value: distribution.holiday,
+        color: AttendanceColors.holiday,
         total: total,
       ),
     ].whereType<PieChartSectionData>().toList();
@@ -171,6 +183,18 @@ class _PieLegend extends StatelessWidget {
           label: 'Absent',
           value: distribution.absent,
         ),
+        const SizedBox(height: 10),
+        _LegendItem(
+          color: AttendanceColors.weekOff,
+          label: 'Week Off',
+          value: distribution.weekOff,
+        ),
+        const SizedBox(height: 10),
+        _LegendItem(
+          color: AttendanceColors.holiday,
+          label: 'Holiday',
+          value: distribution.holiday,
+        ),
         if (distribution.late > 0) ...[
           const SizedBox(height: 10),
           _LegendItem(
@@ -212,7 +236,6 @@ class _LegendItem extends StatelessWidget {
     if (value <= 0) return const SizedBox.shrink();
 
     return Row(
-      mainAxisSize: MainAxisSize.min,
       children: [
         Container(
           width: 10,
@@ -220,9 +243,13 @@ class _LegendItem extends StatelessWidget {
           decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
         const SizedBox(width: 6),
-        Text(
-          "$label (${_formatCount(value)})",
-          style: const TextStyle(fontSize: 12),
+        Expanded(
+          child: Text(
+            "$label (${_formatCount(value)})",
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 12),
+          ),
         ),
       ],
     );

@@ -138,6 +138,8 @@ class HomeDashboardRepository {
       leave: summary.totalLeaves.toDouble(),
       absent: summary.absentDays.toDouble(),
       late: summary.lateDays.toDouble(),
+      weekOff: summary.totalWeekoffs.toDouble(),
+      holiday: summary.totalHolidays.toDouble(),
     );
 
     final stats = HomeStats(

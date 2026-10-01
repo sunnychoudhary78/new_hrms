@@ -156,15 +156,19 @@ class AttendanceDistribution {
   final double leave;
   final double absent;
   final double late;
+  final double weekOff;
+  final double holiday;
 
   const AttendanceDistribution({
     required this.worked,
     required this.leave,
     required this.absent,
     required this.late,
+    this.weekOff = 0,
+    this.holiday = 0,
   });
 
-  double get total => worked + leave + absent;
+  double get total => worked + leave + absent + weekOff + holiday;
 
   double percent(double value) {
     if (total == 0) return 0;
