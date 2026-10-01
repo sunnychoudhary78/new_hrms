@@ -106,6 +106,7 @@ class _ViewAttendanceScreenState extends ConsumerState<ViewAttendanceScreen> {
         leaveDetails: agg.leaveDetails.isNotEmpty
             ? agg.leaveDetails
             : (sessionData?.leaveDetails ?? const []),
+        isLate: agg.isLate || (sessionData?.isLate ?? false),
       );
     }
 
@@ -210,7 +211,7 @@ class _ViewAttendanceScreenState extends ConsumerState<ViewAttendanceScreen> {
                       ////////////////////////////////////////////////////
                       statusResolver: (day) {
                         final key = DateFormat('yyyy-MM-dd').format(day);
-                        return attendanceMap[key]?.status;
+                        return attendanceMap[key]?.calendarStatus;
                       },
 
                       typeLabelResolver: (day) {

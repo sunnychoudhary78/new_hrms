@@ -48,6 +48,7 @@ class AttendanceDayData {
   final String? leaveType;
   final String? holidayName;
   final List<AttendanceLeaveDetail> leaveDetails;
+  final bool isLate;
 
   AttendanceDayData({
     required this.date,
@@ -57,6 +58,7 @@ class AttendanceDayData {
     this.leaveType,
     this.holidayName,
     this.leaveDetails = const [],
+    this.isLate = false,
   });
 
   ////////////////////////////////////////////////////////////
@@ -205,6 +207,7 @@ class AttendanceDayData {
         leaveDetails: AttendanceLeaveDetail.listFrom(
           aggregate['leaveDetails'] ?? aggregate['leave_details'],
         ),
+        isLate: _asBool(aggregate['isLate'] ?? aggregate['is_late']),
       );
     } catch (_) {
       return AttendanceDayData(
@@ -214,6 +217,32 @@ class AttendanceDayData {
         sessions: [],
       );
     }
+  }
+
+  static bool _asBool(dynamic value) {
+    if (value == true) return true;
+    if (value is num) return value != 0;
+    final text = value?.toString().trim().toLowerCase() ?? '';
+    return text == 'true' || text == '1';
+  }
+
+  /// Calendar label. Shift-based half credit is not Half Day.
+  /// Half Day is only a half-day leave or a correction that produced a half day.
+  /// A late check-in stays Late.
+  String get calendarStatus {
+    final normalized = status.trim().toLowerCase();
+    final isShiftHalfDay = normalized == 'half-day' || normalized == 'half day';
+    if (!isShiftHalfDay) return status;
+
+    final hasLeave = leaveDetails.isNotEmpty ||
+        (leaveType?.trim().isNotEmpty ?? false);
+    final hasCorrection = sessions.any(
+      (s) => s.source.trim().toLowerCase() == 'correction',
+    );
+
+    if (hasLeave || hasCorrection) return status;
+    if (isLate) return 'Late';
+    return 'Present';
   }
 
   static String? _cleanLabel(dynamic value) {

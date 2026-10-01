@@ -149,6 +149,7 @@ final employeeAttendanceProvider =
               'leaveType': d['leaveType'],
               'holidayName': d['holidayName'],
               'leaveDetails': d['leaveDetails'],
+              'isLate': d['isLate'],
             },
             sessionsJson: daySessions,
           );

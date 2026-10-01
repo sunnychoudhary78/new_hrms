@@ -7,6 +7,7 @@ class AttendanceAggregate {
   final String? leaveType;
   final String? holidayName;
   final List<AttendanceLeaveDetail> leaveDetails;
+  final bool isLate;
 
   AttendanceAggregate({
     required this.date,
@@ -15,6 +16,7 @@ class AttendanceAggregate {
     this.leaveType,
     this.holidayName,
     this.leaveDetails = const [],
+    this.isLate = false,
   });
 
   String get dateKey =>
@@ -40,6 +42,9 @@ class AttendanceAggregate {
       leaveDetails: AttendanceLeaveDetail.listFrom(
         json['leaveDetails'] ?? json['leave_details'],
       ),
+      isLate: json['isLate'] == true ||
+          json['is_late'] == true ||
+          json['isLate']?.toString().toLowerCase() == 'true',
     );
   }
 }

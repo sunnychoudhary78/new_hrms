@@ -74,7 +74,7 @@ class _EmployeeAttendanceCalendarScreenState
 
           String? resolveStatus(DateTime day) {
             final key = DateFormat('yyyy-MM-dd').format(day);
-            return attendanceMap[key]?.status;
+            return attendanceMap[key]?.calendarStatus;
           }
 
           String? resolveTypeLabel(DateTime day) {

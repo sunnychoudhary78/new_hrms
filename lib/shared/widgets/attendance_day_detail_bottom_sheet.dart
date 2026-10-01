@@ -141,7 +141,7 @@ class _AttendanceDayDetailBottomSheetState
 
     final formattedDate = DateFormat('EEEE, dd MMM yyyy').format(widget.date);
 
-    final status = widget.data?.status ?? "No Data";
+    final status = widget.data?.calendarStatus ?? "No Data";
     final holidayLabel = widget.data?.holidayLabel;
     final leaveLabels = widget.data?.leaveLabels ?? const <String>[];
     final leaveDurationLabels =
