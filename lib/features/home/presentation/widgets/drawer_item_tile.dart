@@ -26,6 +26,9 @@ class DrawerTile extends StatelessWidget {
     this.subtitle,
   });
 
+  static const _idleIconBg = Color(0xFFF1F5F9);
+  static const _idleIconFg = Color(0xFF64748B);
+
   @override
   Widget build(BuildContext context) {
     final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
@@ -33,99 +36,64 @@ class DrawerTile extends StatelessWidget {
     final color = accent ?? HomeDashColors.accentBlue;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
+      padding: const EdgeInsets.symmetric(vertical: 1),
       child: Material(
-        color: isActive ? color.withValues(alpha: 0.10) : Colors.transparent,
+        color: isActive ? color.withValues(alpha: 0.08) : Colors.transparent,
         borderRadius: tileRadius,
         child: InkWell(
           borderRadius: tileRadius,
           splashFactory:
               isIOS ? NoSplash.splashFactory : InkSplash.splashFactory,
           onTap: onTap,
-          child: Ink(
-            decoration: BoxDecoration(
-              borderRadius: tileRadius,
-              border: isActive
-                  ? Border.all(color: color.withValues(alpha: 0.18))
-                  : null,
-            ),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(8, 10, 10, 10),
-              child: Row(
-                children: [
-                  // Active indicator bar
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 180),
-                    width: 3.5,
-                    height: subtitle != null ? 36 : 28,
-                    margin: const EdgeInsets.only(right: 8),
-                    decoration: BoxDecoration(
-                      color: isActive ? color : Colors.transparent,
-                      borderRadius: BorderRadius.circular(4),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(8, 10, 10, 10),
+            child: Row(
+              children: [
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  width: 3.5,
+                  height: 28,
+                  margin: const EdgeInsets.only(right: 8),
+                  decoration: BoxDecoration(
+                    color: isActive ? color : Colors.transparent,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: isActive ? color : _idleIconBg,
+                    borderRadius: BorderRadius.circular(11),
+                  ),
+                  child: Icon(
+                    icon,
+                    size: 20,
+                    color: isActive ? Colors.white : _idleIconFg,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 14.5,
+                      fontWeight: isActive ? FontWeight.w800 : FontWeight.w600,
+                      color: isActive ? color : HomeDashColors.title,
                     ),
                   ),
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: isActive ? color : color.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: isActive
-                          ? [
-                              BoxShadow(
-                                color: color.withValues(alpha: 0.28),
-                                blurRadius: 8,
-                                offset: const Offset(0, 3),
-                              ),
-                            ]
-                          : null,
-                    ),
-                    child: Icon(
-                      icon,
-                      size: 20,
-                      color: isActive ? Colors.white : color,
-                    ),
+                ),
+                if (trailing != null)
+                  trailing!
+                else if (showChevron)
+                  Icon(
+                    Icons.chevron_right_rounded,
+                    size: 20,
+                    color: isActive
+                        ? color.withValues(alpha: 0.75)
+                        : HomeDashColors.muted.withValues(alpha: 0.4),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          title,
-                          style: TextStyle(
-                            fontSize: 14.5,
-                            fontWeight:
-                                isActive ? FontWeight.w800 : FontWeight.w600,
-                            color: isActive ? color : HomeDashColors.title,
-                          ),
-                        ),
-                        if (subtitle != null) ...[
-                          const SizedBox(height: 2),
-                          Text(
-                            subtitle!,
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w500,
-                              color: HomeDashColors.muted.withValues(alpha: 0.9),
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                  if (trailing != null)
-                    trailing!
-                  else if (showChevron)
-                    Icon(
-                      Icons.chevron_right_rounded,
-                      size: 20,
-                      color: isActive
-                          ? color.withValues(alpha: 0.8)
-                          : HomeDashColors.muted.withValues(alpha: 0.45),
-                    ),
-                ],
-              ),
+              ],
             ),
           ),
         ),

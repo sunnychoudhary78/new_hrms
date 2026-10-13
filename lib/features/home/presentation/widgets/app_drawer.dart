@@ -99,7 +99,6 @@ class _AppDrawerState extends ConsumerState<AppDrawer> {
                           index: index++,
                           icon: Icons.home_rounded,
                           title: 'Home',
-                          subtitle: 'Dashboard & punch',
                           accent: HomeDashColors.accentBlue,
                           isActive: route == '/home',
                           onTap: () {
@@ -116,7 +115,6 @@ class _AppDrawerState extends ConsumerState<AppDrawer> {
                             index: index++,
                             icon: Icons.flag_rounded,
                             title: 'Day-one Guide',
-                            subtitle: 'Complete your setup',
                             accent: HomeDashColors.accentBlue,
                             isActive: route == '/day-one',
                             onTap: () {
@@ -133,11 +131,8 @@ class _AppDrawerState extends ConsumerState<AppDrawer> {
                         _buildExpandable(
                           index: index++,
                           title: 'Attendance',
-                          subtitle: _isAttendanceExpanded
-                              ? 'Choose an option'
-                              : 'Mark, view & corrections',
                           icon: Icons.access_time_filled_rounded,
-                          accent: HomeDashColors.accentPurple,
+                          accent: HomeDashColors.accentBlue,
                           expanded: _isAttendanceExpanded,
                           isActive: route == '/mark-attendance' ||
                               route == '/view-attendance' ||
@@ -174,11 +169,8 @@ class _AppDrawerState extends ConsumerState<AppDrawer> {
                         _buildExpandable(
                           index: index++,
                           title: 'Leave',
-                          subtitle: _isLeaveExpanded
-                              ? 'Choose an option'
-                              : 'Balance, apply & status',
                           icon: Icons.park_rounded,
-                          accent: HomeDashColors.accentGreen,
+                          accent: HomeDashColors.accentBlue,
                           expanded: _isLeaveExpanded,
                           isActive: route == '/leave-balance' ||
                               route == '/leave-apply' ||
@@ -216,8 +208,7 @@ class _AppDrawerState extends ConsumerState<AppDrawer> {
                             index: index++,
                             icon: Icons.groups_rounded,
                             title: 'Team Dashboard',
-                            subtitle: 'Team attendance overview',
-                            accent: HomeDashColors.accentPurple,
+                            accent: HomeDashColors.accentBlue,
                             isActive: route == '/team-dashboard',
                             onTap: () {
                               Navigator.pop(context);
@@ -229,7 +220,6 @@ class _AppDrawerState extends ConsumerState<AppDrawer> {
                             index: index++,
                             icon: Icons.videocam_rounded,
                             title: 'Meetings',
-                            subtitle: 'Join & schedule',
                             accent: HomeDashColors.accentBlue,
                             isActive: route == '/meetings' ||
                                 route == '/meetings/detail',
@@ -244,8 +234,7 @@ class _AppDrawerState extends ConsumerState<AppDrawer> {
                             index: index++,
                             icon: Icons.video_library_rounded,
                             title: 'Recordings',
-                            subtitle: 'Past meeting videos',
-                            accent: const Color(0xFF6366F1),
+                            accent: HomeDashColors.accentBlue,
                             isActive: route == '/meetings/recordings',
                             onTap: () {
                               Navigator.pop(context);
@@ -265,11 +254,8 @@ class _AppDrawerState extends ConsumerState<AppDrawer> {
                           _buildExpandable(
                             index: index++,
                             title: 'KRA / KPI',
-                            subtitle: _isKraExpanded
-                                ? 'Choose an option'
-                                : 'Goals & ratings',
                             icon: Icons.track_changes_rounded,
-                            accent: const Color(0xFFEC4899),
+                            accent: HomeDashColors.accentBlue,
                             expanded: _isKraExpanded,
                             isActive: route == '/kra',
                             onTap: () => setState(
@@ -305,11 +291,8 @@ class _AppDrawerState extends ConsumerState<AppDrawer> {
                         _buildExpandable(
                           index: index++,
                           title: 'Expenses',
-                          subtitle: _isExpenseExpanded
-                              ? 'Choose an option'
-                              : 'Claims & approvals',
                           icon: Icons.receipt_long_rounded,
-                          accent: HomeDashColors.accentOrange,
+                          accent: HomeDashColors.accentBlue,
                           expanded: _isExpenseExpanded,
                           isActive: route == '/expenses/my' ||
                               route == '/expenses-dashboard',
@@ -336,8 +319,7 @@ class _AppDrawerState extends ConsumerState<AppDrawer> {
                           index: index++,
                           icon: Icons.account_balance_wallet_rounded,
                           title: 'Payslip',
-                          subtitle: 'Salary slips',
-                          accent: HomeDashColors.accentGreen,
+                          accent: HomeDashColors.accentBlue,
                           isActive: route == '/payslip',
                           onTap: () {
                             Navigator.pop(context);
@@ -348,7 +330,6 @@ class _AppDrawerState extends ConsumerState<AppDrawer> {
                           index: index++,
                           icon: Icons.verified_user_rounded,
                           title: 'Policies',
-                          subtitle: 'Company guidelines',
                           accent: HomeDashColors.accentBlue,
                           isActive: route == '/policies',
                           onTap: () {
@@ -359,11 +340,8 @@ class _AppDrawerState extends ConsumerState<AppDrawer> {
                         _buildExpandable(
                           index: index++,
                           title: 'Resignation',
-                          subtitle: _isResignationExpanded
-                              ? 'Choose an option'
-                              : 'Exit process',
                           icon: Icons.work_off_rounded,
-                          accent: const Color(0xFFF43F5E),
+                          accent: HomeDashColors.accentBlue,
                           expanded: _isResignationExpanded,
                           isActive: route == '/resignation/my' ||
                               route == '/resignation-dashboard',
@@ -397,8 +375,7 @@ class _AppDrawerState extends ConsumerState<AppDrawer> {
                           index: index++,
                           icon: Icons.settings_rounded,
                           title: 'Settings',
-                          subtitle: 'App preferences',
-                          accent: const Color(0xFF64748B),
+                          accent: HomeDashColors.accentBlue,
                           isActive: route == '/settings',
                           onTap: () {
                             Navigator.pop(context);
@@ -425,9 +402,10 @@ class _AppDrawerState extends ConsumerState<AppDrawer> {
               ),
               child: TextButton.icon(
                 style: TextButton.styleFrom(
-                  foregroundColor: HomeDashColors.accentRed,
-                  backgroundColor: const Color(0xFFFFF1F2),
+                  foregroundColor: const Color(0xFFBE123C),
+                  backgroundColor: const Color(0xFFF8FAFC),
                   minimumSize: const Size(double.infinity, 48),
+                  side: const BorderSide(color: Color(0xFFE2E8F0)),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14),
                   ),
@@ -529,13 +507,13 @@ class _AppDrawerState extends ConsumerState<AppDrawer> {
             gradient: const LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [Color(0xFF2563EB), Color(0xFF7C3AED)],
+              colors: [Color(0xFF1D4ED8), Color(0xFF2563EB)],
             ),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF6366F1).withValues(alpha: 0.3),
-                blurRadius: 18,
-                offset: const Offset(0, 8),
+                color: const Color(0xFF2563EB).withValues(alpha: 0.22),
+                blurRadius: 16,
+                offset: const Offset(0, 6),
               ),
             ],
           ),
@@ -666,11 +644,9 @@ class _AppDrawerState extends ConsumerState<AppDrawer> {
           width: double.infinity,
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [Color(0xFFEFF6FF), Color(0xFFE0E7FF)],
-            ),
+            color: const Color(0xFFF8FAFC),
             borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: const Color(0xFFBFDBFE)),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
           ),
           child: Row(
             children: [
@@ -732,7 +708,6 @@ class _AppDrawerState extends ConsumerState<AppDrawer> {
   Widget _buildExpandable({
     required int index,
     required String title,
-    required String subtitle,
     required IconData icon,
     required Color accent,
     required bool expanded,
@@ -746,7 +721,6 @@ class _AppDrawerState extends ConsumerState<AppDrawer> {
           index: index,
           icon: icon,
           title: title,
-          subtitle: subtitle,
           accent: accent,
           isActive: isActive || expanded,
           showChevron: false,
@@ -757,14 +731,16 @@ class _AppDrawerState extends ConsumerState<AppDrawer> {
             child: Container(
               width: 28,
               height: 28,
-              decoration: BoxDecoration(
-                color: accent.withValues(alpha: 0.10),
+              decoration: const BoxDecoration(
+                color: Color(0xFFF1F5F9),
                 shape: BoxShape.circle,
               ),
               child: Icon(
                 Icons.keyboard_arrow_down_rounded,
                 size: 20,
-                color: accent,
+                color: isActive || expanded
+                    ? accent
+                    : const Color(0xFF64748B),
               ),
             ),
           ),
@@ -778,7 +754,7 @@ class _AppDrawerState extends ConsumerState<AppDrawer> {
                   margin: const EdgeInsets.fromLTRB(12, 0, 8, 6),
                   padding: const EdgeInsets.fromLTRB(8, 4, 8, 6),
                   decoration: BoxDecoration(
-                    color: accent.withValues(alpha: 0.05),
+                    color: const Color(0xFFF8FAFC),
                     borderRadius: BorderRadius.circular(14),
                   ),
                   child: Column(children: subItems),
@@ -803,7 +779,7 @@ class _AppDrawerState extends ConsumerState<AppDrawer> {
     return _SubNavTile(
       title: title,
       icon: Icons.circle,
-      accent: const Color(0xFFEC4899),
+      accent: HomeDashColors.accentBlue,
       isActive: false,
       onTap: () => _goToKra(args),
     );
