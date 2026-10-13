@@ -166,9 +166,7 @@ class HomeDashboardRepository {
       res.days,
     );
 
-    final leaveRemaining = await _loadLeavesRemaining();
-    final leavesTaken = summary.totalLeaves.toDouble();
-    final leavesTotal = leaveRemaining + leavesTaken;
+    final leave = await _loadLeaveStats();
     final weekWorkedHours = _weekWorkedHours(bars);
     final autoCloseCapHours = _autoCloseCapHours(bars);
 
@@ -177,8 +175,8 @@ class HomeDashboardRepository {
       lateDays: summary.lateDays,
       absentDays: summary.absentDays.round(),
       totalLeaves: summary.totalLeaves,
-      leavesRemaining: leaveRemaining,
-      leavesTotal: leavesTotal <= 0 ? leaveRemaining : leavesTotal,
+      leavesRemaining: leave.remaining,
+      leavesTotal: leave.total,
       weekWorkedHours: weekWorkedHours,
       autoCloseCapHours: autoCloseCapHours,
     );
@@ -191,18 +189,30 @@ class HomeDashboardRepository {
     );
   }
 
-  Future<double> _loadLeavesRemaining() async {
+  /// Remaining = available + carried. Total ≈ remaining + reserved (held) so
+  /// the progress bar reflects usable leave, not month-taken leave.
+  Future<({double remaining, double total})> _loadLeaveStats() async {
     try {
       final rows = await leaveBalanceApi.fetchLeaveBalance();
-      var total = 0.0;
+      var remaining = 0.0;
+      var reserved = 0.0;
       for (final row in rows) {
         if (row is! Map) continue;
         final available = (row['available'] as num?)?.toDouble() ?? 0;
-        if (available > 0) total += available;
+        final carried = (row['carried'] as num?)?.toDouble() ?? 0;
+        final pending =
+            (row['pending_reserved'] as num?)?.toDouble() ??
+            (row['pendingReserved'] as num?)?.toDouble() ??
+            0;
+        if (available > 0) remaining += available;
+        if (carried > 0) remaining += carried;
+        if (pending > 0) reserved += pending;
       }
-      return double.parse(total.toStringAsFixed(1));
+      remaining = double.parse(remaining.toStringAsFixed(1));
+      final total = double.parse((remaining + reserved).toStringAsFixed(1));
+      return (remaining: remaining, total: total > 0 ? total : remaining);
     } catch (_) {
-      return 0;
+      return (remaining: 0.0, total: 0.0);
     }
   }
 
@@ -313,16 +323,32 @@ class HomeDashboardRepository {
     for (final day in summaryDays) {
       final key = dateKeyFromDateTime(day.date);
       statusByDate[key] = day.status;
-      if (day.fullWorked > 0) {
-        workedByDate[key] = day.fullWorked;
+      final backendMins =
+          day.fullWorked > 0 ? day.fullWorked : day.totalMinutes;
+      if (backendMins > 0) {
+        workedByDate[key] = backendMins;
       }
     }
 
     final sessionsByDate = groupSessionsByDate(sessions);
     final workingDays = _allWorkingDaysOfMonth(month);
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
 
     return workingDays.map((day) {
       final key = dateKeyFromDateTime(day);
+      final dayOnly = DateTime(day.year, day.month, day.day);
+      final isFuture = dayOnly.isAfter(today);
+
+      // Future days must not show expected/worked as if they already ran.
+      if (isFuture) {
+        return WeeklyAttendanceBar(
+          date: day,
+          workedMinutes: 0,
+          expectedMinutes: 0,
+        );
+      }
+
       final dayStatus = statusByDate[key] ?? '';
       final daySessions = sessionsByDate[key] ?? [];
 
@@ -338,9 +364,12 @@ class HomeDashboardRepository {
         autoCloseBufferMinutes: autoCloseBufferMinutes,
       );
 
-      // Prefer backend worked minutes (fullWorked / totalMinutes) when present.
-      final backendWorked = workedByDate[key];
-      final workedMinutes = backendWorked ?? result.workedMinutes;
+      // Take the higher of backend aggregate vs live session sum so open
+      // punches and closed-day totals both stay accurate.
+      final backendWorked = workedByDate[key] ?? 0;
+      final workedMinutes = backendWorked > result.workedMinutes
+          ? backendWorked
+          : result.workedMinutes;
 
       return WeeklyAttendanceBar(
         date: day,

@@ -149,17 +149,17 @@ class HomeWelcomeAttendanceCard extends ConsumerWidget {
                       loading: () => _punchButton(
                         label: 'Checking...',
                         enabled: false,
-                        filled: false,
+                        isPunchOut: false,
                       ),
                       error: (_, __) => _punchButton(
                         label: 'Unavailable',
                         enabled: false,
-                        filled: false,
+                        isPunchOut: false,
                       ),
                       data: (_) => _punchButton(
                         label: buttonText,
                         enabled: buttonEnabled,
-                        filled: true,
+                        isPunchOut: isCheckedIn,
                         onPressed: buttonEnabled
                             ? () async {
                                 if (isCheckedIn) {
@@ -204,10 +204,18 @@ class HomeWelcomeAttendanceCard extends ConsumerWidget {
   static Widget _punchButton({
     required String label,
     required bool enabled,
-    required bool filled,
+    required bool isPunchOut,
     VoidCallback? onPressed,
   }) {
     final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
+    // Punch In = green, Punch Out = red
+    final gradient = isPunchOut
+        ? const LinearGradient(colors: [Color(0xFFEF4444), Color(0xFFDC2626)])
+        : const LinearGradient(colors: [Color(0xFF22C55E), Color(0xFF16A34A)]);
+    final shadowColor = isPunchOut
+        ? HomeDashColors.accentRed.withValues(alpha: 0.35)
+        : HomeDashColors.accentGreen.withValues(alpha: 0.35);
+
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -219,16 +227,12 @@ class HomeWelcomeAttendanceCard extends ConsumerWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(22),
-            gradient: enabled && filled
-                ? const LinearGradient(
-                    colors: [Color(0xFF22C55E), Color(0xFF16A34A)],
-                  )
-                : null,
-            color: enabled && filled ? null : const Color(0xFFE2E8F0),
-            boxShadow: enabled && filled
+            gradient: enabled ? gradient : null,
+            color: enabled ? null : const Color(0xFFE2E8F0),
+            boxShadow: enabled
                 ? [
                     BoxShadow(
-                      color: HomeDashColors.accentGreen.withValues(alpha: 0.35),
+                      color: shadowColor,
                       blurRadius: 12,
                       offset: const Offset(0, 4),
                     ),
@@ -241,9 +245,7 @@ class HomeWelcomeAttendanceCard extends ConsumerWidget {
               Text(
                 label,
                 style: TextStyle(
-                  color: enabled && filled
-                      ? Colors.white
-                      : const Color(0xFF64748B),
+                  color: enabled ? Colors.white : const Color(0xFF64748B),
                   fontWeight: FontWeight.w700,
                   fontSize: 13,
                 ),
@@ -252,9 +254,7 @@ class HomeWelcomeAttendanceCard extends ConsumerWidget {
               Icon(
                 Icons.arrow_forward_rounded,
                 size: 16,
-                color: enabled && filled
-                    ? Colors.white
-                    : const Color(0xFF64748B),
+                color: enabled ? Colors.white : const Color(0xFF64748B),
               ),
             ],
           ),
@@ -385,18 +385,14 @@ class _LivePunchTimelineState extends State<_LivePunchTimeline> {
     final today = todaySessions(widget.sessions);
     var total = 0;
     for (final s in today) {
-      if (s.checkOutTime != null) {
-        total += s.durationMinutes > 0
-            ? s.durationMinutes
-            : s.checkOutTime!.difference(s.checkInTime).inMinutes.clamp(0, 24 * 60);
-      }
+      total += sessionWorkedMinutes(s);
     }
+    // Stale open session (yesterday) is already excluded from todaySessions.
+    // Only add open if it belongs to today and wasn't already counted.
     final open = widget.openSession;
-    if (open != null) {
-      total += DateTime.now()
-          .difference(open.checkInTime)
-          .inMinutes
-          .clamp(0, 24 * 60);
+    if (open != null && sessionDateIso(open) == localTodayIso()) {
+      final already = today.any((s) => s.id == open.id);
+      if (!already) total += sessionWorkedMinutes(open);
     }
     return total;
   }
@@ -415,24 +411,29 @@ class _LivePunchTimelineState extends State<_LivePunchTimeline> {
 
   (DateTime? inTime, DateTime? outTime) get _inOut {
     final today = todaySessions(widget.sessions);
-    final open = widget.openSession;
     DateTime? firstIn;
     DateTime? lastOut;
+    var hasOpenToday = false;
 
     for (final s in today) {
       final cin = s.checkInTime.toLocal();
       if (firstIn == null || cin.isBefore(firstIn)) firstIn = cin;
-      if (s.checkOutTime != null) {
+      if (s.checkOutTime == null) {
+        hasOpenToday = true;
+      } else {
         final cout = s.checkOutTime!.toLocal();
         if (lastOut == null || cout.isAfter(lastOut)) lastOut = cout;
       }
     }
 
-    if (open != null) {
+    final open = widget.openSession;
+    if (open != null && sessionDateIso(open) == localTodayIso()) {
+      hasOpenToday = true;
       final cin = open.checkInTime.toLocal();
       if (firstIn == null || cin.isBefore(firstIn)) firstIn = cin;
-      lastOut = null; // open session → no final out yet
     }
+
+    if (hasOpenToday) lastOut = null;
 
     return (firstIn, lastOut);
   }

@@ -78,39 +78,31 @@ class _LastFiveDaysAttendanceCardState
     }
   }
 
+  /// Past (and today) days only — future days are never charted.
+  List<WeeklyAttendanceBar> get _eligibleDays {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    return widget.days.where((d) {
+      final day = DateTime(d.date.year, d.date.month, d.date.day);
+      return !day.isAfter(today);
+    }).toList();
+  }
+
   void _updateVisibleList() {
-    if (widget.days.isEmpty) {
+    final source = _eligibleDays;
+    if (source.isEmpty) {
       visibleList = const [];
       maxY = 8;
       return;
     }
 
-    switch (_range) {
-      case AttendanceRange.week:
-        visibleList = widget.days.sublist(
-          startIndex,
-          (startIndex + visibleDays).clamp(0, widget.days.length),
-        );
-      case AttendanceRange.month:
-      case AttendanceRange.year:
-        // Month/year share month bars; year keeps current month snapshot.
-        final now = DateTime.now();
-        final today = DateTime(now.year, now.month, now.day);
-        visibleList = widget.days
-            .where((d) {
-              final day = DateTime(d.date.year, d.date.month, d.date.day);
-              return !day.isAfter(today);
-            })
-            .toList();
-        if (visibleList.length > 10) {
-          visibleList = visibleList.sublist(visibleList.length - 10);
-        }
-        if (visibleList.isEmpty) {
-          visibleList = widget.days.length > visibleDays
-              ? widget.days.sublist(widget.days.length - visibleDays)
-              : widget.days;
-        }
-    }
+    // Week / Month / Year all use a 5-day window so X labels never overlap.
+    final maxStart = (source.length - visibleDays).clamp(0, source.length);
+    startIndex = startIndex.clamp(0, maxStart);
+    visibleList = source.sublist(
+      startIndex,
+      (startIndex + visibleDays).clamp(0, source.length),
+    );
 
     maxY = _calculateMaxY();
   }
@@ -133,39 +125,53 @@ class _LastFiveDaysAttendanceCardState
   }
 
   void _goPrevious() {
-    if (_range != AttendanceRange.week) {
-      widget.onPreviousMonth?.call();
-      return;
-    }
+    final source = _eligibleDays;
     if (startIndex == 0) {
       widget.onPreviousMonth?.call();
       return;
     }
     setState(() {
-      startIndex = (startIndex - visibleDays).clamp(0, widget.days.length);
+      startIndex = (startIndex - visibleDays).clamp(0, source.length);
       _updateVisibleList();
     });
   }
 
   void _goNext() {
-    if (_range != AttendanceRange.week) {
-      widget.onNextMonth?.call();
-      return;
-    }
-    if (startIndex + visibleDays >= widget.days.length) {
+    final source = _eligibleDays;
+    if (startIndex + visibleDays >= source.length) {
       widget.onNextMonth?.call();
       return;
     }
     setState(() {
-      startIndex = (startIndex + visibleDays).clamp(0, widget.days.length);
+      startIndex = (startIndex + visibleDays).clamp(0, source.length);
       _updateVisibleList();
     });
   }
 
+  bool get _canGoPreviousWindow {
+    if (startIndex > 0) return true;
+    return widget.canGoToPreviousMonth;
+  }
+
+  bool get _canGoNextWindow {
+    if (startIndex + visibleDays < _eligibleDays.length) return true;
+    return widget.canGoToNextMonth;
+  }
+
+  /// Average over days that actually count (expected or worked > 0), so
+  /// week-offs / empty future slots don't pull the average to 0.0.
   double get _avgWorkedHours {
-    if (visibleList.isEmpty) return 0;
+    final counted = visibleList
+        .where((d) => d.expectedMinutes > 0 || d.workedMinutes > 0)
+        .toList();
+    if (counted.isEmpty) return 0;
+    final total = counted.fold<int>(0, (s, e) => s + e.workedMinutes);
+    return double.parse((total / counted.length / 60).toStringAsFixed(1));
+  }
+
+  double get _totalWorkedHours {
     final total = visibleList.fold<int>(0, (s, e) => s + e.workedMinutes);
-    return double.parse((total / visibleList.length / 60).toStringAsFixed(1));
+    return double.parse((total / 60).toStringAsFixed(1));
   }
 
   @override
@@ -210,9 +216,7 @@ class _LastFiveDaysAttendanceCardState
                 onChanged: (v) {
                   setState(() {
                     _range = v;
-                    if (v == AttendanceRange.week) {
-                      startIndex = initialStartIndexForToday(widget.days);
-                    }
+                    startIndex = initialStartIndexForToday(_eligibleDays);
                     _updateVisibleList();
                   });
                 },
@@ -224,11 +228,7 @@ class _LastFiveDaysAttendanceCardState
             children: [
               IconButton(
                 icon: const Icon(Icons.chevron_left_rounded),
-                onPressed: (_range == AttendanceRange.week
-                        ? startIndex == 0 && !widget.canGoToPreviousMonth
-                        : !widget.canGoToPreviousMonth)
-                    ? null
-                    : _goPrevious,
+                onPressed: _canGoPreviousWindow ? _goPrevious : null,
                 visualDensity: VisualDensity.compact,
                 style: IconButton.styleFrom(
                   splashFactory:
@@ -238,12 +238,7 @@ class _LastFiveDaysAttendanceCardState
               const Spacer(),
               IconButton(
                 icon: const Icon(Icons.chevron_right_rounded),
-                onPressed: (_range == AttendanceRange.week
-                        ? startIndex + visibleDays >= widget.days.length &&
-                            !widget.canGoToNextMonth
-                        : !widget.canGoToNextMonth)
-                    ? null
-                    : _goNext,
+                onPressed: _canGoNextWindow ? _goNext : null,
                 visualDensity: VisualDensity.compact,
                 style: IconButton.styleFrom(
                   splashFactory:
@@ -279,9 +274,9 @@ class _LastFiveDaysAttendanceCardState
                       ),
                     ),
                     const SizedBox(height: 2),
-                    const Text(
-                      'Avg work hours',
-                      style: TextStyle(
+                    Text(
+                      'Avg · ${_totalWorkedHours.toStringAsFixed(1)} hrs total',
+                      style: const TextStyle(
                         fontSize: 11,
                         color: HomeDashColors.muted,
                       ),
@@ -289,37 +284,15 @@ class _LastFiveDaysAttendanceCardState
                   ],
                 ),
               ),
-              Flexible(
+              const Flexible(
                 child: Wrap(
-                  spacing: 10,
+                  spacing: 12,
                   runSpacing: 6,
                   alignment: WrapAlignment.end,
-                  children: const [
+                  children: [
                     _Legend(HomeDashColors.worked, 'Worked'),
-                    _Legend(HomeDashColors.overtime, 'Overtime'),
-                    _Legend(HomeDashColors.capped, 'Auto-close'),
                     _Legend(HomeDashColors.expected, 'Expected'),
                   ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              const Icon(
-                Icons.info_outline_rounded,
-                size: 14,
-                color: HomeDashColors.muted,
-              ),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  'Estimated OT — final amount appears on payslip after payroll.',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: HomeDashColors.muted.withValues(alpha: 0.95),
-                  ),
                 ),
               ),
             ],
@@ -367,22 +340,42 @@ class _LastFiveDaysAttendanceCardState
         bottomTitles: AxisTitles(
           sideTitles: SideTitles(
             showTitles: true,
-            reservedSize: 36,
+            reservedSize: 40,
             getTitlesWidget: (value, meta) {
               final index = value.toInt();
               if (index < 0 || index >= visibleList.length) {
-                return const SizedBox();
+                return const SizedBox.shrink();
+              }
+              // Only draw the label for the exact integer slot.
+              if (value != index.toDouble()) {
+                return const SizedBox.shrink();
               }
               final date = visibleList[index].date;
-              return Padding(
-                padding: const EdgeInsets.only(top: 6),
-                child: Text(
-                  DateFormat('E d').format(date),
-                  style: const TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
-                    color: HomeDashColors.muted,
-                  ),
+              return SideTitleWidget(
+                meta: meta,
+                space: 6,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      DateFormat('E').format(date),
+                      style: const TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        color: HomeDashColors.muted,
+                        height: 1.1,
+                      ),
+                    ),
+                    Text(
+                      DateFormat('d').format(date),
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: HomeDashColors.title,
+                        height: 1.1,
+                      ),
+                    ),
+                  ],
                 ),
               );
             },
@@ -393,37 +386,24 @@ class _LastFiveDaysAttendanceCardState
         final d = visibleList[index];
         final worked = d.workedMinutes / 60.0;
         final expected = d.expectedMinutes / 60.0;
-        final overtime = worked > expected ? worked - expected : 0.0;
-        final normal = worked - overtime;
-        final tipColor =
-            d.isCapped ? HomeDashColors.capped : HomeDashColors.overtime;
 
         return BarChartGroupData(
           x: index,
-          barsSpace: 3,
+          barsSpace: 4,
           barRods: [
             BarChartRodData(
-              toY: expected,
+              toY: expected > 0 ? expected : 0,
               width: barWidth,
               borderRadius: BorderRadius.circular(5),
               color: HomeDashColors.expected,
             ),
-            BarChartRodData(
-              toY: worked <= 0 ? 0.05 : worked,
-              width: barWidth,
-              borderRadius: BorderRadius.circular(5),
-              gradient: const LinearGradient(
-                begin: Alignment.bottomCenter,
-                end: Alignment.topCenter,
-                colors: [Color(0xFF6366F1), Color(0xFF93C5FD)],
+            if (worked > 0)
+              BarChartRodData(
+                toY: worked,
+                width: barWidth,
+                borderRadius: BorderRadius.circular(5),
+                color: HomeDashColors.worked,
               ),
-              rodStackItems: [
-                if (normal > 0)
-                  BarChartRodStackItem(0, normal, HomeDashColors.worked),
-                if (overtime > 0)
-                  BarChartRodStackItem(normal, worked, tipColor),
-              ],
-            ),
           ],
         );
       }),

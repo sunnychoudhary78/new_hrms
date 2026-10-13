@@ -9,6 +9,13 @@ class AttendanceOverviewCard extends StatelessWidget {
 
   const AttendanceOverviewCard({super.key, required this.dashboard});
 
+  String _trackedDaysLabel(AttendanceDistribution d) {
+    final total = d.total;
+    if (total <= 0) return '0';
+    if (total == total.roundToDouble()) return total.toStringAsFixed(0);
+    return total.toStringAsFixed(1);
+  }
+
   @override
   Widget build(BuildContext context) {
     final daysInMonth = DateTime(
@@ -62,16 +69,16 @@ class AttendanceOverviewCard extends StatelessWidget {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Text(
-                                '$daysInMonth',
+                                _trackedDaysLabel(dashboard.distribution),
                                 style: const TextStyle(
                                   fontSize: 22,
                                   fontWeight: FontWeight.w800,
                                   color: HomeDashColors.title,
                                 ),
                               ),
-                              const Text(
-                                'Days',
-                                style: TextStyle(
+                              Text(
+                                'of $daysInMonth days',
+                                style: const TextStyle(
                                   fontSize: 11,
                                   color: HomeDashColors.muted,
                                   fontWeight: FontWeight.w500,
@@ -136,15 +143,33 @@ class AttendanceOverviewCard extends StatelessWidget {
               _ModernProgressBar(
                 label: 'Worked',
                 value: dashboard.attendance.workedHours,
-                max: dashboard.attendance.expectedHours,
+                max: dashboard.attendance.expectedHours > 0
+                    ? dashboard.attendance.expectedHours
+                    : 1,
                 color: HomeDashColors.accentGreen,
               ),
               const SizedBox(height: 14),
-              _ModernProgressBar(
-                label: 'Expected',
-                value: dashboard.attendance.expectedHours,
-                max: dashboard.attendance.expectedHours,
-                color: HomeDashColors.accentBlue,
+              Row(
+                children: [
+                  const Expanded(
+                    child: Text(
+                      'Expected (target)',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: HomeDashColors.title,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    '${dashboard.attendance.expectedHours.toStringAsFixed(1)} hrs',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: HomeDashColors.accentBlue,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -236,6 +261,12 @@ class _PieLegend extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.center,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        _LegendItem(
+          color: const Color(0xFF34D399),
+          label: 'Working',
+          value: distribution.worked,
+          percent: distribution.percent(distribution.worked),
+        ),
         _LegendItem(
           color: HomeDashColors.leave,
           label: 'Leave',
@@ -331,7 +362,7 @@ class _ModernProgressBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final percent = max == 0 ? 0.0 : (value / max).clamp(0.0, 1.0);
+    final percent = max <= 0 ? 0.0 : (value / max).clamp(0.0, 1.0);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

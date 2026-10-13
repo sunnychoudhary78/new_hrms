@@ -1,14 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lms/features/attendance/mark_attendance/presentation/providers/attendance_selectors.dart';
+import 'package:lms/features/attendance/mark_attendance/presentation/providers/mark_attendance_provider.dart';
+import 'package:lms/features/attendance/shared/utils/attendance_date_utils.dart';
+import 'package:lms/features/attendance/shared/utils/overtime_estimate_utils.dart';
 import 'package:lms/features/home/data/models/home_dashboard_model.dart';
 import 'package:lms/features/home/presentation/widgets/home_dashboard_style.dart';
 
-class HomeStatsCards extends StatelessWidget {
+class HomeStatsCards extends ConsumerWidget {
   final HomeDashboardModel dashboard;
 
   const HomeStatsCards({super.key, required this.dashboard});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final stats = dashboard.stats;
     final leaveRemaining = stats.leavesRemaining;
     final leaveTotal =
@@ -16,13 +21,15 @@ class HomeStatsCards extends StatelessWidget {
     final leaveProgress =
         leaveTotal <= 0 ? 0.0 : (leaveRemaining / leaveTotal).clamp(0.0, 1.0);
 
+    final weekHours = _liveWeekWorkedHours(ref, dashboard);
+
     final cards = [
       _StatCardData(
         icon: Icons.eco_rounded,
         iconBg: HomeDashColors.softGreen,
         iconColor: HomeDashColors.accentGreen,
         title: 'Leaves Remaining',
-        value: leaveTotal > 0
+        value: leaveTotal > 0 && leaveTotal != leaveRemaining
             ? '${_fmt(leaveRemaining)} / ${_fmt(leaveTotal)}'
             : _fmt(leaveRemaining),
         progress: leaveProgress,
@@ -34,7 +41,7 @@ class HomeStatsCards extends StatelessWidget {
         iconBg: HomeDashColors.softPurple,
         iconColor: HomeDashColors.accentPurple,
         title: 'Worked Hours',
-        value: '${stats.weekWorkedHours.toStringAsFixed(1)} hrs',
+        value: '${weekHours.toStringAsFixed(1)} hrs',
         footerIcon: Icons.schedule_rounded,
         footer: 'This Week',
       ),
@@ -49,6 +56,45 @@ class HomeStatsCards extends StatelessWidget {
         itemBuilder: (context, index) => _StatMiniCard(data: cards[index]),
       ),
     );
+  }
+
+  /// Week hours from dashboard bars, with today's open punch counted live.
+  double _liveWeekWorkedHours(WidgetRef ref, HomeDashboardModel dashboard) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final weekStart = today.subtract(Duration(days: today.weekday - 1));
+    final weekEnd = weekStart.add(const Duration(days: 6));
+
+    var minutes = 0;
+    for (final bar in dashboard.lastFiveDays) {
+      final day = DateTime(bar.date.year, bar.date.month, bar.date.day);
+      if (day.isBefore(weekStart) || day.isAfter(weekEnd)) continue;
+      if (day == today) continue; // replace with live today below
+      minutes += bar.workedMinutes;
+    }
+
+    final attendance = ref.watch(markAttendanceProvider).asData?.value;
+    final sessions = attendance?.sessions ?? const [];
+    final todayList = todaySessions(sessions);
+    for (final s in todayList) {
+      minutes += sessionWorkedMinutes(s);
+    }
+    final open = ref.watch(openSessionProvider(sessions));
+    if (open != null &&
+        sessionDateIso(open) == localTodayIso() &&
+        !todayList.any((s) => s.id == open.id)) {
+      minutes += sessionWorkedMinutes(open);
+    }
+
+    // If mark-attendance hasn't loaded yet, fall back to bar's today value.
+    if (attendance == null) {
+      for (final bar in dashboard.lastFiveDays) {
+        final day = DateTime(bar.date.year, bar.date.month, bar.date.day);
+        if (day == today) minutes += bar.workedMinutes;
+      }
+    }
+
+    return double.parse((minutes / 60).toStringAsFixed(1));
   }
 
   String _fmt(double v) {
