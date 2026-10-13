@@ -1,6 +1,6 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 import 'package:lms/features/auth/presentation/providers/auth_provider.dart';
 
 class MarkAttendanceHeader extends ConsumerWidget {
@@ -10,74 +10,156 @@ class MarkAttendanceHeader extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final scheme = Theme.of(context).colorScheme;
-    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
-
     final authState = ref.watch(authProvider);
     final profile = authState.profile;
     final profileUrl = authState.profileUrl;
-
     final now = DateTime.now();
 
-    final name = profile?.associatesName ?? "--";
-    final empId = profile?.payrollCode ?? "--";
+    final name = _titleCase(profile?.associatesName ?? 'User');
+    final empId = profile?.payrollCode?.trim().isNotEmpty == true
+        ? profile!.payrollCode!.trim()
+        : (profile?.userId ?? '--');
 
     return Container(
+      width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [scheme.primary, scheme.primaryContainer],
+        borderRadius: BorderRadius.circular(24),
+        gradient: const LinearGradient(
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+          colors: [Color(0xFF7C3AED), Color(0xFF2563EB)],
         ),
-        borderRadius: BorderRadius.circular(isIOS ? 16 : 20),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF6366F1).withValues(alpha: 0.28),
+            blurRadius: 16,
+            offset: const Offset(0, 8),
+          ),
+        ],
       ),
       child: Row(
         children: [
-          CircleAvatar(
-            radius: 30,
-            backgroundImage: profileUrl.isNotEmpty
-                ? NetworkImage(profileUrl)
-                : const AssetImage('assets/images/profile.jpg')
-                      as ImageProvider,
+          Container(
+            padding: const EdgeInsets.all(2.5),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.5),
+                width: 2,
+              ),
+            ),
+            child: CircleAvatar(
+              radius: 28,
+              backgroundColor: Colors.white.withValues(alpha: 0.2),
+              backgroundImage:
+                  profileUrl.isNotEmpty ? NetworkImage(profileUrl) : null,
+              child: profileUrl.isEmpty
+                  ? Text(
+                      _initials(name),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    )
+                  : null,
+            ),
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  "Welcome,",
-                  style: TextStyle(color: scheme.onPrimary.withOpacity(.8)),
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    const Text('👋', style: TextStyle(fontSize: 16)),
+                  ],
                 ),
+                const SizedBox(height: 4),
                 Text(
-                  name,
+                  'ID: $empId',
                   style: TextStyle(
-                    color: scheme.onPrimary,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
+                    color: Colors.white.withValues(alpha: 0.88),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
                   ),
-                ),
-                Text(
-                  "Employee ID: $empId",
-                  style: TextStyle(color: scheme.onPrimary.withOpacity(.8)),
                 ),
               ],
             ),
           ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                "${now.day}/${now.month}/${now.year}",
-                style: TextStyle(color: scheme.onPrimary),
-              ),
-              Text(
-                dayName,
-                style: TextStyle(color: scheme.onPrimary.withOpacity(.8)),
-              ),
-            ],
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.16),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.calendar_today_rounded,
+                      size: 13,
+                      color: Colors.white.withValues(alpha: 0.9),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      DateFormat('d MMM yyyy').format(now),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  dayName,
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.85),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
     );
+  }
+
+  String _titleCase(String value) {
+    final parts = value.trim().split(RegExp(r'\s+'));
+    if (parts.isEmpty) return value;
+    return parts
+        .map((p) {
+          if (p.isEmpty) return p;
+          return p[0].toUpperCase() + p.substring(1).toLowerCase();
+        })
+        .join(' ');
+  }
+
+  String _initials(String name) {
+    final parts = name.trim().split(' ');
+    if (parts.isEmpty || parts.first.isEmpty) return 'U';
+    if (parts.length == 1) return parts.first[0].toUpperCase();
+    return (parts.first[0] + parts.last[0]).toUpperCase();
   }
 }
