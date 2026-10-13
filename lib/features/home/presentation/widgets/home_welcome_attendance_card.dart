@@ -28,6 +28,9 @@ class HomeWelcomeAttendanceCard extends ConsumerWidget {
     this.imageUrl,
   });
 
+  static const _blueStart = Color(0xFF5B6CF5);
+  static const _blueEnd = Color(0xFF6B7CFA);
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final attendanceAsync = ref.watch(markAttendanceProvider);
@@ -36,10 +39,26 @@ class HomeWelcomeAttendanceCard extends ConsumerWidget {
     final canMobileCheckOut = ref.watch(canMobileCheckOutProvider);
     final shift = ref.watch(effectiveShiftProvider).asData?.value;
     final greeting = _greeting();
-    final firstName = name.trim().split(' ').first;
+    final firstName = _titleCase(name.trim().split(' ').first);
 
-    return HomeDashCard(
+    return Container(
+      width: double.infinity,
       padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [_blueStart, _blueEnd],
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: _blueStart.withValues(alpha: 0.32),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
       child: attendanceAsync.when(
         loading: () => const SizedBox(height: 180),
         error: (_, __) => const SizedBox(height: 180),
@@ -55,8 +74,8 @@ class HomeWelcomeAttendanceCard extends ConsumerWidget {
           final canPunchIn = canStartNew && canMobileCheckIn;
           final canPunchOut = hasOpen && canMobileCheckOut;
           final configReady = mobileConfigAsync.hasValue;
-          final canPunch = configReady &&
-              (isCheckedIn ? canPunchOut : canPunchIn);
+          final canPunch =
+              configReady && (isCheckedIn ? canPunchOut : canPunchIn);
 
           Future<void> handlePunch() async {
             if (!canPunch) return;
@@ -80,23 +99,34 @@ class HomeWelcomeAttendanceCard extends ConsumerWidget {
                       children: [
                         Row(
                           children: [
-                            CircleAvatar(
-                              radius: 18,
-                              backgroundColor: HomeDashColors.softBlue,
-                              backgroundImage:
-                                  imageUrl != null && imageUrl!.isNotEmpty
-                                      ? NetworkImage(imageUrl!)
-                                      : null,
-                              child: imageUrl == null || imageUrl!.isEmpty
-                                  ? Text(
-                                      _initials(name),
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.w700,
-                                        color: HomeDashColors.accentBlue,
-                                        fontSize: 12,
-                                      ),
-                                    )
-                                  : null,
+                            Container(
+                              padding: const EdgeInsets.all(2),
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: Colors.white.withValues(alpha: 0.55),
+                                  width: 2,
+                                ),
+                              ),
+                              child: CircleAvatar(
+                                radius: 18,
+                                backgroundColor:
+                                    Colors.white.withValues(alpha: 0.2),
+                                backgroundImage:
+                                    imageUrl != null && imageUrl!.isNotEmpty
+                                        ? NetworkImage(imageUrl!)
+                                        : null,
+                                child: imageUrl == null || imageUrl!.isEmpty
+                                    ? Text(
+                                        _initials(name),
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w800,
+                                          color: Colors.white,
+                                          fontSize: 12,
+                                        ),
+                                      )
+                                    : null,
+                              ),
                             ),
                             const SizedBox(width: 10),
                             Expanded(
@@ -105,10 +135,12 @@ class HomeWelcomeAttendanceCard extends ConsumerWidget {
                                   children: [
                                     TextSpan(
                                       text: '$greeting, ',
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         fontSize: 16,
                                         fontWeight: FontWeight.w600,
-                                        color: HomeDashColors.title,
+                                        color: Colors.white.withValues(
+                                          alpha: 0.95,
+                                        ),
                                       ),
                                     ),
                                     TextSpan(
@@ -116,7 +148,7 @@ class HomeWelcomeAttendanceCard extends ConsumerWidget {
                                       style: const TextStyle(
                                         fontSize: 16,
                                         fontWeight: FontWeight.w800,
-                                        color: HomeDashColors.title,
+                                        color: Colors.white,
                                       ),
                                     ),
                                   ],
@@ -130,10 +162,11 @@ class HomeWelcomeAttendanceCard extends ConsumerWidget {
                           role.isNotEmpty
                               ? 'Ready to make today count · $role'
                               : 'Ready to make today count ✨',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 12,
-                            color: HomeDashColors.muted,
+                            color: Colors.white.withValues(alpha: 0.82),
                             height: 1.35,
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
                       ],
@@ -148,20 +181,31 @@ class HomeWelcomeAttendanceCard extends ConsumerWidget {
                 ],
               ),
               const SizedBox(height: 16),
-              _LivePunchTimeline(
-                sessions: sessions,
-                openSession: openSession,
-                shift: shift,
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.18),
+                  ),
+                ),
+                child: _LivePunchTimeline(
+                  sessions: sessions,
+                  openSession: openSession,
+                  shift: shift,
+                ),
               ),
               const SizedBox(height: 10),
               Align(
                 alignment: Alignment.centerRight,
                 child: Text(
                   '${todayList.length}/2 sessions',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 11,
-                    color: HomeDashColors.muted,
-                    fontWeight: FontWeight.w500,
+                    color: Colors.white.withValues(alpha: 0.8),
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
@@ -186,6 +230,11 @@ class HomeWelcomeAttendanceCard extends ConsumerWidget {
     return 'Good Evening';
   }
 
+  static String _titleCase(String value) {
+    if (value.isEmpty) return value;
+    return value[0].toUpperCase() + value.substring(1).toLowerCase();
+  }
+
   static String _initials(String name) {
     final parts = name.trim().split(' ');
     if (parts.isEmpty || parts.first.isEmpty) return 'U';
@@ -207,17 +256,11 @@ class _FingerprintBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Punch In = green, Punch Out = red
     final accent = !enabled
         ? const Color(0xFF94A3B8)
         : (isCheckedIn
             ? HomeDashColors.accentRed
             : HomeDashColors.accentGreen);
-    final soft = !enabled
-        ? const Color(0xFFF1F5F9)
-        : (isCheckedIn
-            ? const Color(0xFFFFE4E6)
-            : HomeDashColors.softGreen);
 
     return Material(
       color: Colors.transparent,
@@ -229,13 +272,7 @@ class _FingerprintBadge extends StatelessWidget {
           height: 68,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            gradient: RadialGradient(
-              colors: [
-                accent.withValues(alpha: 0.18),
-                soft.withValues(alpha: 0.45),
-                Colors.transparent,
-              ],
-            ),
+            color: Colors.white.withValues(alpha: 0.16),
           ),
           child: Center(
             child: Container(
@@ -246,8 +283,9 @@ class _FingerprintBadge extends StatelessWidget {
                 color: Colors.white,
                 boxShadow: [
                   BoxShadow(
-                    color: accent.withValues(alpha: 0.28),
-                    blurRadius: 12,
+                    color: Colors.black.withValues(alpha: 0.12),
+                    blurRadius: 10,
+                    offset: const Offset(0, 3),
                   ),
                 ],
               ),
@@ -264,7 +302,6 @@ class _FingerprintBadge extends StatelessWidget {
   }
 }
 
-/// Web-style day progress bar: green fill grows with worked minutes after punch-in.
 class _LivePunchTimeline extends StatefulWidget {
   final List<AttendanceSession> sessions;
   final AttendanceSession? openSession;
@@ -326,8 +363,6 @@ class _LivePunchTimelineState extends State<_LivePunchTimeline> {
     for (final s in today) {
       total += sessionWorkedMinutes(s);
     }
-    // Stale open session (yesterday) is already excluded from todaySessions.
-    // Only add open if it belongs to today and wasn't already counted.
     final open = widget.openSession;
     if (open != null && sessionDateIso(open) == localTodayIso()) {
       final already = today.any((s) => s.id == open.id);
@@ -382,18 +417,20 @@ class _LivePunchTimelineState extends State<_LivePunchTimeline> {
     final (inTime, outTime) = _inOut;
     final hasActivity = widget.openSession != null || _workedMinutes > 0;
     final fill = hasActivity ? _progress : 0.0;
+    final light = Colors.white.withValues(alpha: 0.9);
+    final soft = Colors.white.withValues(alpha: 0.72);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
-            const Text(
+            Text(
               'Today',
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
-                color: HomeDashColors.muted,
+                color: soft,
               ),
             ),
             const Spacer(),
@@ -401,10 +438,8 @@ class _LivePunchTimelineState extends State<_LivePunchTimeline> {
               _durationLabel,
               style: TextStyle(
                 fontSize: 12,
-                fontWeight: FontWeight.w700,
-                color: hasActivity
-                    ? HomeDashColors.title
-                    : HomeDashColors.muted,
+                fontWeight: FontWeight.w800,
+                color: light,
               ),
             ),
           ],
@@ -413,7 +448,7 @@ class _LivePunchTimelineState extends State<_LivePunchTimeline> {
         ClipRRect(
           borderRadius: BorderRadius.circular(8),
           child: SizedBox(
-            height: 12,
+            height: 10,
             width: double.infinity,
             child: LayoutBuilder(
               builder: (context, constraints) {
@@ -421,7 +456,7 @@ class _LivePunchTimelineState extends State<_LivePunchTimeline> {
                   children: [
                     Container(
                       width: constraints.maxWidth,
-                      color: const Color(0xFFE2E8F0),
+                      color: Colors.white.withValues(alpha: 0.22),
                     ),
                     AnimatedContainer(
                       duration: const Duration(milliseconds: 400),
@@ -429,7 +464,7 @@ class _LivePunchTimelineState extends State<_LivePunchTimeline> {
                       width: constraints.maxWidth * fill,
                       decoration: const BoxDecoration(
                         gradient: LinearGradient(
-                          colors: [Color(0xFF22C55E), Color(0xFF16A34A)],
+                          colors: [Color(0xFF86EFAC), Color(0xFF22C55E)],
                         ),
                       ),
                     ),
@@ -444,19 +479,19 @@ class _LivePunchTimelineState extends State<_LivePunchTimeline> {
           children: [
             Text(
               inTime != null ? _fmt(inTime) : '—',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
-                color: HomeDashColors.muted,
+                color: soft,
               ),
             ),
             const Spacer(),
             Text(
               outTime != null ? _fmt(outTime) : '—',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
-                color: HomeDashColors.muted,
+                color: soft,
               ),
             ),
           ],
@@ -466,9 +501,10 @@ class _LivePunchTimelineState extends State<_LivePunchTimeline> {
           Text(
             'Office ${widget.shift!.officeStartDisplay} – ${widget.shift!.officeEndDisplay}'
             '${widget.shift!.startSubtitle.isNotEmpty ? ' · ${widget.shift!.startSubtitle}' : ''}',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 10,
-              color: HomeDashColors.muted,
+              color: Colors.white.withValues(alpha: 0.68),
+              fontWeight: FontWeight.w500,
             ),
           ),
         ],
