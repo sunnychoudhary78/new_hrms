@@ -239,6 +239,23 @@ class Meeting {
   bool get isEnded => status == 'ended';
   bool get isScheduled => status == 'scheduled';
 
+  /// One-time / instant meetings are over once start + duration has passed.
+  bool get isOver {
+    if (!isScheduled || isRecurring || startsAt == null) return false;
+    final minutes = durationMinutes <= 0 ? 30 : durationMinutes;
+    final end = startsAt!.add(Duration(minutes: minutes));
+    return DateTime.now().toUtc().isAfter(end);
+  }
+
+  bool get isLive {
+    if (!isScheduled || isRecurring || startsAt == null) return false;
+    final now = DateTime.now().toUtc();
+    if (now.isBefore(startsAt!)) return false;
+    final minutes = durationMinutes <= 0 ? 30 : durationMinutes;
+    final end = startsAt!.add(Duration(minutes: minutes));
+    return !now.isAfter(end);
+  }
+
   String get typeLabel {
     switch (type) {
       case 'recurring':
@@ -287,6 +304,8 @@ class Meeting {
     }
     if (startsAt == null) return '—';
     final local = startsAt!.toLocal();
+    final minutes = durationMinutes <= 0 ? 30 : durationMinutes;
+    final end = local.add(Duration(minutes: minutes));
     const weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     const months = [
       'Jan',
@@ -305,7 +324,9 @@ class Meeting {
     final wd = weekdays[local.weekday - 1];
     final hh = local.hour.toString().padLeft(2, '0');
     final mm = local.minute.toString().padLeft(2, '0');
-    return '$wd, ${local.day.toString().padLeft(2, '0')} ${months[local.month - 1]}, $hh:$mm';
+    final endHh = end.hour.toString().padLeft(2, '0');
+    final endMm = end.minute.toString().padLeft(2, '0');
+    return '$wd, ${local.day.toString().padLeft(2, '0')} ${months[local.month - 1]}, $hh:$mm – $endHh:$endMm';
   }
 
   factory Meeting.fromJson(Map<String, dynamic> json) {

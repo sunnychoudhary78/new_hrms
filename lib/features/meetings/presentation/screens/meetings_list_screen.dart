@@ -181,7 +181,10 @@ class _MeetingsListScreenState extends ConsumerState<MeetingsListScreen>
                   ],
                 ),
                 data: (result) {
-                  if (result.meetings.isEmpty) {
+                  final meetings = tab == 'upcoming'
+                      ? result.meetings.where((m) => !m.isOver).toList()
+                      : result.meetings;
+                  if (meetings.isEmpty) {
                     return ListView(
                       physics: scrollPhysics,
                       children: const [
@@ -199,10 +202,10 @@ class _MeetingsListScreenState extends ConsumerState<MeetingsListScreen>
                   return ListView.separated(
                     physics: scrollPhysics,
                     padding: const EdgeInsets.fromLTRB(12, 8, 12, 100),
-                    itemCount: result.meetings.length,
+                    itemCount: meetings.length,
                     separatorBuilder: (_, __) => const SizedBox(height: 8),
                     itemBuilder: (_, i) {
-                      final meeting = result.meetings[i];
+                      final meeting = meetings[i];
                       return _MeetingTile(
                         meeting: meeting,
                         joining: _joiningId == meeting.id,
@@ -348,8 +351,10 @@ class _MeetingTile extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 PremiumStatusPill(
-                  label: meeting.statusLabel,
-                  color: statusColor,
+                  label: meeting.isLive ? 'Live now' : meeting.statusLabel,
+                  color: meeting.isLive
+                      ? const Color(0xFFDC2626)
+                      : statusColor,
                 ),
                 if (onJoin != null) ...[
                   const SizedBox(height: 8),

@@ -18,6 +18,15 @@ class RecordingsScreen extends ConsumerStatefulWidget {
   ConsumerState<RecordingsScreen> createState() => _RecordingsScreenState();
 }
 
+String _formatBytes(int bytes) {
+  if (bytes < 1024) return '$bytes B';
+  final kb = bytes / 1024;
+  if (kb < 1024) return '${kb.toStringAsFixed(1)} KB';
+  final mb = kb / 1024;
+  if (mb < 1024) return '${mb.toStringAsFixed(1)} MB';
+  return '${(mb / 1024).toStringAsFixed(1)} GB';
+}
+
 class _RecordingsScreenState extends ConsumerState<RecordingsScreen> {
   final _search = TextEditingController();
   String _query = '';
@@ -196,12 +205,30 @@ class _RecordingsScreenState extends ConsumerState<RecordingsScreen> {
                   );
                 }
                 final hasPager = result.pages > 1;
+                final storageLabel = result.totalBytes > 0
+                    ? _formatBytes(result.totalBytes)
+                    : null;
                 return ListView.separated(
                   padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
-                  itemCount: result.recordings.length + (hasPager ? 1 : 0),
+                  itemCount:
+                      result.recordings.length +
+                      (hasPager ? 1 : 0) +
+                      (storageLabel != null ? 1 : 0),
                   separatorBuilder: (_, __) => const SizedBox(height: 8),
                   itemBuilder: (context, index) {
-                    if (index >= result.recordings.length) {
+                    if (storageLabel != null && index == 0) {
+                      return Text(
+                        'Storage used: $storageLabel'
+                        '${result.transcription ? '' : ' · Transcription not configured'}',
+                        style: TextStyle(
+                          color: scheme.onSurfaceVariant,
+                          fontSize: 12,
+                        ),
+                      );
+                    }
+                    final recIndex =
+                        storageLabel != null ? index - 1 : index;
+                    if (recIndex >= result.recordings.length) {
                       return Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
@@ -220,7 +247,7 @@ class _RecordingsScreenState extends ConsumerState<RecordingsScreen> {
                         ],
                       );
                     }
-                    final rec = result.recordings[index];
+                    final rec = result.recordings[recIndex];
                     return PremiumCard(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,

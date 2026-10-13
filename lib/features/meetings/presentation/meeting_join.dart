@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lms/features/auth/presentation/providers/auth_provider.dart';
+import 'package:lms/features/meetings/data/models/meeting_model.dart';
 import 'package:lms/features/meetings/presentation/meetings_access.dart';
 import 'package:lms/features/meetings/presentation/providers/meeting_session_provider.dart';
 import 'package:lms/features/meetings/presentation/providers/meetings_providers.dart';
@@ -30,8 +31,6 @@ String withJitsiJoinOverrides(String url, String name) {
       'config.disableDeepLinking=true',
     if (!existing.contains('config.deeplinking.disabled'))
       'config.deeplinking.disabled=true',
-    if (!existing.contains('config.enableClosePage'))
-      'config.enableClosePage=false',
   ];
   final trimmed = name.trim();
   if (trimmed.isNotEmpty && !existing.contains('userInfo.displayName')) {
@@ -44,16 +43,22 @@ String withJitsiJoinOverrides(String url, String name) {
   return '$base#$fragment';
 }
 
-Future<bool> joinMeetingById(
+/// Starts or returns to a meeting WebView session.
+///
+/// Returns join info when a fresh join-url was minted (so callers can show
+/// the host/attendee [MeetingJoinInfo.note]). Returns `null` when cancelled,
+/// failed, or when simply expanding an existing in-call session.
+Future<MeetingJoinInfo?> joinMeetingById(
   BuildContext context,
   WidgetRef ref, {
   required String meetingId,
   String? title,
+  bool showNoteSnackbar = true,
 }) async {
   final session = ref.read(meetingSessionProvider);
   if (session.isFor(meetingId)) {
     ref.read(meetingSessionProvider.notifier).expand();
-    return true;
+    return null;
   }
 
   if (session.isActive && session.meetingId != meetingId) {
@@ -76,7 +81,7 @@ Future<bool> joinMeetingById(
         ],
       ),
     );
-    if (switchCall != true) return false;
+    if (switchCall != true) return null;
     ref.read(meetingSessionProvider.notifier).end();
   }
 
@@ -95,9 +100,12 @@ Future<bool> joinMeetingById(
         AppSnackbar.error(context, 'Could not get join link');
       }
       ref.read(meetingSessionProvider.notifier).setConnecting(false);
-      return false;
+      return null;
     }
-    if (info.note != null && info.note!.trim().isNotEmpty && context.mounted) {
+    if (showNoteSnackbar &&
+        info.note != null &&
+        info.note!.trim().isNotEmpty &&
+        context.mounted) {
       AppSnackbar.info(context, info.note!);
     }
     final displayName = meetingUserDisplayName(ref);
@@ -107,12 +115,12 @@ Future<bool> joinMeetingById(
           title: title,
           displayName: displayName,
         );
-    return true;
+    return info;
   } catch (e) {
     ref.read(meetingSessionProvider.notifier).setConnecting(false);
     if (context.mounted) {
       AppSnackbar.error(context, cleanApiError(e));
     }
-    return false;
+    return null;
   }
 }
