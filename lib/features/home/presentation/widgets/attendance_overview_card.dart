@@ -1,19 +1,8 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 import 'package:lms/features/home/data/models/home_dashboard_model.dart';
-
-class AttendanceColors {
-  static const worked = Color(0xFF16A34A);
-  static const overtime = Color(0xFF22C55E);
-  static const leave = Color(0xFFF59E0B);
-  static const absent = Color(0xFFDC2626);
-  static const late = Color(0xFF7C3AED);
-  static const weekOff = Color(0xFF8B5CF6);
-  static const holiday = Color(0xFF0891B2);
-  static const expected = Color(0xFF94A3B8);
-}
+import 'package:lms/features/home/presentation/widgets/home_dashboard_style.dart';
 
 class AttendanceOverviewCard extends StatelessWidget {
   final HomeDashboardModel dashboard;
@@ -22,72 +11,145 @@ class AttendanceOverviewCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
+    final daysInMonth = DateTime(
+      dashboard.attendanceMonth.year,
+      dashboard.attendanceMonth.month + 1,
+      0,
+    ).day;
 
-    return Card(
-      elevation: isIOS ? 0.5 : 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(isIOS ? 14 : 16),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Attendance Monthly Overview',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              DateFormat('MMMM yyyy').format(dashboard.attendanceMonth),
-              style: TextStyle(
-                fontSize: 13,
-                color: scheme.onSurfaceVariant,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const SizedBox(height: 16),
-            SizedBox(
-              height: 220,
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
+    return Column(
+      children: [
+        HomeDashCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
                 children: [
-                  Expanded(
-                    flex: 5,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        vertical: 8,
-                        horizontal: 4,
-                      ),
-                      child: _AttendancePieChart(
-                        distribution: dashboard.distribution,
+                  const Expanded(
+                    child: Text(
+                      'Attendance Monthly Overview',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: HomeDashColors.title,
                       ),
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    flex: 4,
-                    child: _PieLegend(
-                      distribution: dashboard.distribution,
-                      daysInMonth: DateTime(
-                        dashboard.attendanceMonth.year,
-                        dashboard.attendanceMonth.month + 1,
-                        0,
-                      ).day,
+                  Text(
+                    DateFormat('MMM yyyy').format(dashboard.attendanceMonth),
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: HomeDashColors.muted,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                 ],
               ),
-            ),
-            const SizedBox(height: 20),
-            Divider(color: scheme.outlineVariant),
-            const SizedBox(height: 12),
-            _WorkedVsExpectedBar(attendance: dashboard.attendance),
-          ],
+              const SizedBox(height: 16),
+              SizedBox(
+                height: 170,
+                child: Row(
+                  children: [
+                    Expanded(
+                      flex: 5,
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          _AttendancePieChart(
+                            distribution: dashboard.distribution,
+                          ),
+                          Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                '$daysInMonth',
+                                style: const TextStyle(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.w800,
+                                  color: HomeDashColors.title,
+                                ),
+                              ),
+                              const Text(
+                                'Days',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: HomeDashColors.muted,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      flex: 4,
+                      child: _PieLegend(distribution: dashboard.distribution),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
-      ),
+        const SizedBox(height: 14),
+        HomeDashCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Expanded(
+                    child: Text(
+                      'Keep going!',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        color: HomeDashColors.title,
+                      ),
+                    ),
+                  ),
+                  Container(
+                    width: 42,
+                    height: 42,
+                    decoration: BoxDecoration(
+                      color: HomeDashColors.softBlue,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: const Icon(
+                      Icons.flag_rounded,
+                      color: HomeDashColors.accentBlue,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'Track your progress against expected hours.',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: HomeDashColors.muted,
+                ),
+              ),
+              const SizedBox(height: 18),
+              _ModernProgressBar(
+                label: 'Worked',
+                value: dashboard.attendance.workedHours,
+                max: dashboard.attendance.expectedHours,
+                color: HomeDashColors.accentGreen,
+              ),
+              const SizedBox(height: 14),
+              _ModernProgressBar(
+                label: 'Expected',
+                value: dashboard.attendance.expectedHours,
+                max: dashboard.attendance.expectedHours,
+                color: HomeDashColors.accentBlue,
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
@@ -102,28 +164,28 @@ class _AttendancePieChart extends StatelessWidget {
     final total = distribution.total;
     final sections = <PieChartSectionData?>[
       _section(
-        value: distribution.worked,
-        color: AttendanceColors.worked,
-        total: total,
-      ),
-      _section(
         value: distribution.leave,
-        color: AttendanceColors.leave,
+        color: HomeDashColors.leave,
         total: total,
       ),
       _section(
         value: distribution.absent,
-        color: AttendanceColors.absent,
+        color: HomeDashColors.absent,
         total: total,
       ),
       _section(
         value: distribution.weekOff,
-        color: AttendanceColors.weekOff,
+        color: HomeDashColors.weekOff,
         total: total,
       ),
       _section(
         value: distribution.holiday,
-        color: AttendanceColors.holiday,
+        color: HomeDashColors.accentBlue,
+        total: total,
+      ),
+      _section(
+        value: distribution.worked,
+        color: const Color(0xFF34D399),
         total: total,
       ),
     ].whereType<PieChartSectionData>().toList();
@@ -131,7 +193,7 @@ class _AttendancePieChart extends StatelessWidget {
     if (sections.isEmpty) {
       return const Center(
         child: Text(
-          "No attendance data",
+          'No attendance data',
           style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
         ),
       );
@@ -139,8 +201,8 @@ class _AttendancePieChart extends StatelessWidget {
 
     return PieChart(
       PieChartData(
-        sectionsSpace: 1,
-        centerSpaceRadius: 34,
+        sectionsSpace: 2,
+        centerSpaceRadius: 48,
         startDegreeOffset: -90,
         sections: sections,
       ),
@@ -154,32 +216,19 @@ class _AttendancePieChart extends StatelessWidget {
   }) {
     if (value <= 0 || total <= 0) return null;
 
-    final percent = ((value / total) * 100).toStringAsFixed(0);
     return PieChartSectionData(
       value: value,
       color: color,
-      radius: 38,
-      showTitle: true,
-      title: "$percent%",
-      titlePositionPercentageOffset: 0.55,
-      titleStyle: const TextStyle(
-        fontSize: 10,
-        fontWeight: FontWeight.w700,
-        color: Colors.white,
-        height: 1,
-      ),
+      radius: 28,
+      showTitle: false,
     );
   }
 }
 
 class _PieLegend extends StatelessWidget {
   final AttendanceDistribution distribution;
-  final int daysInMonth;
 
-  const _PieLegend({
-    required this.distribution,
-    required this.daysInMonth,
-  });
+  const _PieLegend({required this.distribution});
 
   @override
   Widget build(BuildContext context) {
@@ -188,38 +237,28 @@ class _PieLegend extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _LegendItem(
-          color: AttendanceColors.worked,
-          label: 'Working Days',
-          value: distribution.worked,
-        ),
-        _LegendItem(
-          color: AttendanceColors.leave,
+          color: HomeDashColors.leave,
           label: 'Leave',
           value: distribution.leave,
+          percent: distribution.percent(distribution.leave),
         ),
         _LegendItem(
-          color: AttendanceColors.absent,
+          color: HomeDashColors.absent,
           label: 'Absent',
           value: distribution.absent,
+          percent: distribution.percent(distribution.absent),
         ),
         _LegendItem(
-          color: AttendanceColors.weekOff,
+          color: HomeDashColors.weekOff,
           label: 'Week Off',
           value: distribution.weekOff,
+          percent: distribution.percent(distribution.weekOff),
         ),
         _LegendItem(
-          color: AttendanceColors.holiday,
+          color: HomeDashColors.accentBlue,
           label: 'Holiday',
           value: distribution.holiday,
-        ),
-        const SizedBox(height: 8),
-        Text(
-          "Tracked: $daysInMonth days",
-          style: const TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w600,
-            height: 1.2,
-          ),
+          percent: distribution.percent(distribution.holiday),
         ),
       ],
     );
@@ -230,73 +269,49 @@ class _LegendItem extends StatelessWidget {
   final Color color;
   final String label;
   final double value;
+  final double percent;
 
   const _LegendItem({
     required this.color,
     required this.label,
     required this.value,
+    required this.percent,
   });
-
-  String _formatCount(double value) {
-    if (value == value.roundToDouble()) {
-      return value.toStringAsFixed(0);
-    }
-    return value.toStringAsFixed(1);
-  }
 
   @override
   Widget build(BuildContext context) {
     if (value <= 0) return const SizedBox.shrink();
 
-    return SizedBox(
-      height: 22,
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Container(
             width: 10,
             height: 10,
             decoration: BoxDecoration(color: color, shape: BoxShape.circle),
           ),
-          const SizedBox(width: 6),
+          const SizedBox(width: 8),
           Expanded(
             child: Text(
-              "$label (${_formatCount(value)})",
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 12, height: 1.1),
+              label,
+              style: const TextStyle(
+                fontSize: 12,
+                color: HomeDashColors.title,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          Text(
+            '${percent.toStringAsFixed(0)}%',
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: HomeDashColors.muted,
             ),
           ),
         ],
       ),
-    );
-  }
-}
-
-class _WorkedVsExpectedBar extends StatelessWidget {
-  final AttendanceOverview attendance;
-
-  const _WorkedVsExpectedBar({required this.attendance});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _ModernProgressBar(
-          label: 'Worked',
-          value: attendance.workedHours,
-          max: attendance.expectedHours,
-          color: AttendanceColors.worked,
-        ),
-        const SizedBox(height: 14),
-        _ModernProgressBar(
-          label: 'Expected',
-          value: attendance.expectedHours,
-          max: attendance.expectedHours,
-          color: AttendanceColors.expected,
-        ),
-      ],
     );
   }
 }
@@ -316,8 +331,7 @@ class _ModernProgressBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final double percent = max == 0 ? 0.0 : (value / max).clamp(0, 1);
+    final percent = max == 0 ? 0.0 : (value / max).clamp(0.0, 1.0);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -327,44 +341,30 @@ class _ModernProgressBar extends StatelessWidget {
           children: [
             Text(
               label,
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.12),
-                borderRadius: BorderRadius.circular(20),
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: HomeDashColors.title,
               ),
-              child: Text(
-                '${value.toStringAsFixed(1)} hrs',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: color,
-                ),
+            ),
+            Text(
+              '${value.toStringAsFixed(1)} hrs',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: color,
               ),
             ),
           ],
         ),
         const SizedBox(height: 8),
-        Container(
-          height: 16,
-          width: double.infinity,
-          decoration: BoxDecoration(
-            color: scheme.surfaceContainerHighest,
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: FractionallySizedBox(
-            alignment: Alignment.centerLeft,
-            widthFactor: percent,
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [color.withOpacity(0.85), color],
-                ),
-                borderRadius: BorderRadius.circular(20),
-              ),
-            ),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: LinearProgressIndicator(
+            value: percent,
+            minHeight: 10,
+            backgroundColor: color.withValues(alpha: 0.12),
+            color: color,
           ),
         ),
       ],

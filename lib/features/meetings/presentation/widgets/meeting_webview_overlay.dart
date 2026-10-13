@@ -6,7 +6,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lms/features/meetings/data/meeting_call_keepalive.dart';
+import 'package:lms/features/meetings/presentation/meeting_join.dart';
 import 'package:lms/features/meetings/presentation/providers/meeting_session_provider.dart';
+import 'package:lms/features/meetings/presentation/providers/meetings_providers.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:webview_flutter_android/webview_flutter_android.dart';
 import 'package:webview_flutter_wkwebview/webview_flutter_wkwebview.dart';
@@ -39,6 +41,8 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
   bool _leaving = false;
   bool _seenInCall = false;
   bool _cookiesReady = false;
+  bool _refreshingJoin = false;
+  int _joinRefreshes = 0;
   int _exitReloads = 0;
   DateTime? _joinedAt;
   StreamSubscription<dynamic>? _shareFrames;
@@ -151,6 +155,7 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
           if (message.message == 'joined') {
             _seenInCall = true;
             _joinedAt ??= DateTime.now();
+            _joinRefreshes = 0;
           } else if (message.message == 'left') {
             _leaveMeeting();
           }
@@ -171,14 +176,14 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
             _injectLeaveHook();
           },
           onNavigationRequest: (request) {
-            if (_handleExitNavigation(request.url)) {
+            if (_handleNavigation(request.url)) {
               return NavigationDecision.prevent;
             }
             return NavigationDecision.navigate;
           },
           onUrlChange: (change) {
             final url = change.url;
-            if (url != null) _handleExitNavigation(url);
+            if (url != null) _handleNavigation(url);
           },
           onWebResourceError: (error) {
             debugPrint('Meeting WebView error: ${error.description}');
@@ -270,6 +275,67 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
     return DateTime.now().difference(joinedAt) < const Duration(seconds: 8);
   }
 
+  bool _isAuthRejoinUrl(String url) {
+    final uri = Uri.tryParse(url);
+    if (uri == null) return false;
+    final path = uri.path.toLowerCase();
+    if (path.contains('/meetings/rejoin/')) return true;
+    final meetHost = Uri.tryParse(_loadedUrl ?? '')?.host.toLowerCase() ?? '';
+    final host = uri.host.toLowerCase();
+    if (meetHost.isEmpty || host.isEmpty || host == meetHost) return false;
+    return path == '/meetings' ||
+        path == '/meetings/' ||
+        path.startsWith('/meetings/');
+  }
+
+  /// A Meet tab that lost its JWT is sent to a public guest rejoin link, or
+  /// the host is sent back to the web meetings page. The app is still signed
+  /// in, so mint a fresh join-url and stay in the same room as host/attendee.
+  bool _handleNavigation(String url) {
+    if (_isAuthRejoinUrl(url)) {
+      _refreshAuthenticatedJoin();
+      return true;
+    }
+    return _handleExitNavigation(url);
+  }
+
+  Future<void> _refreshAuthenticatedJoin() async {
+    if (_refreshingJoin || _leaving) return;
+    if (_joinRefreshes >= 2) {
+      _leaveMeeting();
+      return;
+    }
+    final session = ref.read(meetingSessionProvider);
+    final meetingId = session.meetingId;
+    if (meetingId == null || meetingId.isEmpty) {
+      _leaveMeeting();
+      return;
+    }
+    _refreshingJoin = true;
+    _joinRefreshes++;
+    try {
+      final info = await ref
+          .read(meetingsRepositoryProvider)
+          .getJoinUrl(meetingId);
+      if (!mounted || _leaving || info.url.isEmpty) {
+        if (mounted && !_leaving) _leaveMeeting();
+        return;
+      }
+      final name = session.displayName ?? '';
+      ref.read(meetingSessionProvider.notifier).start(
+            meetingId: meetingId,
+            joinUrl: withJitsiJoinOverrides(info.url, name),
+            title: session.title,
+            displayName: name,
+          );
+    } catch (e) {
+      debugPrint('Meeting rejoin failed: $e');
+      if (mounted) _leaveMeeting();
+    } finally {
+      _refreshingJoin = false;
+    }
+  }
+
   /// Returns true when the navigation must be cancelled.
   ///
   /// The lobby affiliation fix on the Meet server can bounce a WebView
@@ -329,6 +395,8 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
       _seenInCall = false;
       _joinedAt = null;
       _exitReloads = 0;
+      _joinRefreshes = 0;
+      _refreshingJoin = false;
       _cookiesReady = false;
     });
   }
@@ -1352,6 +1420,8 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
           _seenInCall = false;
           _joinedAt = null;
           _exitReloads = 0;
+          _joinRefreshes = 0;
+          _refreshingJoin = false;
           _cookiesReady = false;
         });
       });

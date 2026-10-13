@@ -5,6 +5,7 @@ import 'package:lms/features/attendance/shared/data/attendance_repository_provid
 import 'package:lms/features/auth/presentation/providers/auth_provider.dart';
 import 'package:lms/features/attendance/mark_attendance/presentation/providers/company_settings_provider.dart';
 import 'package:lms/features/auth/presentation/providers/auth_api_providers.dart';
+import 'package:lms/features/leave/presentation/providers/leave_balance_provider.dart';
 
 /// ─────────────────────────────────────────────
 /// HOME DASHBOARD REPOSITORY PROVIDER
@@ -17,6 +18,7 @@ final homeDashboardRepositoryProvider = Provider<HomeDashboardRepository>((
   final attendanceRepo = ref.read(attendanceRepositoryProvider);
   final authApi = ref.read(authApiServiceProvider);
   final companySettingsRepo = ref.read(companySettingsRepositoryProvider);
+  final leaveBalanceApi = ref.read(leaveBalanceApiProvider);
 
   print("📦 attendanceRepo type → ${attendanceRepo.runtimeType}");
   print("📦 authApi type → ${authApi.runtimeType}");
@@ -25,6 +27,7 @@ final homeDashboardRepositoryProvider = Provider<HomeDashboardRepository>((
     attendanceRepo: attendanceRepo,
     authApi: authApi,
     companySettingsRepo: companySettingsRepo,
+    leaveBalanceApi: leaveBalanceApi,
   );
 });
 

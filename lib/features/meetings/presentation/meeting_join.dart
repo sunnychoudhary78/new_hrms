@@ -30,8 +30,6 @@ String withJitsiJoinOverrides(String url, String name) {
       'config.disableDeepLinking=true',
     if (!existing.contains('config.deeplinking.disabled'))
       'config.deeplinking.disabled=true',
-    if (!existing.contains('config.enableClosePage'))
-      'config.enableClosePage=false',
   ];
   final trimmed = name.trim();
   if (trimmed.isNotEmpty && !existing.contains('userInfo.displayName')) {

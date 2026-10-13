@@ -37,7 +37,6 @@ class _MeetingDetailScreenState extends ConsumerState<MeetingDetailScreen> {
   bool _joining = false;
   bool _saving = false;
   bool _autoTranscribe = false;
-  bool _togglingTranscript = false;
 
   String? get _id {
     if (widget.meetingId != null && widget.meetingId!.isNotEmpty) {
@@ -319,57 +318,6 @@ class _MeetingDetailScreenState extends ConsumerState<MeetingDetailScreen> {
                     ),
                     if (!cancelled) ...[
                       const SizedBox(height: 16),
-                      if (canEdit && autoAvailable) ...[
-                        SwitchListTile(
-                          contentPadding: EdgeInsets.zero,
-                          title: const Text('Auto transcript'),
-                          subtitle: const Text(
-                            'Audio is captured when you join as host. No video is kept.',
-                          ),
-                          value: _hydrated
-                              ? _autoTranscribe
-                              : meeting.autoTranscribe,
-                          onChanged: _togglingTranscript
-                              ? null
-                              : (value) async {
-                                  setState(() {
-                                    _autoTranscribe = value;
-                                    _togglingTranscript = true;
-                                  });
-                                  try {
-                                    await ref
-                                        .read(meetingsRepositoryProvider)
-                                        .updateMeeting(meeting.id, {
-                                          'auto_transcribe': value,
-                                        });
-                                    ref.invalidate(
-                                      meetingDetailProvider(meeting.id),
-                                    );
-                                    ref.invalidate(meetingsListProvider);
-                                    if (context.mounted) {
-                                      AppSnackbar.success(
-                                        context,
-                                        value
-                                            ? 'Auto transcript on — audio is captured when you join as host'
-                                            : 'Auto transcript off',
-                                      );
-                                    }
-                                  } catch (e) {
-                                    if (mounted) {
-                                      setState(() => _autoTranscribe = !value);
-                                      AppSnackbar.error(
-                                        context,
-                                        cleanApiError(e),
-                                      );
-                                    }
-                                  } finally {
-                                    if (mounted) {
-                                      setState(() => _togglingTranscript = false);
-                                    }
-                                  }
-                                },
-                        ),
-                      ],
                       Row(
                         children: [
                           if (canViewRecordings)
@@ -538,6 +486,22 @@ class _MeetingDetailScreenState extends ConsumerState<MeetingDetailScreen> {
                           labelText: 'Duration (minutes)',
                         ),
                       ),
+                      if (autoAvailable) ...[
+                        const SizedBox(height: 8),
+                        SwitchListTile(
+                          contentPadding: EdgeInsets.zero,
+                          title: const Text('Auto transcript (audio only)'),
+                          subtitle: const Text(
+                            'Audio is captured when you join as host. No video is kept. The transcript is ready a few minutes after the call.',
+                          ),
+                          value: _hydrated
+                              ? _autoTranscribe
+                              : meeting.autoTranscribe,
+                          onChanged: _saving
+                              ? null
+                              : (value) => setState(() => _autoTranscribe = value),
+                        ),
+                      ],
                       if (meeting.isOneTime || meeting.isInstant) ...[
                         const SizedBox(height: 12),
                         ListTile(

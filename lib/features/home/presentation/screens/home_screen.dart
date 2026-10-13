@@ -2,28 +2,42 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lms/features/home/presentation/widgets/app_drawer.dart';
+import 'package:lms/features/home/presentation/widgets/home_dashboard_style.dart';
 import 'package:lms/features/home/presentation/widgets/home_dashboard_view.dart';
 import 'package:lms/features/notifications/presentation/providers/notifications_provider.dart';
 import 'package:lms/features/notifications/presentation/screens/notifications_screen.dart';
-import 'package:lms/shared/widgets/app_bar.dart';
 
-class HomeScreen extends ConsumerStatefulWidget {
+class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
   @override
-  ConsumerState<HomeScreen> createState() => _HomeScreenState();
-}
-
-class _HomeScreenState extends ConsumerState<HomeScreen> {
-  @override
   Widget build(BuildContext context) {
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
+
     return Scaffold(
-      appBar: AppAppBar(
-        title: "Home",
-        showBack: false,
-        actions: const [_NotificationIcon()],
-      ),
+      backgroundColor: HomeDashColors.bg,
       drawer: const AppDrawer(),
+      appBar: AppBar(
+        elevation: 0,
+        backgroundColor: HomeDashColors.bg,
+        surfaceTintColor: Colors.transparent,
+        foregroundColor: HomeDashColors.title,
+        centerTitle: false,
+        titleSpacing: 0,
+        title: const Text(
+          'Home',
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w800,
+            color: HomeDashColors.title,
+            letterSpacing: -0.3,
+          ),
+        ),
+        actions: [
+          const _NotificationIcon(),
+          SizedBox(width: isIOS ? 4 : 8),
+        ],
+      ),
       body: const HomeDashboardView(),
     );
   }
@@ -35,62 +49,51 @@ class _NotificationIcon extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final unreadCount = ref.watch(unreadCountProvider);
-    final scheme = Theme.of(context).colorScheme;
     final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
 
-    return Padding(
-      padding: EdgeInsets.only(right: isIOS ? 4 : 8),
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          /// MAIN ICON (Increase tap area)
-          IconButton(
-            iconSize: 26,
-            splashRadius: 26,
-            padding: const EdgeInsets.all(12),
-            style: IconButton.styleFrom(
-              splashFactory:
-                  isIOS ? NoSplash.splashFactory : InkSplash.splashFactory,
-            ),
-            icon: const Icon(Icons.notifications_outlined),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const NotificationScreen()),
-              );
-            },
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        IconButton(
+          iconSize: 24,
+          splashRadius: 24,
+          style: IconButton.styleFrom(
+            splashFactory:
+                isIOS ? NoSplash.splashFactory : InkSplash.splashFactory,
           ),
-
-          /// 🔴 Unread Badge (Does NOT block taps)
-          if (unreadCount > 0)
-            Positioned(
-              right: 6,
-              top: 6,
-              child: IgnorePointer(
-                child: Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    color: scheme.error,
-                    shape: BoxShape.circle,
+          icon: const Icon(Icons.notifications_none_rounded),
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const NotificationScreen()),
+            );
+          },
+        ),
+        if (unreadCount > 0)
+          Positioned(
+            right: 8,
+            top: 8,
+            child: IgnorePointer(
+              child: Container(
+                padding: const EdgeInsets.all(4),
+                decoration: const BoxDecoration(
+                  color: HomeDashColors.accentRed,
+                  shape: BoxShape.circle,
+                ),
+                constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                child: Text(
+                  unreadCount > 9 ? '9+' : unreadCount.toString(),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 9,
+                    fontWeight: FontWeight.bold,
                   ),
-                  constraints: const BoxConstraints(
-                    minWidth: 18,
-                    minHeight: 18,
-                  ),
-                  child: Text(
-                    unreadCount > 9 ? '9+' : unreadCount.toString(),
-                    style: TextStyle(
-                      color: scheme.onError,
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
+                  textAlign: TextAlign.center,
                 ),
               ),
             ),
-        ],
-      ),
+          ),
+      ],
     );
   }
 }
