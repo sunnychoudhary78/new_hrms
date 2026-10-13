@@ -6,6 +6,7 @@ import 'package:lms/features/attendance/mark_attendance/presentation/providers/m
 import 'package:lms/features/home/presentation/providers/home_dashboard_proovider.dart';
 import 'package:lms/features/home/presentation/widgets/attendance_overview_card.dart';
 import 'package:lms/features/home/presentation/widgets/home_dashboard_style.dart';
+import 'package:lms/features/home/presentation/widgets/home_quick_actions.dart';
 import 'package:lms/features/home/presentation/widgets/home_stats_cards.dart';
 import 'package:lms/features/home/presentation/widgets/home_welcome_attendance_card.dart';
 import 'package:lms/features/home/presentation/widgets/last_five_days_card.dart';
@@ -88,6 +89,8 @@ class _HomeDashboardViewState extends ConsumerState<HomeDashboardView> {
                 ),
                 const SizedBox(height: 14),
                 HomeStatsCards(dashboard: dashboard),
+                const SizedBox(height: 16),
+                const HomeQuickActions(),
                 const SizedBox(height: 14),
                 LastFiveDaysAttendanceCard(
                   days: dashboard.lastFiveDays,

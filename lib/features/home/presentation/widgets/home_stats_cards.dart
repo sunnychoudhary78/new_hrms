@@ -20,45 +20,43 @@ class HomeStatsCards extends ConsumerWidget {
         stats.leavesTotal <= 0 ? leaveRemaining : stats.leavesTotal;
     final leaveProgress =
         leaveTotal <= 0 ? 0.0 : (leaveRemaining / leaveTotal).clamp(0.0, 1.0);
-
     final weekHours = _liveWeekWorkedHours(ref, dashboard);
 
-    final cards = [
-      _StatCardData(
-        icon: Icons.eco_rounded,
-        iconBg: HomeDashColors.softGreen,
-        iconColor: HomeDashColors.accentGreen,
-        title: 'Leaves Remaining',
-        value: leaveTotal > 0 && leaveTotal != leaveRemaining
-            ? '${_fmt(leaveRemaining)} / ${_fmt(leaveTotal)}'
-            : _fmt(leaveRemaining),
-        progress: leaveProgress,
-        progressColor: HomeDashColors.accentGreen,
-        onTap: () => Navigator.of(context).pushNamed('/leave-balance'),
-      ),
-      _StatCardData(
-        icon: Icons.access_time_filled_rounded,
-        iconBg: HomeDashColors.softPurple,
-        iconColor: HomeDashColors.accentPurple,
-        title: 'Worked Hours',
-        value: '${weekHours.toStringAsFixed(1)} hrs',
-        footerIcon: Icons.schedule_rounded,
-        footer: 'This Week',
-      ),
-    ];
+    final leaveValue = leaveTotal > 0 && leaveTotal != leaveRemaining
+        ? '${_fmt(leaveRemaining)} / ${_fmt(leaveTotal)}'
+        : _fmt(leaveRemaining);
 
-    return SizedBox(
-      height: 132,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: cards.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 12),
-        itemBuilder: (context, index) => _StatMiniCard(data: cards[index]),
-      ),
+    return Row(
+      children: [
+        Expanded(
+          child: _MetricCard(
+            icon: Icons.eco_rounded,
+            iconBg: HomeDashColors.softGreen,
+            iconColor: HomeDashColors.accentGreen,
+            title: 'Leave Balance',
+            value: leaveValue,
+            subtitle: 'days available',
+            subtitleColor: HomeDashColors.accentGreen,
+            progress: leaveProgress,
+            onTap: () => Navigator.of(context).pushNamed('/leave-balance'),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: _MetricCard(
+            icon: Icons.nightlight_round,
+            iconBg: HomeDashColors.softPurple,
+            iconColor: HomeDashColors.accentPurple,
+            title: 'Working Hours',
+            value: '${weekHours.toStringAsFixed(1)} hrs',
+            subtitle: 'This Week',
+            subtitleColor: const Color(0xFF7C9CF0),
+          ),
+        ),
+      ],
     );
   }
 
-  /// Week hours from dashboard bars, with today's open punch counted live.
   double _liveWeekWorkedHours(WidgetRef ref, HomeDashboardModel dashboard) {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
@@ -69,7 +67,7 @@ class HomeStatsCards extends ConsumerWidget {
     for (final bar in dashboard.lastFiveDays) {
       final day = DateTime(bar.date.year, bar.date.month, bar.date.day);
       if (day.isBefore(weekStart) || day.isAfter(weekEnd)) continue;
-      if (day == today) continue; // replace with live today below
+      if (day == today) continue;
       minutes += bar.workedMinutes;
     }
 
@@ -86,7 +84,6 @@ class HomeStatsCards extends ConsumerWidget {
       minutes += sessionWorkedMinutes(open);
     }
 
-    // If mark-attendance hasn't loaded yet, fall back to bar's today value.
     if (attendance == null) {
       for (final bar in dashboard.lastFiveDays) {
         final day = DateTime(bar.date.year, bar.date.month, bar.date.day);
@@ -103,50 +100,41 @@ class HomeStatsCards extends ConsumerWidget {
   }
 }
 
-class _StatCardData {
+class _MetricCard extends StatelessWidget {
   final IconData icon;
   final Color iconBg;
   final Color iconColor;
   final String title;
   final String value;
+  final String subtitle;
+  final Color subtitleColor;
   final double? progress;
-  final Color? progressColor;
-  final String? footer;
-  final IconData? footerIcon;
   final VoidCallback? onTap;
 
-  const _StatCardData({
+  const _MetricCard({
     required this.icon,
     required this.iconBg,
     required this.iconColor,
     required this.title,
     required this.value,
+    required this.subtitle,
+    required this.subtitleColor,
     this.progress,
-    this.progressColor,
-    this.footer,
-    this.footerIcon,
     this.onTap,
   });
-}
-
-class _StatMiniCard extends StatelessWidget {
-  final _StatCardData data;
-
-  const _StatMiniCard({required this.data});
 
   @override
   Widget build(BuildContext context) {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: data.onTap,
-        borderRadius: BorderRadius.circular(20),
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(22),
         child: Ink(
-          width: 148,
-          padding: const EdgeInsets.all(14),
+          padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: HomeDashColors.card,
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(22),
             boxShadow: HomeDashColors.cardShadow,
           ),
           child: Column(
@@ -155,74 +143,66 @@ class _StatMiniCard extends StatelessWidget {
               Row(
                 children: [
                   Container(
-                    width: 32,
-                    height: 32,
+                    width: 34,
+                    height: 34,
                     decoration: BoxDecoration(
-                      color: data.iconBg,
-                      borderRadius: BorderRadius.circular(10),
+                      color: iconBg,
+                      shape: BoxShape.circle,
                     ),
-                    child: Icon(data.icon, size: 18, color: data.iconColor),
+                    child: Icon(icon, size: 18, color: iconColor),
                   ),
                   const Spacer(),
-                  Icon(
-                    Icons.north_east_rounded,
-                    size: 16,
-                    color: HomeDashColors.muted.withValues(alpha: 0.7),
-                  ),
+                  if (onTap != null)
+                    Icon(
+                      Icons.north_east_rounded,
+                      size: 16,
+                      color: HomeDashColors.muted.withValues(alpha: 0.7),
+                    ),
                 ],
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 12),
               Text(
-                data.title,
+                title,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: HomeDashColors.title,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                value,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w500,
-                  color: HomeDashColors.muted,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                  color: HomeDashColors.title,
+                  height: 1.1,
                 ),
               ),
               const SizedBox(height: 4),
               Text(
-                data.value,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: HomeDashColors.title,
+                subtitle,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: subtitleColor,
                 ),
               ),
-              const Spacer(),
-              if (data.progress != null)
+              if (progress != null) ...[
+                const SizedBox(height: 12),
                 ClipRRect(
                   borderRadius: BorderRadius.circular(4),
                   child: LinearProgressIndicator(
-                    value: data.progress,
+                    value: progress,
                     minHeight: 5,
                     backgroundColor: HomeDashColors.softGreen,
-                    color: data.progressColor ?? HomeDashColors.accentGreen,
+                    color: HomeDashColors.accentGreen,
                   ),
-                )
-              else if (data.footer != null)
-                Row(
-                  children: [
-                    Icon(
-                      data.footerIcon ?? Icons.calendar_today_rounded,
-                      size: 11,
-                      color: HomeDashColors.muted,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      data.footer!,
-                      style: const TextStyle(
-                        fontSize: 10,
-                        color: HomeDashColors.muted,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
                 ),
+              ] else
+                const SizedBox(height: 17),
             ],
           ),
         ),
