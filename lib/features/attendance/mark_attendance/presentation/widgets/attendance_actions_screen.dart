@@ -4,9 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import 'package:lms/features/attendance/mark_attendance/data/models/attendance_session_model.dart';
-import 'package:lms/features/attendance/mark_attendance/presentation/providers/attendance_selectors.dart';
 import 'package:lms/features/attendance/mark_attendance/presentation/providers/mark_attendance_provider.dart';
-import 'package:lms/features/attendance/mark_attendance/presentation/providers/mobile_config_provider.dart';
 import 'package:lms/features/attendance/shared/utils/attendance_date_utils.dart';
 import 'package:lms/features/attendance/shared/utils/overtime_estimate_utils.dart';
 import 'package:lms/features/home/presentation/widgets/home_dashboard_style.dart';
@@ -33,195 +31,127 @@ class AttendanceActionsSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final notifier = ref.read(markAttendanceProvider.notifier);
     final sessions = ref.watch(markAttendanceProvider).value?.sessions ?? [];
-    final canStartNew = ref.watch(canStartNewSessionProvider(sessions));
-    final mobileConfigAsync = ref.watch(mobileConfigProvider);
-    final canMobileCheckIn = ref.watch(canMobileCheckInProvider);
-    final canMobileCheckOut = ref.watch(canMobileCheckOutProvider);
-
-    final canCheckIn = canStartNew && canMobileCheckIn;
-    final canCheckOut = hasOpenSession && canMobileCheckOut;
-
     final times = _todayPunchTimes(sessions);
-    final checkInLabel = times.checkIn != null
-        ? _fmtTime(times.checkIn!)
-        : '--:--';
+    final checkInLabel =
+        times.checkIn != null ? _fmtTime(times.checkIn!) : '--:--';
     final checkOutLabel = hasOpenSession
         ? 'In progress'
         : (times.checkOut != null ? _fmtTime(times.checkOut!) : '--:--');
-    final workedLabel = times.workedMinutes > 0
-        ? _fmtDuration(times.workedMinutes)
-        : null;
+    final workedLabel =
+        times.workedMinutes > 0 ? _fmtDuration(times.workedMinutes) : null;
 
-    Future<void> doPunchIn() async {
-      if (isRemoteMode && remoteReason != null) {
-        await notifier.punchInRemote(context, remoteReason!);
-        onResetRemoteMode();
-      } else {
-        await notifier.punchIn(context);
-      }
-    }
-
-    Future<void> doPunchOut() async {
-      if (isRemoteMode && remoteReason != null) {
-        await notifier.punchOutRemote(context, remoteReason!);
-        onResetRemoteMode();
-      } else {
-        await notifier.punchOut(context);
-      }
-    }
-
-    return mobileConfigAsync.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (_, __) => const Text('Attendance actions unavailable'),
-      data: (_) => Column(
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: KeyedSubtree(
-                  key: punchInKey,
-                  child: _ActionTile(
-                    title: 'Check In',
-                    subtitle: checkInLabel,
-                    detail: times.checkIn != null
-                        ? (workedLabel != null
-                            ? 'Worked $workedLabel'
-                            : 'First punch today')
-                        : 'Start your day',
-                    icon: Icons.login_rounded,
-                    bg: HomeDashColors.softGreen,
-                    fg: HomeDashColors.accentGreen,
-                    enabled: canCheckIn,
-                    onTap: canCheckIn ? doPunchIn : null,
-                  ),
+    return Column(
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: KeyedSubtree(
+                key: punchInKey,
+                child: _TimeInfoCard(
+                  title: 'Check In',
+                  time: checkInLabel,
+                  detail: times.checkIn != null
+                      ? (workedLabel != null
+                          ? 'Worked $workedLabel'
+                          : 'Today')
+                      : 'Not yet',
+                  icon: Icons.login_rounded,
+                  accent: HomeDashColors.accentGreen,
                 ),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: KeyedSubtree(
-                  key: punchOutKey,
-                  child: _ActionTile(
-                    title: 'Check Out',
-                    subtitle: checkOutLabel,
-                    detail: hasOpenSession
-                        ? 'Tap to end current session'
-                        : (times.checkOut != null
-                            ? 'Last punch out'
-                            : 'End your day'),
-                    icon: Icons.logout_rounded,
-                    bg: const Color(0xFFFFE4E6),
-                    fg: HomeDashColors.accentRed,
-                    enabled: canCheckOut,
-                    onTap: canCheckOut ? doPunchOut : null,
-                  ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: KeyedSubtree(
+                key: punchOutKey,
+                child: _TimeInfoCard(
+                  title: 'Check Out',
+                  time: checkOutLabel,
+                  detail: hasOpenSession
+                      ? 'Session open'
+                      : (times.checkOut != null ? 'Today' : 'Not yet'),
+                  icon: Icons.logout_rounded,
+                  accent: HomeDashColors.accentRed,
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: _ActionTile(
-                  title: 'Punch In',
-                  subtitle: 'Tap to mark attendance',
-                  icon: Icons.fingerprint_rounded,
-                  bg: HomeDashColors.accentGreen,
-                  fg: Colors.white,
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF22C55E), Color(0xFF16A34A)],
-                  ),
-                  keepBrandColorsWhenDisabled: true,
-                  enabled: canCheckIn,
-                  onTap: canCheckIn ? doPunchIn : null,
-                ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(16),
+            onTap: () => _openRemoteDialog(context),
+            child: Ink(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+                boxShadow: HomeDashColors.cardShadow,
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _ActionTile(
-                  title: 'Punch Out',
-                  subtitle: 'Tap to end shift',
-                  icon: Icons.power_settings_new_rounded,
-                  bg: HomeDashColors.accentRed,
-                  fg: Colors.white,
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFFEF4444), Color(0xFFDC2626)],
-                  ),
-                  keepBrandColorsWhenDisabled: true,
-                  enabled: canCheckOut,
-                  onTap: canCheckOut ? doPunchOut : null,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Material(
-            color: Colors.transparent,
-            child: InkWell(
-              borderRadius: BorderRadius.circular(16),
-              onTap: () => _openRemoteDialog(context),
-              child: Ink(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 14,
-                ),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF1F5F9),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.wifi_tethering_rounded,
-                      color: HomeDashColors.accentBlue,
+              child: Row(
+                children: [
+                  Container(
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF1F5F9),
+                      borderRadius: BorderRadius.circular(11),
                     ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        hasOpenSession
-                            ? 'Work remotely (remote check-out)'
-                            : 'Work remotely (remote check-in)',
-                        style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: HomeDashColors.title,
-                        ),
+                    child: const Icon(
+                      Icons.wifi_tethering_rounded,
+                      size: 20,
+                      color: Color(0xFF64748B),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      hasOpenSession
+                          ? 'Work remotely (check-out)'
+                          : 'Work remotely (check-in)',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: HomeDashColors.title,
                       ),
                     ),
-                    Icon(
-                      Icons.chevron_right_rounded,
-                      color: HomeDashColors.muted.withValues(alpha: 0.7),
-                    ),
-                  ],
-                ),
+                  ),
+                  Icon(
+                    Icons.chevron_right_rounded,
+                    color: HomeDashColors.muted.withValues(alpha: 0.7),
+                  ),
+                ],
               ),
             ),
           ),
-          if (isRemoteMode)
-            Container(
-              margin: const EdgeInsets.only(top: 10),
-              width: double.infinity,
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: HomeDashColors.softPurple,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(
-                hasOpenSession
-                    ? 'Remote check-out enabled'
-                    : 'Remote check-in enabled',
-                style: const TextStyle(
-                  color: HomeDashColors.accentPurple,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 12,
-                ),
+        ),
+        if (isRemoteMode)
+          Container(
+            margin: const EdgeInsets.only(top: 10),
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFEFF6FF),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFBFDBFE)),
+            ),
+            child: Text(
+              hasOpenSession
+                  ? 'Remote check-out enabled'
+                  : 'Remote check-in enabled',
+              style: const TextStyle(
+                color: HomeDashColors.accentBlue,
+                fontWeight: FontWeight.w700,
+                fontSize: 12,
               ),
             ),
-        ],
-      ),
+          ),
+      ],
     );
   }
 
@@ -326,94 +256,84 @@ class AttendanceActionsSection extends ConsumerWidget {
   }
 }
 
-class _ActionTile extends StatelessWidget {
+class _TimeInfoCard extends StatelessWidget {
   final String title;
-  final String subtitle;
-  final String? detail;
+  final String time;
+  final String detail;
   final IconData icon;
-  final Color bg;
-  final Color fg;
-  final Gradient? gradient;
-  final bool enabled;
-  final bool keepBrandColorsWhenDisabled;
-  final VoidCallback? onTap;
+  final Color accent;
 
-  const _ActionTile({
+  const _TimeInfoCard({
     required this.title,
-    required this.subtitle,
-    this.detail,
+    required this.time,
+    required this.detail,
     required this.icon,
-    required this.bg,
-    required this.fg,
-    this.gradient,
-    this.keepBrandColorsWhenDisabled = false,
-    required this.enabled,
-    required this.onTap,
+    required this.accent,
   });
 
   @override
   Widget build(BuildContext context) {
-    final keepBrand = keepBrandColorsWhenDisabled || enabled;
-    final effectiveBg = keepBrand ? bg : const Color(0xFFF1F5F9);
-    final effectiveFg = keepBrand ? fg : HomeDashColors.muted;
-    final effectiveGradient = keepBrand ? gradient : null;
-
-    return Opacity(
-      opacity: enabled ? 1 : (keepBrandColorsWhenDisabled ? 0.55 : 0.65),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: enabled ? onTap : null,
-          borderRadius: BorderRadius.circular(18),
-          child: Ink(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: effectiveGradient == null ? effectiveBg : null,
-              gradient: effectiveGradient,
-              borderRadius: BorderRadius.circular(18),
-              boxShadow: HomeDashColors.cardShadow,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(icon, color: effectiveFg, size: 24),
-                const SizedBox(height: 10),
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w800,
-                    color: effectiveFg,
-                  ),
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: HomeDashColors.cardShadow,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(10),
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  subtitle,
-                  style: TextStyle(
-                    fontSize: detail != null ? 15 : 11,
-                    fontWeight: detail != null
-                        ? FontWeight.w800
-                        : FontWeight.w500,
-                    color: effectiveFg.withValues(
-                      alpha: detail != null ? 0.95 : 0.8,
-                    ),
-                  ),
+                child: Icon(icon, size: 18, color: const Color(0xFF64748B)),
+              ),
+              const Spacer(),
+              Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: accent.withValues(alpha: 0.85),
                 ),
-                if (detail != null) ...[
-                  const SizedBox(height: 2),
-                  Text(
-                    detail!,
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w500,
-                      color: effectiveFg.withValues(alpha: 0.75),
-                    ),
-                  ),
-                ],
-              ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: HomeDashColors.muted,
             ),
           ),
-        ),
+          const SizedBox(height: 4),
+          Text(
+            time,
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+              color: HomeDashColors.title,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            detail,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+              color: HomeDashColors.muted.withValues(alpha: 0.9),
+            ),
+          ),
+        ],
       ),
     );
   }

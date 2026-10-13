@@ -118,26 +118,13 @@ class _MarkAttendanceScreenState extends ConsumerState<MarkAttendanceScreen> {
         foregroundColor: HomeDashColors.title,
         centerTitle: false,
         titleSpacing: 0,
-        title: const Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Mark Attendance',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w800,
-                color: HomeDashColors.title,
-              ),
-            ),
-            Text(
-              'Stay consistent, achieve more ✨',
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w500,
-                color: HomeDashColors.muted,
-              ),
-            ),
-          ],
+        title: const Text(
+          'Mark Attendance',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w800,
+            color: HomeDashColors.title,
+          ),
         ),
         actions: [
           const _NotificationIcon(),

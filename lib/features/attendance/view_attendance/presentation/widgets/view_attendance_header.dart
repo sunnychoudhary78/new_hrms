@@ -1,109 +1,114 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../../auth/presentation/providers/auth_provider.dart';
+import 'package:intl/intl.dart';
+import 'package:lms/features/auth/presentation/providers/auth_provider.dart';
 
 class ViewAttendanceHeader extends ConsumerWidget {
   const ViewAttendanceHeader({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final scheme = Theme.of(context).colorScheme;
-    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
-    final headerRadius = BorderRadius.circular(isIOS ? 18 : 22);
-    final blur = isIOS ? 10.0 : 16.0;
-    final shadowAlpha = isIOS ? 0.12 : 0.2;
-
     final auth = ref.watch(authProvider);
-
     final profile = auth.profile;
     final user = auth.authUser;
 
-    final name = profile?.associatesName ?? user?.name ?? "Employee";
-    final empId = profile?.payrollCode ?? "--";
-    final profileUrl = auth.profileUrl;
-
+    final rawName = profile?.associatesName ?? user?.name ?? 'Employee';
+    final name = _titleCase(rawName);
+    final firstName = name.trim().split(' ').first;
+    final empId = profile?.payrollCode?.trim().isNotEmpty == true
+        ? profile!.payrollCode!.trim()
+        : (profile?.userId ?? '--');
     final now = DateTime.now();
 
     return Container(
-      padding: const EdgeInsets.all(18),
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        borderRadius: headerRadius,
-        gradient: LinearGradient(
-          colors: [scheme.primary, scheme.primaryContainer],
+        borderRadius: BorderRadius.circular(22),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF2563EB), Color(0xFF7C3AED)],
         ),
         boxShadow: [
           BoxShadow(
-            color: scheme.shadow.withValues(alpha: shadowAlpha),
-            blurRadius: blur,
-            offset: const Offset(0, 8),
+            color: const Color(0xFF6366F1).withValues(alpha: 0.25),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
       child: Row(
         children: [
-          CircleAvatar(
-            radius: 30,
-            backgroundColor: scheme.surface,
-            backgroundImage: profileUrl.isNotEmpty
-                ? NetworkImage(profileUrl)
-                : const AssetImage('assets/images/profile.jpg')
-                      as ImageProvider,
-          ),
-          const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  "Welcome back,",
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: scheme.onPrimary.withOpacity(.8),
-                  ),
-                ),
-                Text(
-                  name,
+                  'Hello, $firstName 👋',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
+                  style: const TextStyle(
+                    color: Colors.white,
                     fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    color: scheme.onPrimary,
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  "Employee ID · $empId",
+                  'Employee ID: $empId',
                   style: TextStyle(
-                    fontSize: 12,
-                    color: scheme.onPrimary.withOpacity(.8),
+                    color: Colors.white.withValues(alpha: 0.9),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ],
             ),
           ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                "${now.day.toString().padLeft(2, '0')}/"
-                "${now.month.toString().padLeft(2, '0')}/"
-                "${now.year}",
-                style: TextStyle(
-                  color: scheme.onPrimary,
-                  fontWeight: FontWeight.w500,
+          const SizedBox(width: 10),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.18),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  DateFormat('d MMM yyyy').format(now),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
-              ),
-              Text(
-                ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][now.weekday %
-                    7],
-                style: TextStyle(color: scheme.onPrimary.withOpacity(.8)),
-              ),
-            ],
+                const SizedBox(height: 2),
+                Text(
+                  DateFormat('EEEE').format(now),
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.85),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
     );
+  }
+
+  String _titleCase(String value) {
+    final parts = value.trim().split(RegExp(r'\s+'));
+    if (parts.isEmpty) return value;
+    return parts
+        .map((p) {
+          if (p.isEmpty) return p;
+          return p[0].toUpperCase() + p.substring(1).toLowerCase();
+        })
+        .join(' ');
   }
 }

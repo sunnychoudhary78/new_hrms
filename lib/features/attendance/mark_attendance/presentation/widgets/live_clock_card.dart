@@ -16,6 +16,9 @@ class LiveClockCard extends StatelessWidget {
     required this.isCheckedIn,
   });
 
+  static const _chipBg = Color(0xFFF8FAFC);
+  static const _chipIcon = Color(0xFF64748B);
+
   @override
   Widget build(BuildContext context) {
     final lunch = shift?.lunchDisplay;
@@ -40,8 +43,6 @@ class LiveClockCard extends StatelessWidget {
                   icon: Icons.apartment_rounded,
                   label: 'Office Start',
                   value: shift?.officeStartDisplay ?? '--:--',
-                  color: HomeDashColors.accentBlue,
-                  bg: HomeDashColors.softBlue,
                 ),
               ),
               const SizedBox(width: 8),
@@ -50,8 +51,6 @@ class LiveClockCard extends StatelessWidget {
                   icon: Icons.restaurant_rounded,
                   label: 'Lunch Break',
                   value: lunch ?? '--',
-                  color: HomeDashColors.accentOrange,
-                  bg: HomeDashColors.softOrange,
                 ),
               ),
               const SizedBox(width: 8),
@@ -60,8 +59,6 @@ class LiveClockCard extends StatelessWidget {
                   icon: Icons.home_rounded,
                   label: 'Office End',
                   value: shift?.officeEndDisplay ?? '--:--',
-                  color: HomeDashColors.accentPurple,
-                  bg: HomeDashColors.softPurple,
                 ),
               ),
             ],
@@ -73,13 +70,13 @@ class LiveClockCard extends StatelessWidget {
                 width: 28,
                 height: 28,
                 decoration: BoxDecoration(
-                  color: HomeDashColors.softBlue,
+                  color: const Color(0xFFF1F5F9),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Icon(
                   Icons.sync_rounded,
                   size: 16,
-                  color: HomeDashColors.accentBlue,
+                  color: _chipIcon,
                 ),
               ),
               const SizedBox(width: 8),
@@ -99,7 +96,7 @@ class LiveClockCard extends StatelessWidget {
                   style: const TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w800,
-                    color: HomeDashColors.accentGreen,
+                    color: HomeDashColors.accentBlue,
                   ),
                 ),
                 const SizedBox(width: 6),
@@ -122,7 +119,7 @@ class LiveClockCard extends StatelessWidget {
                 value: progress.clamp(0.0, 1.0),
                 minHeight: 7,
                 backgroundColor: const Color(0xFFE2E8F0),
-                color: HomeDashColors.accentPurple,
+                color: HomeDashColors.accentBlue,
               ),
             ),
           ],
@@ -136,15 +133,11 @@ class _ShiftChip extends StatelessWidget {
   final IconData icon;
   final String label;
   final String value;
-  final Color color;
-  final Color bg;
 
   const _ShiftChip({
     required this.icon,
     required this.label,
     required this.value,
-    required this.color,
-    required this.bg,
   });
 
   @override
@@ -152,12 +145,13 @@ class _ShiftChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
       decoration: BoxDecoration(
-        color: bg,
+        color: LiveClockCard._chipBg,
         borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
       ),
       child: Column(
         children: [
-          Icon(icon, size: 18, color: color),
+          Icon(icon, size: 18, color: LiveClockCard._chipIcon),
           const SizedBox(height: 6),
           Text(
             label,
@@ -176,10 +170,10 @@ class _ShiftChip extends StatelessWidget {
             textAlign: TextAlign.center,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: TextStyle(
+            style: const TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w800,
-              color: color,
+              color: HomeDashColors.title,
               height: 1.15,
             ),
           ),

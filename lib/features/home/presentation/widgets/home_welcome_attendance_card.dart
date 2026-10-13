@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -55,10 +54,19 @@ class HomeWelcomeAttendanceCard extends ConsumerWidget {
           final isCheckedIn = hasOpen;
           final canPunchIn = canStartNew && canMobileCheckIn;
           final canPunchOut = hasOpen && canMobileCheckOut;
-          final buttonEnabled = isCheckedIn ? canPunchOut : canPunchIn;
-          final buttonText = isCheckedIn
-              ? (canMobileCheckOut ? 'Punch Out' : 'Check-Out Disabled')
-              : (canMobileCheckIn ? 'Punch In' : 'Check-In Disabled');
+          final configReady = mobileConfigAsync.hasValue;
+          final canPunch = configReady &&
+              (isCheckedIn ? canPunchOut : canPunchIn);
+
+          Future<void> handlePunch() async {
+            if (!canPunch) return;
+            final notifier = ref.read(markAttendanceProvider.notifier);
+            if (isCheckedIn) {
+              await notifier.punchOut(context);
+            } else {
+              await notifier.punchIn(context);
+            }
+          }
 
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -132,7 +140,11 @@ class HomeWelcomeAttendanceCard extends ConsumerWidget {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  _FingerprintBadge(isCheckedIn: isCheckedIn),
+                  _FingerprintBadge(
+                    isCheckedIn: isCheckedIn,
+                    enabled: canPunch,
+                    onTap: handlePunch,
+                  ),
                 ],
               ),
               const SizedBox(height: 16),
@@ -141,51 +153,17 @@ class HomeWelcomeAttendanceCard extends ConsumerWidget {
                 openSession: openSession,
                 shift: shift,
               ),
-              const SizedBox(height: 14),
-              Row(
-                children: [
-                  Expanded(
-                    child: mobileConfigAsync.when(
-                      loading: () => _punchButton(
-                        label: 'Checking...',
-                        enabled: false,
-                        isPunchOut: false,
-                      ),
-                      error: (_, __) => _punchButton(
-                        label: 'Unavailable',
-                        enabled: false,
-                        isPunchOut: false,
-                      ),
-                      data: (_) => _punchButton(
-                        label: buttonText,
-                        enabled: buttonEnabled,
-                        isPunchOut: isCheckedIn,
-                        onPressed: buttonEnabled
-                            ? () async {
-                                if (isCheckedIn) {
-                                  await ref
-                                      .read(markAttendanceProvider.notifier)
-                                      .punchOut(context);
-                                } else {
-                                  await ref
-                                      .read(markAttendanceProvider.notifier)
-                                      .punchIn(context);
-                                }
-                              }
-                            : null,
-                      ),
-                    ),
+              const SizedBox(height: 10),
+              Align(
+                alignment: Alignment.centerRight,
+                child: Text(
+                  '${todayList.length}/2 sessions',
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: HomeDashColors.muted,
+                    fontWeight: FontWeight.w500,
                   ),
-                  const SizedBox(width: 10),
-                  Text(
-                    '${todayList.length}/2 sessions',
-                    style: const TextStyle(
-                      fontSize: 11,
-                      color: HomeDashColors.muted,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
+                ),
               ),
               if (isStale && openSession != null) ...[
                 const SizedBox(height: 12),
@@ -199,68 +177,6 @@ class HomeWelcomeAttendanceCard extends ConsumerWidget {
         .animate()
         .fadeIn(duration: 500.ms)
         .slideY(begin: 0.04, end: 0, curve: Curves.easeOutCubic);
-  }
-
-  static Widget _punchButton({
-    required String label,
-    required bool enabled,
-    required bool isPunchOut,
-    VoidCallback? onPressed,
-  }) {
-    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
-    // Punch In = green, Punch Out = red
-    final gradient = isPunchOut
-        ? const LinearGradient(colors: [Color(0xFFEF4444), Color(0xFFDC2626)])
-        : const LinearGradient(colors: [Color(0xFF22C55E), Color(0xFF16A34A)]);
-    final shadowColor = isPunchOut
-        ? HomeDashColors.accentRed.withValues(alpha: 0.35)
-        : HomeDashColors.accentGreen.withValues(alpha: 0.35);
-
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: enabled ? onPressed : null,
-        borderRadius: BorderRadius.circular(22),
-        splashFactory:
-            isIOS ? NoSplash.splashFactory : InkSplash.splashFactory,
-        child: Ink(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(22),
-            gradient: enabled ? gradient : null,
-            color: enabled ? null : const Color(0xFFE2E8F0),
-            boxShadow: enabled
-                ? [
-                    BoxShadow(
-                      color: shadowColor,
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
-                    ),
-                  ]
-                : null,
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                label,
-                style: TextStyle(
-                  color: enabled ? Colors.white : const Color(0xFF64748B),
-                  fontWeight: FontWeight.w700,
-                  fontSize: 13,
-                ),
-              ),
-              const SizedBox(width: 6),
-              Icon(
-                Icons.arrow_forward_rounded,
-                size: 16,
-                color: enabled ? Colors.white : const Color(0xFF64748B),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
   }
 
   static String _greeting() {
@@ -280,44 +196,67 @@ class HomeWelcomeAttendanceCard extends ConsumerWidget {
 
 class _FingerprintBadge extends StatelessWidget {
   final bool isCheckedIn;
+  final bool enabled;
+  final VoidCallback onTap;
 
-  const _FingerprintBadge({required this.isCheckedIn});
+  const _FingerprintBadge({
+    required this.isCheckedIn,
+    required this.enabled,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 56,
-      height: 56,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        gradient: RadialGradient(
-          colors: [
-            HomeDashColors.accentBlue.withValues(alpha: 0.18),
-            HomeDashColors.softBlue.withValues(alpha: 0.35),
-            Colors.transparent,
-          ],
-        ),
-      ),
-      child: Center(
-        child: Container(
-          width: 42,
-          height: 42,
+    // Punch In = green, Punch Out = red
+    final accent = !enabled
+        ? const Color(0xFF94A3B8)
+        : (isCheckedIn
+            ? HomeDashColors.accentRed
+            : HomeDashColors.accentGreen);
+    final soft = !enabled
+        ? const Color(0xFFF1F5F9)
+        : (isCheckedIn
+            ? const Color(0xFFFFE4E6)
+            : HomeDashColors.softGreen);
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: enabled ? onTap : null,
+        customBorder: const CircleBorder(),
+        child: Ink(
+          width: 68,
+          height: 68,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: Colors.white,
-            boxShadow: [
-              BoxShadow(
-                color: HomeDashColors.accentBlue.withValues(alpha: 0.22),
-                blurRadius: 12,
-              ),
-            ],
+            gradient: RadialGradient(
+              colors: [
+                accent.withValues(alpha: 0.18),
+                soft.withValues(alpha: 0.45),
+                Colors.transparent,
+              ],
+            ),
           ),
-          child: Icon(
-            Icons.fingerprint_rounded,
-            size: 24,
-            color: isCheckedIn
-                ? HomeDashColors.accentGreen
-                : HomeDashColors.accentBlue,
+          child: Center(
+            child: Container(
+              width: 52,
+              height: 52,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white,
+                boxShadow: [
+                  BoxShadow(
+                    color: accent.withValues(alpha: 0.28),
+                    blurRadius: 12,
+                  ),
+                ],
+              ),
+              child: Icon(
+                Icons.fingerprint_rounded,
+                size: 28,
+                color: accent,
+              ),
+            ),
           ),
         ),
       ),

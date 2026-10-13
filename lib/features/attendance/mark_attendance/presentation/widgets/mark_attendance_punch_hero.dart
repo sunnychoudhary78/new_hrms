@@ -28,13 +28,14 @@ class MarkAttendancePunchHero extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final punchLabel = isCheckedIn ? 'Punch Out' : 'Punch In';
+    // Punch In = green, Punch Out = red
     final colors = isCheckedIn
         ? const [Color(0xFFEF4444), Color(0xFFDC2626)]
-        : const [Color(0xFF6366F1), Color(0xFF8B5CF6)];
+        : const [Color(0xFF22C55E), Color(0xFF16A34A)];
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(16, 18, 16, 18),
+      padding: const EdgeInsets.fromLTRB(18, 20, 18, 20),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
@@ -42,43 +43,16 @@ class MarkAttendancePunchHero extends StatelessWidget {
       ),
       child: Column(
         children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 34,
-                height: 34,
-                decoration: BoxDecoration(
-                  color: HomeDashColors.softPurple,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Icon(
-                  Icons.my_location_rounded,
-                  size: 18,
-                  color: HomeDashColors.accentPurple,
-                ),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                _greeting,
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
-                  color: HomeDashColors.title,
-                ),
-              ),
-              const SizedBox(height: 4),
-              const Text(
-                "Let's make it a productive day",
-                style: TextStyle(
-                  fontSize: 12,
-                  color: HomeDashColors.muted,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
+          Text(
+            _greeting,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+              color: HomeDashColors.title,
+            ),
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 20),
           GestureDetector(
             onTap: canPunch
                 ? () {
@@ -87,21 +61,21 @@ class MarkAttendancePunchHero extends StatelessWidget {
                   }
                 : null,
             child: SizedBox(
-              width: 148,
-              height: 148,
+              width: 168,
+              height: 168,
               child: Stack(
                 alignment: Alignment.center,
                 children: [
                   CustomPaint(
-                    size: const Size(148, 148),
+                    size: const Size(168, 168),
                     painter: _RingPainter(
                       progress: isCheckedIn ? progress.clamp(0.05, 1.0) : 0.12,
                       color: colors.first,
                     ),
                   ),
                   Container(
-                    width: 118,
-                    height: 118,
+                    width: 132,
+                    height: 132,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       gradient: canPunch
@@ -115,7 +89,7 @@ class MarkAttendancePunchHero extends StatelessWidget {
                       boxShadow: canPunch
                           ? [
                               BoxShadow(
-                                color: colors.first.withValues(alpha: 0.35),
+                                color: colors.first.withValues(alpha: 0.32),
                                 blurRadius: 18,
                                 offset: const Offset(0, 8),
                               ),
@@ -127,12 +101,12 @@ class MarkAttendancePunchHero extends StatelessWidget {
                       children: [
                         Icon(
                           Icons.fingerprint_rounded,
-                          size: 36,
+                          size: 40,
                           color: Colors.white.withValues(
                             alpha: canPunch ? 1 : 0.7,
                           ),
                         ),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: 6),
                         Text(
                           punchLabel,
                           style: TextStyle(
@@ -140,16 +114,7 @@ class MarkAttendancePunchHero extends StatelessWidget {
                               alpha: canPunch ? 1 : 0.75,
                             ),
                             fontWeight: FontWeight.w800,
-                            fontSize: 13,
-                          ),
-                        ),
-                        Icon(
-                          isCheckedIn
-                              ? Icons.arrow_upward_rounded
-                              : Icons.arrow_downward_rounded,
-                          size: 14,
-                          color: Colors.white.withValues(
-                            alpha: canPunch ? 0.9 : 0.6,
+                            fontSize: 14,
                           ),
                         ),
                       ],
@@ -159,7 +124,7 @@ class MarkAttendancePunchHero extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 16),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
@@ -212,7 +177,7 @@ class _RingPainter extends CustomPainter {
     final center = Offset(size.width / 2, size.height / 2);
     final radius = size.width / 2 - 6;
     final base = Paint()
-      ..color = const Color(0xFFE0E7FF)
+      ..color = const Color(0xFFE2E8F0)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 8
       ..strokeCap = StrokeCap.round;
