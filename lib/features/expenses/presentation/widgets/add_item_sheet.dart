@@ -6,6 +6,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:lms/core/providers/global_loading_provider.dart';
+import 'package:lms/core/theme/app_design.dart';
+import 'package:lms/shared/widgets/app_form_widgets.dart';
 import 'package:lms/shared/widgets/premium_feature_components.dart';
 
 class AddItemSheet extends StatefulWidget {
@@ -174,7 +176,7 @@ class _AddItemSheetState extends State<AddItemSheet> {
                 height: 4,
                 margin: const EdgeInsets.only(bottom: 14),
                 decoration: BoxDecoration(
-                  color: scheme.outlineVariant,
+                  color: AppColors.border,
                   borderRadius: BorderRadius.circular(10),
                 ),
               ),
@@ -200,39 +202,27 @@ class _AddItemSheetState extends State<AddItemSheet> {
                         .map((e) => DropdownMenuItem(value: e, child: Text(e)))
                         .toList(),
                     onChanged: (val) => setState(() => selectedCategory = val!),
-                    decoration: InputDecoration(
+                    decoration: appInputDecoration(
                       labelText: "Category *",
-                      filled: true,
-                      fillColor: scheme.surfaceContainerLow,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(fieldRadius),
-                      ),
+                      radius: fieldRadius,
                     ),
                   ),
                   const SizedBox(height: 10),
                   TextField(
                     controller: descriptionController,
-                    decoration: InputDecoration(
+                    decoration: appInputDecoration(
                       labelText: "Description",
-                      filled: true,
-                      fillColor: scheme.surfaceContainerLow,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(fieldRadius),
-                      ),
+                      radius: fieldRadius,
                     ),
                   ),
                   const SizedBox(height: 10),
                   TextField(
                     controller: amountController,
                     keyboardType: TextInputType.number,
-                    decoration: InputDecoration(
+                    decoration: appInputDecoration(
                       labelText: "Amount *",
                       prefixText: "₹ ",
-                      filled: true,
-                      fillColor: scheme.surfaceContainerLow,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(fieldRadius),
-                      ),
+                      radius: fieldRadius,
                     ),
                   ),
                 ],
@@ -257,8 +247,8 @@ class _AddItemSheetState extends State<AddItemSheet> {
                   const SizedBox(height: 4),
                   Text(
                     "Attach images or PDFs so approvers can audit this line item.",
-                    style: TextStyle(
-                      color: scheme.onSurfaceVariant,
+                    style: const TextStyle(
+                      color: AppColors.muted,
                       fontSize: 12,
                     ),
                   ),
@@ -343,17 +333,9 @@ class _AddItemSheetState extends State<AddItemSheet> {
 
             const SizedBox(height: 12),
 
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(isIOS ? 12 : 14),
-                  ),
-                ),
-                onPressed: submit,
-                child: Text(_isEditing ? "Update Item" : "Add Item"),
-              ),
+            AppPrimaryButton(
+              label: _isEditing ? "Update Item" : "Add Item",
+              onPressed: submit,
             ),
           ],
         ),

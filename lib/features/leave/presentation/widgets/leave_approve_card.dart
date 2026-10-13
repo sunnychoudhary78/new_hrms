@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:lms/core/theme/app_design.dart';
 import 'package:lms/features/leave/data/models/leave_approve_model.dart';
+import 'package:lms/shared/widgets/app_form_widgets.dart';
 import 'leave_approve_actions.dart';
 
 class LeaveApproveCard extends StatefulWidget {
@@ -41,26 +42,14 @@ class _LeaveApproveCardState extends State<LeaveApproveCard> {
     final scheme = Theme.of(context).colorScheme;
     final r = widget.request;
     final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
-    final cardRadius = isIOS ? 14.0 : AppRadius.lg;
+    final cardRadius = isIOS ? AppRadius.md + 2 : AppRadius.lg;
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
       padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: scheme.surface,
-        borderRadius: BorderRadius.circular(cardRadius),
-        border: Border.all(
-          color: expanded
-              ? scheme.primary.withOpacity(0.4)
-              : scheme.outline.withOpacity(0.2),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: scheme.shadow.withOpacity(isIOS ? 0.035 : 0.05),
-            blurRadius: isIOS ? 6 : 8,
-            offset: Offset(0, isIOS ? 2 : 3),
-          ),
-        ],
+      decoration: AppColors.cardDecoration(
+        highlighted: expanded,
+        radius: cardRadius,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -70,13 +59,13 @@ class _LeaveApproveCardState extends State<LeaveApproveCard> {
             children: [
               CircleAvatar(
                 radius: 22,
-                backgroundColor: scheme.primaryContainer,
+                backgroundColor: AppColors.softBlueStart,
                 child: Text(
                   r.employeeName.isNotEmpty
                       ? r.employeeName[0].toUpperCase()
                       : "?",
-                  style: TextStyle(
-                    color: scheme.onPrimaryContainer,
+                  style: const TextStyle(
+                    color: AppColors.primary,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -105,7 +94,11 @@ class _LeaveApproveCardState extends State<LeaveApproveCard> {
                 ),
               ),
 
-              _statusChip(r.status, scheme),
+              AppStatusPill(
+                label: r.status == "RevocationRequested"
+                    ? "RevocationRequested"
+                    : r.status,
+              ),
             ],
           ),
 
@@ -133,14 +126,16 @@ class _LeaveApproveCardState extends State<LeaveApproveCard> {
                   vertical: 4,
                 ),
                 decoration: BoxDecoration(
-                  color: scheme.primaryContainer,
+                  color: AppColors.softBlueStart,
                   borderRadius: BorderRadius.circular(AppRadius.pill),
+                  border: Border.all(color: AppColors.border),
                 ),
                 child: Text(
                   "${formatDays(r.days)} day${r.days > 1 ? 's' : ''}",
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 12,
-                    color: scheme.onPrimaryContainer,
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
@@ -217,7 +212,7 @@ class _LeaveApproveCardState extends State<LeaveApproveCard> {
             if (r.status == "RevocationRequested" && r.revocationReason != null)
               Text(
                 "Revoke Reason: ${r.revocationReason}",
-                style: TextStyle(color: Colors.orange),
+                style: const TextStyle(color: AppColors.statusDeepOrange),
               ),
 
             const SizedBox(height: AppSpacing.sm),
@@ -230,43 +225,6 @@ class _LeaveApproveCardState extends State<LeaveApproveCard> {
               ),
           ],
         ],
-      ),
-    );
-  }
-
-  Widget _statusChip(String status, ColorScheme scheme) {
-    Color color;
-
-    switch (status.toLowerCase()) {
-      case "approved":
-        color = scheme.primary;
-        break;
-      case "rejected":
-        color = scheme.error;
-        break;
-      case "pending":
-        color = scheme.tertiary;
-        break;
-      case "revocationrequested":
-        color = Colors.orange;
-        break;
-      default:
-        color = scheme.outline;
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
-        borderRadius: BorderRadius.circular(AppRadius.pill),
-      ),
-      child: Text(
-        displayStatus(status),
-        style: TextStyle(
-          color: color,
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-        ),
       ),
     );
   }

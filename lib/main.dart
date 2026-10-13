@@ -11,7 +11,7 @@ import 'package:lms/app/app_routes.dart';
 import 'package:lms/app/app_root.dart';
 import 'package:lms/core/providers/global_loading_provider.dart';
 import 'package:lms/core/services/location_tracking_service.dart';
-
+import 'package:lms/core/theme/app_design.dart';
 import 'package:lms/core/theme/app_theme_provider.dart';
 import 'package:lms/core/theme/theme_mode_provider.dart';
 import 'package:lms/features/auth/presentation/providers/auth_provider.dart';
@@ -83,132 +83,20 @@ class MyApp extends ConsumerWidget {
 
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-
       themeMode: themeMode,
       navigatorKey: navigatorKey,
-
-      theme: ThemeData(
-        useMaterial3: true,
-
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: primaryColor,
-          brightness: Brightness.light,
-        ),
-
-        textTheme: GoogleFonts.interTextTheme(),
-
-        scaffoldBackgroundColor: Colors.grey.shade50,
-
-        /// ✅ INPUT FIELDS (TextField, Dropdown, etc.)
-        inputDecorationTheme: InputDecorationTheme(
-          filled: true,
-          fillColor: Colors.white,
-
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 14,
-          ),
-
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide.none,
-          ),
-
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide(color: Colors.grey.shade300),
-          ),
-
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: const BorderSide(width: 1.5),
-          ),
-        ),
-
-        /// ✅ CARD THEME (your sections will look premium)
-        cardTheme: CardThemeData(
-          elevation: 1,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          margin: EdgeInsets.zero,
-        ),
-
-        /// ✅ BUTTON THEME (all ElevatedButtons upgraded)
-        elevatedButtonTheme: ElevatedButtonThemeData(
-          style: ElevatedButton.styleFrom(
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            elevation: 2,
-          ),
-        ),
-      ),
-
-      darkTheme: ThemeData(
-        useMaterial3: true,
-
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: primaryColor,
-          brightness: Brightness.dark,
-        ),
-
+      theme: AppTheme.light(primaryColor).copyWith(
         textTheme: GoogleFonts.interTextTheme(
-          ThemeData(brightness: Brightness.dark).textTheme,
-        ),
-
-        /// ✅ INPUTS
-        inputDecorationTheme: InputDecorationTheme(
-          filled: true,
-          fillColor: Colors.white.withOpacity(0.05),
-
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 14,
-          ),
-
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide.none,
-          ),
-
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: const BorderSide(color: Colors.white24),
-          ),
-
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: const BorderSide(width: 1.5),
-          ),
-        ),
-
-        /// ✅ CARD
-        cardTheme: CardThemeData(
-          elevation: 1,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          margin: EdgeInsets.zero,
-        ),
-
-        /// ✅ BUTTON
-        elevatedButtonTheme: ElevatedButtonThemeData(
-          style: ElevatedButton.styleFrom(
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            elevation: 2,
-          ),
+          AppTheme.light(primaryColor).textTheme,
         ),
       ),
-
+      darkTheme: AppTheme.dark(primaryColor).copyWith(
+        textTheme: GoogleFonts.interTextTheme(
+          AppTheme.dark(primaryColor).textTheme,
+        ),
+      ),
       home: _buildHome(),
-
       routes: AppRoutes.routes,
-
       builder: (context, child) {
         final overlay = ref.watch(globalLoadingProvider);
         final auth = ref.watch(authProvider);
@@ -219,15 +107,10 @@ class MyApp extends ConsumerWidget {
           clipBehavior: Clip.none,
           children: [
             MeetingPersistentHost(child: child!),
-
             if (overlay.isLoading) GlobalLoader(message: overlay.message),
-
             if (overlay.isSuccess) GlobalSuccess(message: overlay.message),
-
             if (overlay.isError) GlobalError(message: overlay.message),
-
             if (overlay.isMessage) GlobalMessage(message: overlay.message),
-
             if (showPasswordGate) const ForcePasswordChangeGate(),
           ],
         );

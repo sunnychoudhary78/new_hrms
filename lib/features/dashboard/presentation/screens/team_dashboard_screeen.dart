@@ -5,8 +5,10 @@ import 'package:lms/features/dashboard/presentation/screens/employee_attendence_
 import 'package:lms/features/dashboard/presentation/widgets/team_analytics_section.dart';
 import 'package:lms/features/dashboard/presentation/widgets/team_member_card.dart';
 import 'package:lms/features/dashboard/presentation/widgets/team_overview_card.dart';
+import 'package:lms/core/theme/app_design.dart';
 import 'package:lms/features/home/presentation/widgets/app_drawer.dart';
 import 'package:lms/shared/widgets/app_bar.dart';
+import 'package:lms/shared/widgets/premium_feature_components.dart';
 
 class TeamDashboardScreen extends ConsumerStatefulWidget {
   const TeamDashboardScreen({super.key});
@@ -21,12 +23,11 @@ class _TeamDashboardScreenState extends ConsumerState<TeamDashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     final dashboardAsync = ref.watch(teamDashboardProvider);
 
     return Scaffold(
       drawer: const AppDrawer(),
-      backgroundColor: scheme.surfaceContainerLowest,
+      backgroundColor: AppColors.bg,
       appBar: AppAppBar(title: "Dashboard"),
       body: dashboardAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
@@ -44,33 +45,33 @@ class _TeamDashboardScreenState extends ConsumerState<TeamDashboardScreen> {
             slivers: [
               SliverToBoxAdapter(
                 child: Padding(
-                  padding: const EdgeInsets.all(20),
+                  padding: const EdgeInsets.all(AppSpacing.lg),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      /// 🔎 Search
-                      _searchBar(scheme),
-                      const SizedBox(height: 28),
+                      const PremiumFeatureHeader(
+                        icon: Icons.groups_outlined,
+                        title: "Team Dashboard",
+                        subtitle:
+                            "Monitor attendance health, productivity trends and your direct reports.",
+                      ),
+                      const SizedBox(height: AppSpacing.md),
+                      _searchBar(),
+                      const SizedBox(height: AppSpacing.lg),
 
-                      /// 🔥 Premium Team Overview Card
                       TeamOverviewCard(dashboard: dashboard),
 
-                      const SizedBox(height: 36),
+                      const SizedBox(height: AppSpacing.lg),
 
                       TeamAnalyticsSection(dashboard: dashboard),
 
-                      const SizedBox(height: 36),
+                      const SizedBox(height: AppSpacing.lg),
 
-                      /// 👥 Team Section Title
-                      Text(
-                        "Team Members (${filtered.length})",
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
-                          color: scheme.onSurface,
-                        ),
+                      PremiumSectionTitle(
+                        title: "Team Members (${filtered.length})",
+                        subtitle: "Tap a member to open their attendance calendar.",
                       ),
-                      const SizedBox(height: 18),
+                      const SizedBox(height: AppSpacing.md),
 
                       /// 👤 Team Members List
                       ...filtered.map(
@@ -103,27 +104,16 @@ class _TeamDashboardScreenState extends ConsumerState<TeamDashboardScreen> {
     );
   }
 
-  /// 🔎 Modern Search
-  Widget _searchBar(ColorScheme scheme) {
+  Widget _searchBar() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      decoration: BoxDecoration(
-        color: scheme.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: [
-          BoxShadow(
-            color: scheme.shadow.withOpacity(0.06),
-            blurRadius: 18,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+      decoration: AppColors.cardDecoration(radius: AppRadius.lg),
       child: TextField(
         onChanged: (v) => setState(() => searchQuery = v),
-        decoration: InputDecoration(
-          icon: Icon(Icons.search_rounded, color: scheme.onSurfaceVariant),
+        decoration: const InputDecoration(
+          icon: Icon(Icons.search_rounded, color: AppColors.muted),
           hintText: "Search team member...",
-          hintStyle: TextStyle(color: scheme.onSurfaceVariant),
+          hintStyle: TextStyle(color: AppColors.muted),
           border: InputBorder.none,
         ),
       ),

@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:lms/core/theme/app_design.dart';
 import 'package:lms/features/kra/data/models/kra_model.dart';
 import 'package:lms/shared/widgets/premium_feature_components.dart';
 
@@ -37,11 +38,11 @@ class KraStatusChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final s = normalizeKraEvaluationStatus(status);
     final color = switch (s) {
-      'COMPLETED' => Colors.green,
-      'PENDING_SELF' => Colors.orange,
-      'PENDING_MANAGER' => Colors.blue,
-      'PENDING_HOD' => Colors.purple,
-      _ => Colors.grey,
+      'COMPLETED' => AppColors.success,
+      'PENDING_SELF' => AppColors.warning,
+      'PENDING_MANAGER' => AppColors.info,
+      'PENDING_HOD' => AppColors.accentPurple,
+      _ => AppColors.muted,
     };
     return PremiumStatusPill(label: s.replaceAll('_', ' '), color: color);
   }
@@ -55,20 +56,29 @@ class KraMetaPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm + 2,
+        vertical: 6,
+      ),
       decoration: BoxDecoration(
-        color: scheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(isIOS ? 14 : 20),
+        color: AppColors.bg,
+        borderRadius: BorderRadius.circular(AppRadius.pill),
+        border: Border.all(color: AppColors.border),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 15, color: scheme.primary),
+          Icon(icon, size: 15, color: AppColors.heroStart),
           const SizedBox(width: 5),
-          Text(text),
+          Text(
+            text,
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: AppColors.title,
+            ),
+          ),
         ],
       ),
     );
@@ -87,16 +97,14 @@ class KraEmptyList extends StatelessWidget {
       physics: isIOS
           ? const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics())
           : const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(AppSpacing.lg),
       children: [
-        SizedBox(height: MediaQuery.sizeOf(context).height * 0.22),
-        Icon(
-          Icons.assignment_outlined,
-          size: 48,
-          color: Theme.of(context).colorScheme.onSurfaceVariant,
+        SizedBox(height: MediaQuery.sizeOf(context).height * 0.18),
+        PremiumEmptyState(
+          icon: Icons.assignment_outlined,
+          title: 'Nothing here yet',
+          subtitle: text,
         ),
-        const SizedBox(height: 10),
-        Center(child: Text(text)),
       ],
     );
   }
@@ -114,8 +122,14 @@ class KraErrorList extends StatelessWidget {
       physics: isIOS
           ? const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics())
           : const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.all(16),
-      children: [Text(message, textAlign: TextAlign.center)],
+      padding: const EdgeInsets.all(AppSpacing.md),
+      children: [
+        PremiumEmptyState(
+          icon: Icons.error_outline_rounded,
+          title: 'Something went wrong',
+          subtitle: message,
+        ),
+      ],
     );
   }
 }
@@ -130,8 +144,7 @@ class KraAssignmentCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
-    final innerRadius = BorderRadius.circular(isIOS ? 12 : 16);
+    final innerRadius = BorderRadius.circular(AppRadius.md);
     return PremiumCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -142,7 +155,7 @@ class KraAssignmentCard extends StatelessWidget {
               fontSize: 11,
               fontWeight: FontWeight.w800,
               letterSpacing: .4,
-              color: scheme.primary,
+              color: AppColors.heroStart,
             ),
           ),
           const SizedBox(height: 6),
@@ -158,6 +171,7 @@ class KraAssignmentCard extends StatelessWidget {
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w800,
+                        color: AppColors.title,
                       ),
                     ),
                     if (kra.employee != null)
@@ -197,9 +211,9 @@ class KraAssignmentCard extends StatelessWidget {
             width: double.infinity,
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: scheme.surfaceContainerLowest,
+              color: AppColors.bg,
               borderRadius: innerRadius,
-              border: Border.all(color: scheme.outlineVariant),
+              border: Border.all(color: AppColors.border),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

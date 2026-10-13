@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lms/core/theme/app_design.dart';
 import 'package:lms/features/auth/presentation/providers/auth_provider.dart';
 import 'package:lms/features/home/presentation/widgets/app_drawer.dart';
 import 'package:lms/features/leave/presentation/screens/leave_apply_screen.dart';
@@ -8,6 +9,7 @@ import 'package:lms/features/leave/presentation/widgets/leave_balance_list.dart'
 import 'package:lms/features/onboarding/data/day_one_route.dart';
 import 'package:lms/features/onboarding/presentation/widgets/feature_tour_overlay.dart';
 import 'package:lms/shared/widgets/app_bar.dart';
+import 'package:lms/shared/widgets/app_form_widgets.dart';
 import '../providers/leave_balance_provider.dart';
 import '../widgets/leave_pie_chart.dart';
 
@@ -53,19 +55,18 @@ class _LeaveBalanceScreenState extends ConsumerState<LeaveBalanceScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     ref.watch(authProvider);
 
     final leaveAsync = ref.watch(leaveBalanceProvider);
 
     return Scaffold(
-      backgroundColor: scheme.surfaceContainerLowest,
+      backgroundColor: AppColors.bg,
       appBar: AppAppBar(
         title: "Leave Balance",
         showBack: false,
         actions: [
           Padding(
-            padding: const EdgeInsets.only(right: 8),
+            padding: const EdgeInsets.only(right: AppSpacing.sm),
             child: KeyedSubtree(
               key: _applyKey,
               child: IconButton(
@@ -96,12 +97,21 @@ class _LeaveBalanceScreenState extends ConsumerState<LeaveBalanceScreen> {
               onRefresh: notifier.refresh,
               child: ListView(
                 physics: scrollPhysics,
+                padding: appScreenPadding,
                 children: [
-                  const SizedBox(height: 260),
+                  const AppHeroBanner(
+                    icon: Icons.account_balance_wallet_outlined,
+                    message:
+                        "Your leave balances will appear here once assigned.",
+                  ),
+                  const SizedBox(height: 120),
                   Center(
                     child: KeyedSubtree(
                       key: _balanceKey,
-                      child: const Text("No leave data found"),
+                      child: const Text(
+                        "No leave data found",
+                        style: TextStyle(color: AppColors.muted),
+                      ),
                     ),
                   ),
                 ],
@@ -114,10 +124,17 @@ class _LeaveBalanceScreenState extends ConsumerState<LeaveBalanceScreen> {
             child: SingleChildScrollView(
               keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
               physics: scrollPhysics,
-              padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
+              padding: appScreenPadding,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  const AppHeroBanner(
+                    icon: Icons.pie_chart_outline_rounded,
+                    title: "Leave overview",
+                    message:
+                        "See available days at a glance and tap a type to apply leave.",
+                  ),
+                  const SizedBox(height: AppSpacing.md),
                   KeyedSubtree(
                     key: _balanceKey,
                     child: Column(
@@ -128,19 +145,24 @@ class _LeaveBalanceScreenState extends ConsumerState<LeaveBalanceScreen> {
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.w600,
+                            color: AppColors.title,
                           ),
                         ),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: AppSpacing.sm + 4),
                         LeavePieChart(leaves: leaves),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 28),
+                  const SizedBox(height: AppSpacing.lg + 4),
                   const Text(
                     "Leave Details",
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.title,
+                    ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.sm + 4),
                   LeaveBalanceList(leaves: leaves),
                 ],
               ),

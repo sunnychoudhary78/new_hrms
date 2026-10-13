@@ -20,6 +20,7 @@ class CorrectionSection extends StatelessWidget {
         /// 📱 MOBILE VIEW
         if (constraints.maxWidth < 800) {
           return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               for (int i = 0; i < requests.length; i++) ...[
                 RequestCard(item: requests[i]),

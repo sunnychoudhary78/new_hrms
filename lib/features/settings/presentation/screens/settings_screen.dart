@@ -2,7 +2,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
+import 'package:lms/core/theme/app_design.dart';
 import 'package:lms/shared/widgets/app_bar.dart';
+import 'package:lms/shared/widgets/app_form_widgets.dart';
 import '../../../../core/theme/app_theme_provider.dart';
 import '../../../../core/theme/theme_mode_provider.dart';
 
@@ -13,7 +15,6 @@ class ThemeSettingsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final selectedColor = ref.watch(appThemeProvider);
     final themeMode = ref.watch(themeModeProvider);
-    final scheme = Theme.of(context).colorScheme;
     final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
 
     final isDark = themeMode == ThemeMode.dark;
@@ -30,28 +31,27 @@ class ThemeSettingsScreen extends ConsumerWidget {
     ];
 
     return Scaffold(
-      backgroundColor: scheme.surfaceContainerLowest,
-      appBar: AppAppBar(title: "Theme Settings"),
+      backgroundColor: AppColors.bg,
+      appBar: const AppAppBar(title: "Theme Settings"),
       body: ListView(
         keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
         physics: isIOS
             ? const BouncingScrollPhysics()
             : const ClampingScrollPhysics(),
-        padding: const EdgeInsets.all(20),
+        padding: appScreenPadding,
         children: [
-          /// 🌗 THEME MODE SECTION
-          _SectionCard(
-            title: "Appearance",
-            isIOS: isIOS,
+          AppSectionCard(
+            margin: EdgeInsets.zero,
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const SizedBox(height: 10),
-
-                /// Segmented Light/Dark Toggle
+                const AppSectionTitle("Appearance"),
+                const SizedBox(height: AppSpacing.md),
                 Container(
                   decoration: BoxDecoration(
-                    color: scheme.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(isIOS ? 22 : 30),
+                    color: AppColors.softFill,
+                    borderRadius: BorderRadius.circular(AppRadius.pill),
+                    border: Border.all(color: AppColors.border),
                   ),
                   padding: const EdgeInsets.all(4),
                   child: Row(
@@ -60,7 +60,6 @@ class ThemeSettingsScreen extends ConsumerWidget {
                         label: "Light",
                         icon: Icons.light_mode,
                         selected: !isDark,
-                        isIOS: isIOS,
                         onTap: () => ref
                             .read(themeModeProvider.notifier)
                             .changeMode(ThemeMode.light),
@@ -69,7 +68,6 @@ class ThemeSettingsScreen extends ConsumerWidget {
                         label: "Dark",
                         icon: Icons.dark_mode,
                         selected: isDark,
-                        isIOS: isIOS,
                         onTap: () => ref
                             .read(themeModeProvider.notifier)
                             .changeMode(ThemeMode.dark),
@@ -80,19 +78,14 @@ class ThemeSettingsScreen extends ConsumerWidget {
               ],
             ),
           ),
-
-          const SizedBox(height: 30),
-
-          /// 🎨 COLOR SECTION
-          _SectionCard(
-            title: "Primary Color",
-            isIOS: isIOS,
+          const SizedBox(height: AppSpacing.lg),
+          AppSectionCard(
+            margin: EdgeInsets.zero,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const SizedBox(height: 10),
-
-                /// Preset colors
+                const AppSectionTitle("Primary Color"),
+                const SizedBox(height: AppSpacing.md),
                 Wrap(
                   spacing: 14,
                   runSpacing: 14,
@@ -111,7 +104,7 @@ class ThemeSettingsScreen extends ConsumerWidget {
                           color: color,
                           shape: BoxShape.circle,
                           border: isSelected
-                              ? Border.all(color: scheme.onSurface, width: 3)
+                              ? Border.all(color: AppColors.title, width: 3)
                               : null,
                           boxShadow: isSelected
                               ? [
@@ -129,22 +122,10 @@ class ThemeSettingsScreen extends ConsumerWidget {
                     );
                   }).toList(),
                 ),
-
-                const SizedBox(height: 24),
-
-                /// 🌈 Advanced Picker Button
-                ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(isIOS ? 12 : 20),
-                    ),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                  ),
-                  icon: const Icon(Icons.palette),
-                  label: const Text("Pick Custom Color"),
+                const SizedBox(height: AppSpacing.lg),
+                AppSecondaryButton(
+                  label: "Pick Custom Color",
+                  icon: Icons.palette,
                   onPressed: () {
                     showDialog(
                       context: context,
@@ -154,7 +135,7 @@ class ThemeSettingsScreen extends ConsumerWidget {
                         return AlertDialog(
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(
-                              isIOS ? 14 : 24,
+                              isIOS ? 14 : AppRadius.lg,
                             ),
                           ),
                           title: const Text("Select Color"),
@@ -181,10 +162,11 @@ class ThemeSettingsScreen extends ConsumerWidget {
                             ),
                             ElevatedButton(
                               style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.primary,
+                                foregroundColor: Colors.white,
                                 shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(
-                                    isIOS ? 12 : 20,
-                                  ),
+                                  borderRadius:
+                                      BorderRadius.circular(AppRadius.md),
                                 ),
                               ),
                               onPressed: () {
@@ -204,39 +186,27 @@ class ThemeSettingsScreen extends ConsumerWidget {
               ],
             ),
           ),
-          const SizedBox(height: 30),
-
-          /// RESET BUTTON
-          _SectionCard(
-            title: "Reset",
-            isIOS: isIOS,
+          const SizedBox(height: AppSpacing.lg),
+          AppSectionCard(
+            margin: EdgeInsets.zero,
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const SizedBox(height: 10),
+                const AppSectionTitle("Reset"),
+                const SizedBox(height: AppSpacing.md),
+                AppSecondaryButton(
+                  label: "Reset to Defaults",
+                  icon: Icons.restart_alt,
+                  onPressed: () {
+                    ref.read(appThemeProvider.notifier).resetColor();
+                    ref.read(themeModeProvider.notifier).resetMode();
 
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton.icon(
-                    style: OutlinedButton.styleFrom(
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(isIOS ? 12 : 20),
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text("Theme reset to default"),
                       ),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
-                      ),
-                    ),
-                    icon: const Icon(Icons.restart_alt),
-                    label: const Text("Reset to Defaults"),
-                    onPressed: () {
-                      ref.read(appThemeProvider.notifier).resetColor();
-                      ref.read(themeModeProvider.notifier).resetMode();
-
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text("Theme reset to default")),
-                      );
-                    },
-                  ),
+                    );
+                  },
                 ),
               ],
             ),
@@ -247,62 +217,21 @@ class ThemeSettingsScreen extends ConsumerWidget {
   }
 }
 
-class _SectionCard extends StatelessWidget {
-  final String title;
-  final Widget child;
-  final bool isIOS;
-
-  const _SectionCard({
-    required this.title,
-    required this.child,
-    required this.isIOS,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: scheme.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(isIOS ? 14 : 20),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 16),
-          child,
-        ],
-      ),
-    );
-  }
-}
-
 class _ModeButton extends StatelessWidget {
   final String label;
   final IconData icon;
   final bool selected;
-  final bool isIOS;
   final VoidCallback onTap;
 
   const _ModeButton({
     required this.label,
     required this.icon,
     required this.selected,
-    required this.isIOS,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final innerRadius = BorderRadius.circular(isIOS ? 18 : 26);
-
     return Expanded(
       child: GestureDetector(
         onTap: onTap,
@@ -310,8 +239,8 @@ class _ModeButton extends StatelessWidget {
           duration: const Duration(milliseconds: 200),
           padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
-            color: selected ? scheme.primary : Colors.transparent,
-            borderRadius: innerRadius,
+            color: selected ? AppColors.primary : Colors.transparent,
+            borderRadius: BorderRadius.circular(AppRadius.pill),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -319,14 +248,14 @@ class _ModeButton extends StatelessWidget {
               Icon(
                 icon,
                 size: 18,
-                color: selected ? scheme.onPrimary : scheme.onSurface,
+                color: selected ? Colors.white : AppColors.title,
               ),
               const SizedBox(width: 6),
               Text(
                 label,
                 style: TextStyle(
                   fontWeight: FontWeight.w600,
-                  color: selected ? scheme.onPrimary : scheme.onSurface,
+                  color: selected ? Colors.white : AppColors.title,
                 ),
               ),
             ],

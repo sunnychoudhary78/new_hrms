@@ -14,9 +14,21 @@ class StatusFilterPills extends StatelessWidget {
 
   static const statuses = ['PENDING', 'APPROVED', 'REJECTED', 'ALL'];
 
+  Color _pillAccent(String status) {
+    switch (status) {
+      case 'APPROVED':
+        return AppColors.success;
+      case 'REJECTED':
+        return AppColors.danger;
+      case 'PENDING':
+        return AppColors.warning;
+      default:
+        return AppColors.heroStart;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
 
     return SizedBox(
@@ -31,6 +43,7 @@ class StatusFilterPills extends StatelessWidget {
         itemBuilder: (context, index) {
           final s = statuses[index];
           final active = s == selected;
+          final accent = _pillAccent(s);
 
           return InkWell(
             borderRadius: BorderRadius.circular(AppRadius.pill),
@@ -39,17 +52,18 @@ class StatusFilterPills extends StatelessWidget {
               duration: const Duration(milliseconds: 200),
               padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
               decoration: BoxDecoration(
-                color: active ? scheme.primary : scheme.surfaceContainerHighest,
+                color: active ? accent : AppColors.card,
                 borderRadius: BorderRadius.circular(AppRadius.pill),
                 border: Border.all(
-                  color: active ? scheme.primary : scheme.outlineVariant,
+                  color: active ? accent : AppColors.border,
                 ),
+                boxShadow: active ? null : AppColors.cardShadow,
               ),
               alignment: Alignment.center,
               child: Text(
                 s,
                 style: TextStyle(
-                  color: active ? scheme.onPrimary : scheme.onSurfaceVariant,
+                  color: active ? Colors.white : AppColors.muted,
                   fontWeight: FontWeight.w600,
                   fontSize: 13,
                 ),

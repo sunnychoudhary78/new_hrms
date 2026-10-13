@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lms/core/providers/global_loading_provider.dart';
+import 'package:lms/core/theme/app_design.dart';
 import 'package:lms/features/kra/data/models/kra_model.dart';
 import 'package:lms/features/kra/presentation/providers/kra_provider.dart';
 import 'package:lms/features/kra/presentation/widgets/kra_ui_widgets.dart';
@@ -92,7 +93,12 @@ class _KraList extends StatelessWidget {
       physics: defaultTargetPlatform == TargetPlatform.iOS
           ? const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics())
           : const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 110),
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.md,
+        AppSpacing.sm,
+        AppSpacing.md,
+        110,
+      ),
       itemBuilder: (_, i) => _KraCard(kra: items[i], canManage: true),
       separatorBuilder: (_, __) => const SizedBox(height: 10),
       itemCount: items.length,
@@ -109,15 +115,9 @@ class _KraCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
-    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
-    final cardRadius = BorderRadius.circular(isIOS ? 12 : 16);
     return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: scheme.surfaceContainerLow,
-        borderRadius: cardRadius,
-        border: Border.all(color: scheme.outlineVariant),
-      ),
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: AppColors.cardDecoration(radius: AppRadius.md),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -133,6 +133,7 @@ class _KraCard extends ConsumerWidget {
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w800,
+                        color: AppColors.title,
                       ),
                     ),
                     if (kra.employee != null)

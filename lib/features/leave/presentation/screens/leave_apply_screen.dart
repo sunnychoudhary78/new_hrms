@@ -7,7 +7,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:lms/core/providers/global_loading_provider.dart';
 import 'package:lms/features/home/presentation/widgets/app_drawer.dart';
+import 'package:lms/core/theme/app_design.dart';
 import 'package:lms/shared/widgets/app_bar.dart';
+import 'package:lms/shared/widgets/app_form_widgets.dart';
 import '../providers/leave_apply_provider.dart';
 import '../providers/leave_balance_provider.dart';
 
@@ -193,10 +195,8 @@ class _LeaveApplyScreenState extends ConsumerState<LeaveApplyScreen> {
     final balanceAsync = ref.watch(leaveBalanceProvider);
     final applyState = ref.watch(leaveApplyProvider);
 
-    final scheme = Theme.of(context).colorScheme;
-
     return Scaffold(
-      backgroundColor: scheme.surfaceContainerLowest,
+      backgroundColor: AppColors.bg,
       appBar: const AppAppBar(title: "Apply Leave", showBack: false),
       drawer: const AppDrawer(),
       body: balanceAsync.when(
@@ -213,49 +213,21 @@ class _LeaveApplyScreenState extends ConsumerState<LeaveApplyScreen> {
           return ListView(
             keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
             physics: scrollPhysics,
-            padding: const EdgeInsets.all(16),
+            padding: appScreenPadding,
             children: [
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(isIOS ? 14 : 18),
-                  gradient: LinearGradient(
-                    colors: [
-                      scheme.primaryContainer,
-                      scheme.secondaryContainer,
-                    ],
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    CircleAvatar(
-                      backgroundColor: scheme.primary,
-                      child: Icon(
-                        Icons.event_note_outlined,
-                        color: scheme.onPrimary,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        "Submit your leave request with date, reason and supporting document.",
-                        style: TextStyle(
-                          color: scheme.onSurface,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+              const AppHeroBanner(
+                icon: Icons.event_note_outlined,
+                message:
+                    "Submit your leave request with date, reason and supporting document.",
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.sm + 4),
 
               /// 🔹 LEAVE TYPE
-              SectionCard(
+              AppSectionCard(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const _SectionTitle("Leave Type"),
+                    const AppSectionTitle("Leave Type"),
                     const SizedBox(height: 12),
 
                     LeaveTypeDropdown(
@@ -282,11 +254,11 @@ class _LeaveApplyScreenState extends ConsumerState<LeaveApplyScreen> {
               ),
 
               /// 🔹 DURATION
-              SectionCard(
+              AppSectionCard(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const _SectionTitle("Duration"),
+                    const AppSectionTitle("Duration"),
                     const SizedBox(height: 12),
 
                     _DayTypeSelector(
@@ -339,11 +311,11 @@ class _LeaveApplyScreenState extends ConsumerState<LeaveApplyScreen> {
               ),
 
               /// 🔹 REASON
-              SectionCard(
+              AppSectionCard(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const _SectionTitle("Reason"),
+                    const AppSectionTitle("Reason"),
                     const SizedBox(height: 12),
 
                     ReasonInput(onChanged: (v) => reason = v),
@@ -353,11 +325,11 @@ class _LeaveApplyScreenState extends ConsumerState<LeaveApplyScreen> {
 
               /// 🔹 DOCUMENT
               if (isDocumentRequired)
-                SectionCard(
+                AppSectionCard(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const _SectionTitle("Supporting Document"),
+                      const AppSectionTitle("Supporting Document"),
                       const SizedBox(height: 12),
 
                       InkWell(
@@ -367,9 +339,10 @@ class _LeaveApplyScreenState extends ConsumerState<LeaveApplyScreen> {
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(
-                              isIOS ? 12 : 16,
+                              isIOS ? AppRadius.md : AppRadius.lg,
                             ),
-                            color: scheme.surfaceContainerHighest,
+                            color: AppColors.bg,
+                            border: Border.all(color: AppColors.border),
                           ),
                           child: Row(
                             children: [
@@ -419,39 +392,6 @@ class _LeaveApplyScreenState extends ConsumerState<LeaveApplyScreen> {
           );
         },
       ),
-    );
-  }
-}
-
-class _SectionTitle extends StatelessWidget {
-  final String text;
-  const _SectionTitle(this.text);
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-
-    return Row(
-      children: [
-        Container(
-          width: 4,
-          height: 16,
-          decoration: BoxDecoration(
-            color: scheme.primary,
-            borderRadius: BorderRadius.circular(4),
-          ),
-        ),
-        const SizedBox(width: 8),
-
-        Text(
-          text,
-          style: TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.w600,
-            color: scheme.onSurface,
-          ),
-        ),
-      ],
     );
   }
 }
@@ -529,7 +469,6 @@ class _BalanceCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
     final isZero = leave.available <= 0;
 
@@ -540,16 +479,17 @@ class _BalanceCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(isIOS ? 12 : 16),
         gradient: LinearGradient(
           colors: isZero
-              ? [scheme.errorContainer, scheme.errorContainer.withOpacity(0.8)]
-              : [
-                  scheme.primaryContainer,
-                  scheme.primaryContainer.withOpacity(0.8),
-                ],
+              ? [
+                  AppColors.statusRed.withValues(alpha: 0.15),
+                  AppColors.statusRed.withValues(alpha: 0.08),
+                ]
+              : [AppColors.softBlueStart, AppColors.softBlueEnd],
         ),
+        border: Border.all(color: AppColors.border),
       ),
       child: Row(
         children: [
-          Icon(Icons.wallet, color: scheme.onPrimaryContainer),
+          Icon(Icons.wallet, color: AppColors.primary),
           const SizedBox(width: 12),
 
           Expanded(
@@ -574,26 +514,3 @@ class _BalanceCard extends StatelessWidget {
   }
 }
 
-class SectionCard extends StatelessWidget {
-  final Widget child;
-
-  const SectionCard({super.key, required this.child});
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
-
-    return Card(
-      elevation: isIOS ? 0.5 : 2,
-      surfaceTintColor: Colors.transparent,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(isIOS ? 14 : 16),
-        side: isIOS
-            ? BorderSide(color: scheme.outline.withOpacity(0.08))
-            : BorderSide.none,
-      ),
-      child: Padding(padding: const EdgeInsets.all(16), child: child),
-    );
-  }
-}

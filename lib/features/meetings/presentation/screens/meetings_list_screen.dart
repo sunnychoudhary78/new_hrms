@@ -9,7 +9,9 @@ import 'package:lms/features/meetings/presentation/providers/meeting_session_pro
 import 'package:lms/features/meetings/presentation/providers/meetings_providers.dart';
 import 'package:lms/features/meetings/presentation/widgets/create_meeting_sheet.dart';
 import 'package:lms/features/meetings/presentation/widgets/recording_transcript_button.dart';
+import 'package:lms/core/theme/app_design.dart';
 import 'package:lms/shared/widgets/app_bar.dart';
+import 'package:lms/shared/widgets/app_form_widgets.dart';
 import 'package:lms/shared/widgets/premium_feature_components.dart';
 
 class MeetingsListScreen extends ConsumerStatefulWidget {
@@ -91,6 +93,7 @@ class _MeetingsListScreenState extends ConsumerState<MeetingsListScreen>
         : const AlwaysScrollableScrollPhysics();
 
     return Scaffold(
+      backgroundColor: AppColors.bg,
       appBar: AppAppBar(
         title: 'Meetings',
         showBack: false,
@@ -113,23 +116,38 @@ class _MeetingsListScreenState extends ConsumerState<MeetingsListScreen>
           : null,
       body: Column(
         children: [
-          PremiumFeatureHeader(
-            icon: Icons.videocam_rounded,
-            title: 'Meetings',
-            subtitle: 'Internal discussions, standups, and presentations',
-            trailing: canCreate
-                ? TextButton.icon(
-                    onPressed: () =>
-                        showCreateMeetingSheet(context, ref, type: 'instant'),
-                    icon: const Icon(Icons.videocam_outlined),
-                    label: const Text('Start now'),
-                  )
-                : null,
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.md,
+              AppSpacing.md,
+              AppSpacing.md,
+              0,
+            ),
+            child: AppHeroBanner(
+              icon: Icons.videocam_rounded,
+              title: 'Meetings',
+              message:
+                  'Internal discussions, standups, and presentations',
+              trailing: canCreate
+                  ? TextButton.icon(
+                      onPressed: () => showCreateMeetingSheet(
+                        context,
+                        ref,
+                        type: 'instant',
+                      ),
+                      icon: const Icon(Icons.videocam_outlined),
+                      label: const Text('Start now'),
+                    )
+                  : null,
+            ),
           ),
           SizedBox(
             height: 56,
             child: ListView.separated(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.md,
+                vertical: AppSpacing.sm,
+              ),
               scrollDirection: Axis.horizontal,
               physics: isIOS
                   ? const BouncingScrollPhysics()
@@ -139,19 +157,11 @@ class _MeetingsListScreenState extends ConsumerState<MeetingsListScreen>
               itemBuilder: (_, i) {
                 final (key, label) = _tabs[i];
                 final selected = tab == key;
-                return ChoiceChip(
-                  label: Text(label),
+                return AppFilterChip(
+                  label: label,
                   selected: selected,
                   onSelected: (_) =>
                       ref.read(meetingsTabProvider.notifier).select(key),
-                  labelStyle: TextStyle(
-                    color: selected
-                        ? scheme.onPrimary
-                        : scheme.onSurfaceVariant,
-                    fontWeight: FontWeight.w600,
-                  ),
-                  selectedColor: scheme.primary,
-                  backgroundColor: scheme.surfaceContainerHighest,
                 );
               },
             ),
@@ -201,7 +211,12 @@ class _MeetingsListScreenState extends ConsumerState<MeetingsListScreen>
 
                   return ListView.separated(
                     physics: scrollPhysics,
-                    padding: const EdgeInsets.fromLTRB(12, 8, 12, 100),
+                    padding: const EdgeInsets.fromLTRB(
+                      AppSpacing.md,
+                      AppSpacing.sm,
+                      AppSpacing.md,
+                      100,
+                    ),
                     itemCount: meetings.length,
                     separatorBuilder: (_, __) => const SizedBox(height: 8),
                     itemBuilder: (_, i) {
@@ -260,23 +275,20 @@ class _MeetingTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
 
     return InkWell(
       borderRadius: BorderRadius.circular(isIOS ? 14 : 16),
       onTap: onOpen,
-      child: PremiumCard(
+      child: AppSectionCard(
+        margin: EdgeInsets.zero,
         child: Row(
           children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(isIOS ? 10 : 12),
-                color: scheme.primaryContainer,
-              ),
-              child: Icon(Icons.videocam_rounded, color: scheme.primary),
+            AppIconBadge(
+              icon: Icons.videocam_rounded,
+              size: 44,
+              backgroundColor: AppColors.iconBg,
+              iconColor: AppColors.primary,
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -287,23 +299,26 @@ class _MeetingTile extends StatelessWidget {
                     meeting.title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontWeight: FontWeight.w700),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.title,
+                    ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     '${meeting.typeLabel} · ${meeting.formatWhen()}',
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: scheme.onSurfaceVariant,
+                    style: const TextStyle(
+                      color: AppColors.muted,
                       fontSize: 12,
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     'Host: ${meeting.creator?.name ?? '—'}',
-                    style: TextStyle(
-                      color: scheme.onSurfaceVariant,
+                    style: const TextStyle(
+                      color: AppColors.muted,
                       fontSize: 12,
                     ),
                   ),
@@ -323,8 +338,8 @@ class _MeetingTile extends StatelessWidget {
                     const SizedBox(height: 6),
                     Text(
                       '${meeting.recordingSummary!.count} recording${meeting.recordingSummary!.count == 1 ? '' : 's'}',
-                      style: TextStyle(
-                        color: scheme.onSurfaceVariant,
+                      style: const TextStyle(
+                        color: AppColors.muted,
                         fontSize: 12,
                       ),
                     ),
@@ -350,11 +365,8 @@ class _MeetingTile extends StatelessWidget {
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                PremiumStatusPill(
+                AppStatusPill(
                   label: meeting.isLive ? 'Live now' : meeting.statusLabel,
-                  color: meeting.isLive
-                      ? const Color(0xFFDC2626)
-                      : statusColor,
                 ),
                 if (onJoin != null) ...[
                   const SizedBox(height: 8),

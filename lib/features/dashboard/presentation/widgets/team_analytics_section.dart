@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:lms/core/network/api_constants.dart';
+import 'package:lms/core/theme/app_design.dart';
+import 'package:lms/shared/widgets/premium_feature_components.dart';
 import '../../data/models/team_dashboard_model.dart';
 
 class TeamAnalyticsSection extends StatelessWidget {
@@ -152,13 +154,13 @@ class _TopFiveEfficiencyChart extends StatelessWidget {
               Color barColor;
 
               if (emp.efficiency >= 100) {
-                barColor = Colors.blue;
+                barColor = AppColors.primary;
               } else if (emp.efficiency >= 80) {
-                barColor = Colors.green;
+                barColor = AppColors.success;
               } else if (emp.efficiency >= 60) {
-                barColor = Colors.orange;
+                barColor = AppColors.warning;
               } else {
-                barColor = Colors.red;
+                barColor = AppColors.danger;
               }
 
               return BarChartGroupData(
@@ -237,8 +239,8 @@ class _TeamComparisonChart extends StatelessWidget {
               label: "Actual",
               value: totalActualHours,
               maxValue: maxHours,
-              gradient: LinearGradient(
-                colors: [scheme.primary, scheme.primary.withOpacity(.7)],
+              gradient: const LinearGradient(
+                colors: [AppColors.primary, AppColors.primaryEnd],
               ),
             ),
           ],
@@ -310,30 +312,17 @@ Widget _cardWrapper(
   required String title,
   required Widget child,
 }) {
-  final scheme = Theme.of(context).colorScheme;
-
-  return Container(
+  return PremiumCard(
     padding: const EdgeInsets.all(20),
-    decoration: BoxDecoration(
-      color: scheme.surfaceContainerLow,
-      borderRadius: BorderRadius.circular(24),
-      boxShadow: [
-        BoxShadow(
-          color: scheme.shadow.withOpacity(0.05),
-          blurRadius: 20,
-          offset: const Offset(0, 8),
-        ),
-      ],
-    ),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           title,
-          style: TextStyle(
+          style: const TextStyle(
             fontSize: 15,
-            fontWeight: FontWeight.w600,
-            color: scheme.onSurface,
+            fontWeight: FontWeight.w700,
+            color: AppColors.title,
           ),
         ),
         const SizedBox(height: 20),

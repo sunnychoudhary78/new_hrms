@@ -3,9 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lms/core/providers/network_providers.dart';
 import 'package:lms/core/services/pdf_service.dart';
+import 'package:lms/core/theme/app_design.dart';
 import 'package:lms/features/payslip/data/models/payslip_model.dart';
 import 'package:lms/features/payslip/presentation/screens/payslip_details_screen.dart';
 import 'package:lms/shared/widgets/app_bar.dart';
+import 'package:lms/shared/widgets/app_form_widgets.dart';
+import 'package:lms/shared/widgets/premium_feature_components.dart';
 
 import '../providers/payslip_provider.dart';
 
@@ -31,47 +34,30 @@ class _PayslipListScreenState extends ConsumerState<PayslipListScreen> {
   @override
   Widget build(BuildContext context) {
     final payslipsAsync = ref.watch(payslipsProvider);
-    final scheme = Theme.of(context).colorScheme;
     final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
 
     return Scaffold(
-      backgroundColor: scheme.surfaceContainerLowest,
+      backgroundColor: AppColors.bg,
       appBar: const AppAppBar(title: "My Payslips"),
       body: payslipsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Padding(
-          padding: const EdgeInsets.all(16),
-          child: Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: scheme.errorContainer,
-              borderRadius: BorderRadius.circular(isIOS ? 12 : 14),
-            ),
+          padding: const EdgeInsets.all(AppSpacing.md),
+          child: PremiumCard(
             child: Text(
               "Unable to load payslips.\n$e",
-              style: TextStyle(color: scheme.onErrorContainer),
+              style: const TextStyle(color: AppColors.danger),
             ),
           ),
         ),
         data: (payslips) {
           if (payslips.isEmpty) {
-            return Padding(
-              padding: const EdgeInsets.all(16),
-              child: Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(isIOS ? 12 : 16),
-                  color: scheme.surfaceContainerLow,
-                  border: Border.all(color: scheme.outlineVariant),
-                ),
-                child: const Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.receipt_long_outlined, size: 44),
-                    SizedBox(height: 10),
-                    Text("No payslips available"),
-                  ],
-                ),
+            return const Padding(
+              padding: EdgeInsets.all(AppSpacing.md),
+              child: PremiumEmptyState(
+                icon: Icons.receipt_long_outlined,
+                title: "No payslips available",
+                subtitle: "Published salary slips will appear here.",
               ),
             );
           }
@@ -83,26 +69,11 @@ class _PayslipListScreenState extends ConsumerState<PayslipListScreen> {
 
           return Column(
             children: [
-              Container(
-                width: double.infinity,
-                margin: const EdgeInsets.fromLTRB(16, 14, 16, 10),
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(isIOS ? 14 : 18),
-                  gradient: LinearGradient(
-                    colors: [
-                      scheme.primaryContainer,
-                      scheme.secondaryContainer,
-                    ],
-                  ),
-                ),
-                child: Text(
-                  "Browse monthly salary slips and view or download PDF.",
-                  style: TextStyle(
-                    color: scheme.onSurface,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
+              const PremiumFeatureHeader(
+                icon: Icons.account_balance_wallet_outlined,
+                title: "My Payslips",
+                subtitle:
+                    "Browse monthly salary slips and view or download PDF.",
               ),
 
               _MonthFilter(
@@ -118,14 +89,28 @@ class _PayslipListScreenState extends ConsumerState<PayslipListScreen> {
                     ref.invalidate(payslipsProvider);
                   },
                   child: filtered.isEmpty
-                      ? const Center(child: Text("No data for selected month"))
+                      ? ListView(
+                          physics: isIOS
+                              ? const AlwaysScrollableScrollPhysics(
+                                  parent: BouncingScrollPhysics(),
+                                )
+                              : const AlwaysScrollableScrollPhysics(),
+                          children: const [
+                            SizedBox(height: 80),
+                            PremiumEmptyState(
+                              icon: Icons.filter_alt_off_outlined,
+                              title: "No data for selected month",
+                              subtitle: "Try another month or choose All.",
+                            ),
+                          ],
+                        )
                       : ListView.builder(
                           physics: isIOS
                               ? const AlwaysScrollableScrollPhysics(
                                   parent: BouncingScrollPhysics(),
                                 )
                               : const AlwaysScrollableScrollPhysics(),
-                          padding: const EdgeInsets.all(16),
+                          padding: const EdgeInsets.all(AppSpacing.md),
                           itemCount: filtered.length,
                           itemBuilder: (_, i) => _PayslipCard(
                             payslip: filtered[i],
@@ -160,13 +145,13 @@ class _MonthFilter extends StatelessWidget {
     final months = payslips.map((e) => e.month).toSet().toList()..sort();
 
     return SizedBox(
-      height: 60,
+      height: 52,
       child: ListView(
         scrollDirection: Axis.horizontal,
         physics: isIOS
             ? const BouncingScrollPhysics()
             : const ClampingScrollPhysics(),
-        padding: const EdgeInsets.symmetric(horizontal: 12),
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
         children: [
           _chip("All", selectedMonth == null, () => onChanged(null)),
           ...months.map(
@@ -180,9 +165,9 @@ class _MonthFilter extends StatelessWidget {
 
   Widget _chip(String label, bool selected, VoidCallback onTap) {
     return Padding(
-      padding: const EdgeInsets.only(right: 8),
-      child: ChoiceChip(
-        label: Text(label),
+      padding: const EdgeInsets.only(right: AppSpacing.sm),
+      child: AppFilterChip(
+        label: label,
         selected: selected,
         onSelected: (_) => onTap(),
       ),
@@ -198,21 +183,15 @@ class _PayslipCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final scheme = Theme.of(context).colorScheme;
     final isPublished = payslip.status.toLowerCase() == 'published';
     final canDownload = payslip.isDownloadable;
-    final cardRadius = BorderRadius.circular(isIOS ? 12 : 16);
-    final pillRadius = BorderRadius.circular(isIOS ? 14 : 20);
+    final statusColor = isPublished
+        ? AppColors.success
+        : AppColors.warning;
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 14),
-      decoration: BoxDecoration(
-        borderRadius: cardRadius,
-        color: scheme.surfaceContainerLow,
-        border: Border.all(color: scheme.outlineVariant),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.md),
+      child: PremiumCard(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -224,27 +203,12 @@ class _PayslipCard extends ConsumerWidget {
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
+                    color: AppColors.title,
                   ),
                 ),
-
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: isPublished
-                        ? Colors.green.withValues(alpha: 0.14)
-                        : Colors.orange.withValues(alpha: 0.14),
-                    borderRadius: pillRadius,
-                  ),
-                  child: Text(
-                    payslip.status.toUpperCase(),
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: isPublished ? Colors.green : Colors.orange,
-                    ),
-                  ),
+                PremiumStatusPill(
+                  label: payslip.status.toUpperCase(),
+                  color: statusColor,
                 ),
               ],
             ),
@@ -253,18 +217,18 @@ class _PayslipCard extends ConsumerWidget {
 
             Text(
               "₹${payslip.netSalary.toStringAsFixed(2)}",
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 21,
                 fontWeight: FontWeight.bold,
-                color: scheme.primary,
+                color: AppColors.primary,
               ),
             ),
 
             const SizedBox(height: 4),
 
-            Text(
+            const Text(
               "Net Salary",
-              style: TextStyle(color: scheme.onSurfaceVariant),
+              style: TextStyle(color: AppColors.muted),
             ),
 
             if (payslip.hasOvertimePay) ...[
@@ -274,7 +238,7 @@ class _PayslipCard extends ConsumerWidget {
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
-                  color: Colors.amber.shade800,
+                  color: AppColors.warning.withValues(alpha: 0.95),
                 ),
               ),
             ],

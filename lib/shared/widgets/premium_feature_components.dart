@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lms/core/theme/app_design.dart';
 
 class PremiumFeatureHeader extends StatelessWidget {
   const PremiumFeatureHeader({
@@ -16,32 +17,16 @@ class PremiumFeatureHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-
     return Container(
       width: double.infinity,
-      margin: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            scheme.primaryContainer,
-            scheme.secondaryContainer,
-            scheme.surfaceContainerHighest,
-          ],
-        ),
-        border: Border.all(color: scheme.outlineVariant.withValues(alpha: .55)),
-        boxShadow: [
-          BoxShadow(
-            color: scheme.primary.withValues(alpha: .08),
-            blurRadius: 24,
-            offset: const Offset(0, 12),
-          ),
-        ],
+      margin: const EdgeInsets.fromLTRB(
+        AppSpacing.md,
+        AppSpacing.md,
+        AppSpacing.md,
+        AppSpacing.sm,
       ),
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      decoration: AppColors.heroDecoration(radius: AppRadius.lg),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -49,10 +34,10 @@ class PremiumFeatureHeader extends StatelessWidget {
             width: 48,
             height: 48,
             decoration: BoxDecoration(
-              color: scheme.primary,
-              borderRadius: BorderRadius.circular(16),
+              color: Colors.white.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(AppRadius.md),
             ),
-            child: Icon(icon, color: scheme.onPrimary),
+            child: Icon(icon, color: Colors.white),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -63,14 +48,14 @@ class PremiumFeatureHeader extends StatelessWidget {
                   title,
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w800,
-                    color: scheme.onSurface,
+                    color: Colors.white,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   subtitle,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: scheme.onSurfaceVariant,
+                    color: Colors.white.withValues(alpha: 0.88),
                     height: 1.35,
                   ),
                 ),
@@ -98,23 +83,10 @@ class PremiumCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-
     return Container(
       margin: margin,
       padding: padding,
-      decoration: BoxDecoration(
-        color: scheme.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: scheme.outlineVariant.withValues(alpha: .75)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: .035),
-            blurRadius: 18,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
+      decoration: AppColors.cardDecoration(),
       child: child,
     );
   }
@@ -134,11 +106,9 @@ class PremiumEmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(AppSpacing.lg),
         child: PremiumCard(
           padding: const EdgeInsets.all(22),
           child: Column(
@@ -147,25 +117,29 @@ class PremiumEmptyState extends StatelessWidget {
               Container(
                 width: 58,
                 height: 58,
-                decoration: BoxDecoration(
-                  color: scheme.primary.withValues(alpha: .10),
+                decoration: const BoxDecoration(
+                  color: AppColors.iconBg,
                   shape: BoxShape.circle,
                 ),
-                child: Icon(icon, size: 30, color: scheme.primary),
+                child: Icon(icon, size: 30, color: AppColors.primary),
               ),
               const SizedBox(height: 14),
               Text(
                 title,
                 textAlign: TextAlign.center,
-                style: Theme.of(
-                  context,
-                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.title,
+                ),
               ),
               const SizedBox(height: 6),
               Text(
                 subtitle,
                 textAlign: TextAlign.center,
-                style: TextStyle(color: scheme.onSurfaceVariant, height: 1.35),
+                style: const TextStyle(
+                  color: AppColors.muted,
+                  height: 1.35,
+                ),
               ),
             ],
           ),
@@ -189,8 +163,6 @@ class PremiumSectionTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -200,15 +172,16 @@ class PremiumSectionTitle extends StatelessWidget {
             children: [
               Text(
                 title,
-                style: Theme.of(
-                  context,
-                ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.title,
+                ),
               ),
               if (subtitle != null) ...[
                 const SizedBox(height: 3),
                 Text(
                   subtitle!,
-                  style: TextStyle(color: scheme.onSurfaceVariant),
+                  style: const TextStyle(color: AppColors.muted),
                 ),
               ],
             ],
@@ -238,7 +211,7 @@ class PremiumStatusPill extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
         color: color.withValues(alpha: .12),
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: BorderRadius.circular(AppRadius.pill),
         border: Border.all(color: color.withValues(alpha: .35)),
       ),
       child: Row(

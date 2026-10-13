@@ -7,6 +7,7 @@ import 'package:lms/features/leave/presentation/providers/leave_details_provider
 import 'package:lms/features/leave/presentation/widgets/leave_timeline_widget.dart';
 import 'package:lms/core/widgets/status_badge.dart';
 import 'package:lms/core/theme/app_design.dart';
+import 'package:lms/shared/widgets/app_form_widgets.dart';
 
 class LeaveStatusCard extends ConsumerStatefulWidget {
   final LeaveStatus leave;
@@ -56,21 +57,6 @@ class _LeaveStatusCardState extends ConsumerState<LeaveStatusCard>
     super.dispose();
   }
 
-  Color _statusColor(String status, ColorScheme scheme) {
-    switch (status.toLowerCase()) {
-      case 'approved':
-        return scheme.primary;
-      case 'rejected':
-        return scheme.error;
-      case 'pending':
-        return scheme.tertiary;
-      case 'revoked':
-        return scheme.outline;
-      default:
-        return scheme.primary;
-    }
-  }
-
   String _fmt(String raw) {
     return DateFormat('dd MMM yyyy').format(DateTime.parse(raw));
   }
@@ -79,27 +65,15 @@ class _LeaveStatusCardState extends ConsumerState<LeaveStatusCard>
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final leave = widget.leave;
-    final statusColor = _statusColor(leave.status, scheme);
+    final statusColor = AppColors.statusColor(leave.status);
     final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
-    final radius = isIOS ? 14.0 : AppRadius.lg;
+    final radius = isIOS ? AppRadius.md + 2 : AppRadius.lg;
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 250),
-      decoration: BoxDecoration(
-        color: scheme.surface,
-        borderRadius: BorderRadius.circular(radius),
-        border: Border.all(
-          color: expanded
-              ? scheme.primary.withOpacity(0.4)
-              : scheme.outline.withOpacity(0.2),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: scheme.shadow.withOpacity(isIOS ? 0.035 : 0.05),
-            blurRadius: isIOS ? 6 : 8,
-            offset: Offset(0, isIOS ? 2 : 3),
-          ),
-        ],
+      decoration: AppColors.cardDecoration(
+        highlighted: expanded,
+        radius: radius,
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(radius),
@@ -142,24 +116,7 @@ class _LeaveStatusCardState extends ConsumerState<LeaveStatusCard>
                   ),
                 ),
 
-                /// STATUS BADGE
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.sm + 2,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(AppRadius.pill),
-                  ),
-                  child: Text(
-                    leave.status.toUpperCase(),
-                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                      color: statusColor,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
+                AppStatusPill(label: leave.status),
               ],
             ),
             children: [
@@ -338,13 +295,12 @@ class _DateBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: scheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(14),
+        color: AppColors.bg,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        border: Border.all(color: AppColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

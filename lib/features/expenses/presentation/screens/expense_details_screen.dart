@@ -2,8 +2,10 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lms/core/providers/global_loading_provider.dart';
+import 'package:lms/core/theme/app_design.dart';
 import 'package:lms/features/expenses/presentation/screens/expense_receipt_preview_screen.dart';
 import 'package:lms/shared/widgets/app_bar.dart';
+import 'package:lms/shared/widgets/app_form_widgets.dart';
 import '../../data/models/expense_model.dart';
 import '../providers/expense_provider.dart';
 import '../widgets/expense_remarks_dialog.dart';
@@ -23,7 +25,6 @@ class _ExpenseDetailScreenState extends ConsumerState<ExpenseDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     final ExpenseClaim expense =
         ModalRoute.of(context)!.settings.arguments as ExpenseClaim;
     final role = ref.watch(expenseDashboardRoleProvider);
@@ -32,240 +33,171 @@ class _ExpenseDetailScreenState extends ConsumerState<ExpenseDetailScreen> {
     final canProcess = _canProcess(role, normalizedStatus);
     final canReject = _canReject(role, normalizedStatus);
     final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
-    final itemRadius = isIOS ? 12.0 : 14.0;
-    final btnRadius = BorderRadius.circular(isIOS ? 12 : 14);
 
     return Scaffold(
-      appBar: const AppAppBar(title: "Expense Details"),
-
+      backgroundColor: AppColors.bg,
+      appBar: const AppAppBar(title: 'Expense Details'),
       body: Column(
         children: [
           Expanded(
             child: ListView(
               keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-              physics: defaultTargetPlatform == TargetPlatform.iOS
+              physics: isIOS
                   ? const BouncingScrollPhysics(
                       parent: AlwaysScrollableScrollPhysics(),
                     )
                   : const ClampingScrollPhysics(),
-              padding: const EdgeInsets.all(16),
+              padding: appScreenPadding,
               children: [
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(
-                      isIOS ? 14 : 18,
-                    ),
-                    gradient: LinearGradient(
-                      colors: [
-                        scheme.primaryContainer,
-                        scheme.secondaryContainer,
-                      ],
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      CircleAvatar(
-                        radius: 22,
-                        backgroundColor: scheme.primary,
-                        child: Icon(
-                          Icons.receipt_long,
-                          color: scheme.onPrimary,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              expense.title,
-                              style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            _statusChip(expense.status),
-                          ],
-                        ),
-                      ),
-                      Text(
-                        "₹${expense.totalAmount.toStringAsFixed(0)}",
-                        style: TextStyle(
-                          color: scheme.primary,
-                          fontWeight: FontWeight.w800,
-                          fontSize: 17,
-                        ),
-                      ),
-                    ],
-                  ),
+                AppHeroBanner(
+                  icon: Icons.receipt_long_rounded,
+                  title: expense.title,
+                  message:
+                      'Total claim · ₹${expense.totalAmount.toStringAsFixed(0)}',
+                  trailing: AppStatusPill(label: expense.status),
                 ),
-                const SizedBox(height: 20),
-                const Text(
-                  "Items",
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 10),
+                const SizedBox(height: AppSpacing.md),
+                const AppSectionTitle('Items'),
+                const SizedBox(height: AppSpacing.sm),
                 ...expense.items.asMap().entries.map((entry) {
                   final index = entry.key;
                   final item = entry.value;
-                  return Container(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    decoration: BoxDecoration(
-                      color: scheme.surfaceContainerLow,
-                      borderRadius: BorderRadius.circular(itemRadius),
-                      border: Border.all(color: scheme.outlineVariant),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
+                  return AppSectionCard(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Line ${index + 1}: ${item.category}',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 15,
+                                      color: AppColors.title,
+                                    ),
+                                  ),
+                                  if (item.description != null &&
+                                      item.description!.isNotEmpty) ...[
+                                    const SizedBox(height: 4),
                                     Text(
-                                      "Line ${index + 1}: ${item.category}",
+                                      item.description!,
                                       style: const TextStyle(
-                                        fontWeight: FontWeight.w800,
-                                        fontSize: 15,
+                                        color: AppColors.muted,
+                                        height: 1.35,
                                       ),
                                     ),
-                                    if (item.description != null &&
-                                        item.description!.isNotEmpty) ...[
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        item.description!,
-                                        style: TextStyle(
-                                          color: scheme.onSurfaceVariant,
-                                          height: 1.35,
-                                        ),
-                                      ),
-                                    ],
-                                    if (item.expenseDate != null) ...[
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        "Date: ${item.expenseDate}",
-                                        style: TextStyle(
-                                          color: scheme.onSurfaceVariant,
-                                          fontSize: 13,
-                                        ),
-                                      ),
-                                    ],
                                   ],
-                                ),
+                                  if (item.expenseDate != null) ...[
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'Date: ${item.expenseDate}',
+                                      style: const TextStyle(
+                                        color: AppColors.muted,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                  ],
+                                ],
                               ),
-                              Text(
-                                "₹${item.amount}",
-                                style: TextStyle(
-                                  color: scheme.primary,
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: 16,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 10),
-                          Divider(height: 1, color: scheme.outlineVariant),
-                          const SizedBox(height: 10),
-                          Text(
-                            "Attached documents",
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w700,
-                              color: scheme.onSurfaceVariant,
                             ),
-                          ),
-                          const SizedBox(height: 6),
-                          if (item.receiptFiles.isEmpty)
-                            Padding(
-                              padding: const EdgeInsets.only(bottom: 6),
-                              child: Text(
-                                "No document attached for this line.",
-                                style: TextStyle(
-                                  color: scheme.onSurfaceVariant.withValues(
-                                    alpha: 0.85,
-                                  ),
-                                  fontSize: 13,
-                                ),
+                            Text(
+                              '₹${item.amount}',
+                              style: const TextStyle(
+                                color: AppColors.primary,
+                                fontWeight: FontWeight.w800,
+                                fontSize: 16,
                               ),
-                            )
-                          else
-                            ...item.receiptFiles.asMap().entries.map((e) {
-                              final ref = e.value.trim();
-                              return _documentTile(
-                                context: context,
-                                scheme: scheme,
-                                fileRef: ref,
-                                title: item.receiptFiles.length > 1
-                                    ? "Document ${e.key + 1}"
-                                    : "Receipt",
-                                subtitle: _displayFileName(ref),
-                              );
-                            }),
-                        ],
-                      ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: AppSpacing.sm + 2),
+                        const Divider(height: 1, color: AppColors.border),
+                        const SizedBox(height: AppSpacing.sm + 2),
+                        const Text(
+                          'Attached documents',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.muted,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        if (item.receiptFiles.isEmpty)
+                          const Padding(
+                            padding: EdgeInsets.only(bottom: 6),
+                            child: Text(
+                              'No document attached for this line.',
+                              style: TextStyle(
+                                color: AppColors.muted,
+                                fontSize: 13,
+                              ),
+                            ),
+                          )
+                        else
+                          ...item.receiptFiles.asMap().entries.map((e) {
+                            final fileRef = e.value.trim();
+                            return _documentTile(
+                              context: context,
+                              fileRef: fileRef,
+                              title: item.receiptFiles.length > 1
+                                  ? 'Document ${e.key + 1}'
+                                  : 'Receipt',
+                              subtitle: _displayFileName(fileRef),
+                            );
+                          }),
+                      ],
                     ),
                   );
                 }),
               ],
             ),
           ),
-
-          if (expense.status == "Draft")
+          if (expense.status == 'Draft')
             SafeArea(
               top: false,
-              minimum: const EdgeInsets.fromLTRB(16, 0, 16, 8),
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(0, 0, 0, 8),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          shape: RoundedRectangleBorder(borderRadius: btnRadius),
-                        ),
-                        onPressed: _isSubmitting
-                            ? null
-                            : () => _submitExpense(expense.id),
-                        child: _isSubmitting
-                            ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
-                              )
-                            : const Text("Submit for Approval"),
-                      ),
-                    ),
-                  ],
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.md,
+                  0,
+                  AppSpacing.md,
+                  AppSpacing.sm,
+                ),
+                child: AppPrimaryButton(
+                  label: 'Submit for Approval',
+                  icon: Icons.send_rounded,
+                  isLoading: _isSubmitting,
+                  onPressed: () => _submitExpense(expense.id),
                 ),
               ),
             ),
-
           if (canApprove || canProcess || canReject)
             SafeArea(
               top: false,
-              minimum: const EdgeInsets.fromLTRB(16, 0, 16, 8),
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(0, 0, 0, 8),
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.md,
+                  0,
+                  AppSpacing.md,
+                  AppSpacing.sm,
+                ),
                 child: Row(
                   children: [
                     if (canReject) ...[
                       Expanded(
-                        child: ElevatedButton.icon(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: scheme.errorContainer,
-                            foregroundColor: scheme.onErrorContainer,
-                            shape: RoundedRectangleBorder(borderRadius: btnRadius),
+                        child: OutlinedButton.icon(
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppColors.danger,
+                            side: const BorderSide(color: AppColors.danger),
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius:
+                                  BorderRadius.circular(AppRadius.md),
+                            ),
                           ),
                           onPressed: _isActionLoading
                               ? null
@@ -279,38 +211,27 @@ class _ExpenseDetailScreenState extends ConsumerState<ExpenseDetailScreen> {
                                   ),
                                 )
                               : const Icon(Icons.close),
-                          label: const Text("Reject"),
+                          label: const Text(
+                            'Reject',
+                            style: TextStyle(fontWeight: FontWeight.w700),
+                          ),
                         ),
                       ),
                       const SizedBox(width: 10),
                     ],
                     if (canApprove || canProcess)
                       Expanded(
-                        child: ElevatedButton.icon(
-                          style: ElevatedButton.styleFrom(
-                            shape: RoundedRectangleBorder(borderRadius: btnRadius),
-                          ),
-                          onPressed: _isActionLoading
-                              ? null
-                              : () => canApprove
-                                    ? _approveExpense(expense.id)
-                                    : _payExpense(expense.id),
-                          icon: _isActionLoading
-                              ? const SizedBox(
-                                  width: 18,
-                                  height: 18,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
-                                )
-                              : Icon(
-                                  canApprove
-                                      ? Icons.check_circle
-                                      : Icons.task_alt,
-                                ),
-                          label: Text(
-                            canApprove ? "Approve Expense" : "Record payment",
-                          ),
+                        child: AppPrimaryButton(
+                          label: canApprove
+                              ? 'Approve Expense'
+                              : 'Record payment',
+                          icon: canApprove
+                              ? Icons.check_circle_rounded
+                              : Icons.task_alt_rounded,
+                          isLoading: _isActionLoading,
+                          onPressed: () => canApprove
+                              ? _approveExpense(expense.id)
+                              : _payExpense(expense.id),
                         ),
                       ),
                   ],
@@ -552,29 +473,31 @@ class _ExpenseDetailScreenState extends ConsumerState<ExpenseDetailScreen> {
 
   Widget _documentTile({
     required BuildContext context,
-    required ColorScheme scheme,
     required String fileRef,
     required String title,
     required String subtitle,
   }) {
-    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
     return Material(
-      color: scheme.surface,
-      borderRadius: BorderRadius.circular(isIOS ? 10 : 12),
+      color: AppColors.softFill,
+      borderRadius: BorderRadius.circular(AppRadius.md),
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
-        leading: Icon(_docIconForName(subtitle), color: scheme.primary),
+        leading: Icon(_docIconForName(subtitle), color: AppColors.primary),
         title: Text(
           title,
-          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+          style: const TextStyle(
+            fontWeight: FontWeight.w600,
+            fontSize: 14,
+            color: AppColors.title,
+          ),
         ),
         subtitle: Text(
           subtitle,
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
-          style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
+          style: const TextStyle(fontSize: 12, color: AppColors.muted),
         ),
-        trailing: Icon(Icons.chevron_right, color: scheme.primary),
+        trailing: const Icon(Icons.chevron_right, color: AppColors.primary),
         onTap: () {
           Navigator.of(context).push(
             MaterialPageRoute<void>(
@@ -583,41 +506,6 @@ class _ExpenseDetailScreenState extends ConsumerState<ExpenseDetailScreen> {
             ),
           );
         },
-      ),
-    );
-  }
-
-  Widget _statusChip(String status) {
-    Color color;
-
-    switch (status) {
-      case "Draft":
-        color = Colors.grey;
-        break;
-      case "Pending":
-        color = Colors.orange;
-        break;
-      case "Rejected":
-        color = Colors.red;
-        break;
-      case "Manager Approved":
-      case "HOD Approved":
-      case "Processed":
-        color = Colors.green;
-        break;
-      default:
-        color = Colors.blue;
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        status,
-        style: TextStyle(color: color, fontWeight: FontWeight.w600),
       ),
     );
   }

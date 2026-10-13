@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lms/features/auth/presentation/providers/auth_provider.dart';
 import 'package:lms/features/profile/data/models/user_details_model.dart';
+import 'package:lms/core/theme/app_design.dart';
 import 'package:lms/shared/widgets/app_bar.dart';
 
 class ProfileIdCardScreen extends ConsumerStatefulWidget {
@@ -47,19 +48,21 @@ class _ProfileIdCardScreenState extends ConsumerState<ProfileIdCardScreen>
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
-    final scheme = Theme.of(context).colorScheme;
 
     final Userdetails? profile = authState.profile;
 
     if (profile == null) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const Scaffold(
+        backgroundColor: AppColors.bg,
+        body: Center(child: CircularProgressIndicator()),
+      );
     }
 
     final profileImage = authState.profileUrl;
     final companyLogo = authState.companyLogoUrl;
 
     return Scaffold(
-      backgroundColor: scheme.surfaceContainerLowest,
+      backgroundColor: AppColors.bg,
       appBar: const AppAppBar(title: "Employee ID Card"),
       body: Center(
         child: GestureDetector(
@@ -105,21 +108,14 @@ class _ProfileIdCardScreenState extends ConsumerState<ProfileIdCardScreen>
     String profileImage,
     String companyLogo,
   ) {
-    final scheme = Theme.of(context).colorScheme;
-
     return Container(
       width: 340,
       height: 540,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        color: scheme.surface,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(.15),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        color: AppColors.card,
+        border: Border.all(color: AppColors.border),
+        boxShadow: AppColors.cardShadow,
       ),
       child: Column(
         children: [
@@ -128,9 +124,9 @@ class _ProfileIdCardScreenState extends ConsumerState<ProfileIdCardScreen>
             height: 90,
             padding: const EdgeInsets.symmetric(horizontal: 16),
             decoration: BoxDecoration(
-              color: scheme.primary,
+              gradient: AppColors.heroGradient,
               borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(20),
+                top: Radius.circular(AppRadius.lg),
               ),
             ),
             child: Row(
@@ -166,14 +162,14 @@ class _ProfileIdCardScreenState extends ConsumerState<ProfileIdCardScreen>
           /// PHOTO + ID
           CircleAvatar(
             radius: 50,
-            backgroundColor: scheme.primary.withOpacity(.1),
+            backgroundColor: AppColors.iconBg,
             child: CircleAvatar(
               radius: 46,
               backgroundImage: profileImage.isNotEmpty
                   ? NetworkImage(profileImage)
                   : null,
               child: profileImage.isEmpty
-                  ? Icon(Icons.person, size: 40, color: scheme.primary)
+                  ? const Icon(Icons.person, size: 40, color: AppColors.primary)
                   : null,
             ),
           ),
@@ -187,8 +183,8 @@ class _ProfileIdCardScreenState extends ConsumerState<ProfileIdCardScreen>
 
           Text(
             profile.designation ?? "",
-            style: TextStyle(
-              color: scheme.primary,
+            style: const TextStyle(
+              color: AppColors.primary,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -197,7 +193,7 @@ class _ProfileIdCardScreenState extends ConsumerState<ProfileIdCardScreen>
 
           Text(
             "ID: ${profile.payrollCode ?? "--"}",
-            style: const TextStyle(fontSize: 13, color: Colors.grey),
+            style: const TextStyle(fontSize: 13, color: AppColors.muted),
           ),
 
           const SizedBox(height: 18),
@@ -224,9 +220,9 @@ class _ProfileIdCardScreenState extends ConsumerState<ProfileIdCardScreen>
           Container(
             height: 45,
             decoration: BoxDecoration(
-              color: scheme.primary,
+              gradient: AppColors.heroGradient,
               borderRadius: const BorderRadius.vertical(
-                bottom: Radius.circular(20),
+                bottom: Radius.circular(AppRadius.lg),
               ),
             ),
             child: const Center(
@@ -253,22 +249,15 @@ class _ProfileIdCardScreenState extends ConsumerState<ProfileIdCardScreen>
     Userdetails profile,
     String companyLogo,
   ) {
-    final scheme = Theme.of(context).colorScheme;
-
     return Container(
       width: 340,
       height: 540,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        color: scheme.surface,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(.15),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        color: AppColors.card,
+        border: Border.all(color: AppColors.border),
+        boxShadow: AppColors.cardShadow,
       ),
       child: Column(
         children: [
@@ -289,17 +278,17 @@ class _ProfileIdCardScreenState extends ConsumerState<ProfileIdCardScreen>
             height: 100,
             width: 100,
             decoration: BoxDecoration(
-              border: Border.all(color: scheme.primary),
+              border: Border.all(color: AppColors.primary),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(Icons.qr_code, size: 60, color: scheme.primary),
+            child: const Icon(Icons.qr_code, size: 60, color: AppColors.primary),
           ),
 
           const Spacer(),
 
           const Text(
             "If found please return to company office.",
-            style: TextStyle(fontSize: 12, color: Colors.grey),
+            style: TextStyle(fontSize: 12, color: AppColors.muted),
           ),
         ],
       ),
@@ -321,7 +310,7 @@ class _ProfileIdCardScreenState extends ConsumerState<ProfileIdCardScreen>
             width: 90,
             child: Text(
               title,
-              style: const TextStyle(color: Colors.grey, fontSize: 13),
+              style: const TextStyle(color: AppColors.muted, fontSize: 13),
             ),
           ),
 
@@ -344,7 +333,10 @@ class _ProfileIdCardScreenState extends ConsumerState<ProfileIdCardScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+          Text(
+            title,
+            style: const TextStyle(fontSize: 12, color: AppColors.muted),
+          ),
 
           const SizedBox(height: 4),
 

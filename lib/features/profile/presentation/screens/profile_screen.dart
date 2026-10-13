@@ -11,6 +11,7 @@ import 'package:lms/features/home/presentation/widgets/app_drawer.dart';
 import 'package:lms/features/profile/presentation/screens/profile_id_card_screen.dart';
 import 'package:lms/features/profile/presentation/widgets/profile_header.dart';
 import 'package:lms/features/profile/presentation/widgets/floating_details_card.dart';
+import 'package:lms/core/theme/app_design.dart';
 import 'package:lms/shared/widgets/app_bar.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
@@ -151,7 +152,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
 
     final state = ref.watch(authProvider);
@@ -201,7 +201,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     ];
 
     return Scaffold(
-      backgroundColor: scheme.surfaceContainerLowest,
+      backgroundColor: AppColors.bg,
 
       appBar: const AppAppBar(title: "Profile", showBack: false),
 
@@ -242,7 +242,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     const SizedBox(height: 20),
 
                     Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.md,
+                      ),
                       child: SizedBox(
                         width: double.infinity,
                         height: 52,
@@ -253,9 +255,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                             style: TextStyle(fontWeight: FontWeight.w600),
                           ),
                           style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            foregroundColor: Colors.white,
+                            elevation: 0,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(
-                                isIOS ? 12 : 16,
+                                isIOS ? AppRadius.md : AppRadius.lg,
                               ),
                             ),
                           ),

@@ -5,7 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lms/core/providers/global_loading_provider.dart';
 import 'package:lms/features/expenses/data/models/expense_model.dart';
+import 'package:lms/core/theme/app_design.dart';
 import 'package:lms/shared/widgets/app_bar.dart';
+import 'package:lms/shared/widgets/app_form_widgets.dart';
 import 'package:lms/shared/widgets/premium_feature_components.dart';
 import '../providers/expense_provider.dart';
 import 'package:image_picker/image_picker.dart';
@@ -118,12 +120,10 @@ class _CreateExpenseScreenState extends ConsumerState<CreateExpenseScreen> {
       isScrollControlled: true,
       useSafeArea: true,
       showDragHandle: defaultTargetPlatform == TargetPlatform.iOS,
-      backgroundColor: Theme.of(context).colorScheme.surface,
-      shape: RoundedRectangleBorder(
+      backgroundColor: AppColors.bg,
+      shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(
-          top: Radius.circular(
-            defaultTargetPlatform == TargetPlatform.iOS ? 14 : 28,
-          ),
+          top: Radius.circular(AppRadius.lg),
         ),
       ),
       builder: (_) => AddItemSheet(
@@ -238,7 +238,6 @@ class _CreateExpenseScreenState extends ConsumerState<CreateExpenseScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     final state = ref.watch(createExpenseProvider);
     final canInteract = !state.isLoading && !_isSubmitting;
     final isEditingDraft = widget.editClaim != null;
@@ -249,45 +248,33 @@ class _CreateExpenseScreenState extends ConsumerState<CreateExpenseScreen> {
           )
         : const AlwaysScrollableScrollPhysics();
     final fieldRadius = isIOS ? 12.0 : 14.0;
-    final btnRadius = BorderRadius.circular(isIOS ? 12 : 14);
 
     return Scaffold(
+      backgroundColor: AppColors.bg,
       appBar: AppAppBar(
         title: isEditingDraft ? "Edit draft" : "Create Expense",
       ),
       bottomNavigationBar: SafeArea(
-        minimum: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+        minimum: const EdgeInsets.fromLTRB(
+          AppSpacing.md,
+          AppSpacing.sm,
+          AppSpacing.md,
+          AppSpacing.md,
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  shape: RoundedRectangleBorder(borderRadius: btnRadius),
-                ),
-                onPressed: canInteract ? () => submit() : null,
-                child: (state.isLoading || _isSubmitting)
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : Text(isEditingDraft ? "Update draft" : "Save as Draft"),
-              ),
+            AppPrimaryButton(
+              label: isEditingDraft ? "Update draft" : "Save as Draft",
+              isLoading: state.isLoading || _isSubmitting,
+              onPressed: canInteract ? () => submit() : null,
             ),
             const SizedBox(height: 10),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton(
-                style: OutlinedButton.styleFrom(
-                  shape: RoundedRectangleBorder(borderRadius: btnRadius),
-                ),
-                onPressed: canInteract
-                    ? () => submit(submitForApproval: true)
-                    : null,
-                child: const Text("Submit for Approval"),
-              ),
+            AppSecondaryButton(
+              label: "Submit for Approval",
+              onPressed: canInteract
+                  ? () => submit(submitForApproval: true)
+                  : null,
             ),
           ],
         ),
@@ -309,21 +296,17 @@ class _CreateExpenseScreenState extends ConsumerState<CreateExpenseScreen> {
               children: [
                 TextField(
                   controller: titleController,
-                  decoration: InputDecoration(
+                  decoration: appInputDecoration(
                     labelText: "Title *",
-                    prefixIcon: const Icon(Icons.title),
-                    filled: true,
-                    fillColor: scheme.surfaceContainerLow,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(fieldRadius),
-                    ),
+                    prefixIcon: Icons.title,
+                    radius: fieldRadius,
                   ),
                 ),
                 const SizedBox(height: 12),
-                OutlinedButton.icon(
+                AppSecondaryButton(
+                  label: "Add Item",
+                  icon: Icons.add,
                   onPressed: canInteract ? () => openItemSheet() : null,
-                  icon: const Icon(Icons.add),
-                  label: const Text("Add Item"),
                 ),
                 const SizedBox(height: 12),
                 if (items.isNotEmpty)
@@ -394,9 +377,9 @@ class _CreateExpenseScreenState extends ConsumerState<CreateExpenseScreen> {
                               const SizedBox(height: 4),
                               Text(
                                 "${_receiptCount(item)} receipt(s) for this line",
-                                style: TextStyle(
+                                style: const TextStyle(
                                   fontSize: 12,
-                                  color: scheme.primary,
+                                  color: AppColors.primary,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
@@ -408,15 +391,15 @@ class _CreateExpenseScreenState extends ConsumerState<CreateExpenseScreen> {
                           children: [
                             Text(
                               "₹${item['amount']}",
-                              style: TextStyle(
-                                color: scheme.primary,
+                              style: const TextStyle(
+                                color: AppColors.primary,
                                 fontWeight: FontWeight.w700,
                               ),
                             ),
                             IconButton(
                               tooltip: "Edit item",
                               icon: const Icon(Icons.edit_outlined),
-                              color: scheme.primary,
+                              color: AppColors.primary,
                               style: IconButton.styleFrom(
                                 splashFactory: isIOS
                                     ? NoSplash.splashFactory
@@ -428,7 +411,7 @@ class _CreateExpenseScreenState extends ConsumerState<CreateExpenseScreen> {
                             ),
                             IconButton(
                               icon: const Icon(Icons.delete_outline),
-                              color: Colors.red,
+                              color: AppColors.danger,
                               style: IconButton.styleFrom(
                                 splashFactory: isIOS
                                     ? NoSplash.splashFactory
@@ -451,14 +434,14 @@ class _CreateExpenseScreenState extends ConsumerState<CreateExpenseScreen> {
                   padding: const EdgeInsets.all(12),
                   child: Row(
                     children: [
-                      Icon(Icons.attach_file, color: scheme.primary),
+                      const Icon(Icons.attach_file, color: AppColors.primary),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           selectedFile == null
                               ? "Optional: extra receipt added to the first line"
                               : "Extra receipt will upload with the first line",
-                          style: TextStyle(color: scheme.onSurfaceVariant),
+                          style: const TextStyle(color: AppColors.muted),
                         ),
                       ),
                       TextButton(

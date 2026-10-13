@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:lms/core/theme/app_design.dart';
+import 'package:lms/shared/widgets/app_form_widgets.dart';
 import '../../data/models/leave_details_model.dart';
 
 class LeaveTimelineWidget extends StatelessWidget {
@@ -15,76 +17,81 @@ class LeaveTimelineWidget extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          "Timeline",
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-
-        const SizedBox(height: 16),
-
+        const AppSectionTitle('Timeline'),
+        const SizedBox(height: AppSpacing.md),
         ...List.generate(histories.length, (index) {
           final history = histories[index];
           final isLast = index == histories.length - 1;
+          final color = _colorForAction(history.action);
 
           return Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              /// LEFT TIMELINE LINE + DOT
               Column(
                 children: [
                   Container(
                     width: 12,
                     height: 12,
                     decoration: BoxDecoration(
-                      color: _colorForAction(history.action),
+                      color: color,
                       shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: color.withValues(alpha: 0.35),
+                          blurRadius: 6,
+                        ),
+                      ],
                     ),
                   ),
-
                   if (!isLast)
                     Container(
                       width: 2,
-                      height: 50,
-                      color: Colors.grey.shade300,
+                      height: 52,
+                      color: AppColors.border,
                     ),
                 ],
               ),
-
-              const SizedBox(width: 12),
-
-              /// RIGHT CONTENT
+              const SizedBox(width: AppSpacing.sm + 4),
               Expanded(
                 child: Padding(
-                  padding: const EdgeInsets.only(bottom: 16),
+                  padding: EdgeInsets.only(bottom: isLast ? 0 : AppSpacing.md),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      /// ACTION
                       Text(
                         history.action,
-                        style: const TextStyle(fontWeight: FontWeight.bold),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.title,
+                        ),
                       ),
-
                       if (history.actorName != null)
                         Text(
-                          "by ${history.actorName}",
-                          style: TextStyle(color: Colors.grey.shade600),
+                          'by ${history.actorName}',
+                          style: const TextStyle(
+                            color: AppColors.muted,
+                            fontSize: 13,
+                          ),
                         ),
-
                       if (history.at != null)
                         Text(
                           _formatDate(history.at!),
-                          style: TextStyle(
-                            color: Colors.grey.shade600,
+                          style: const TextStyle(
+                            color: AppColors.muted,
                             fontSize: 12,
                           ),
                         ),
-
                       if (history.comment != null &&
                           history.comment!.isNotEmpty)
                         Padding(
                           padding: const EdgeInsets.only(top: 4),
-                          child: Text("Comment: ${history.comment}"),
+                          child: Text(
+                            history.comment!,
+                            style: const TextStyle(
+                              color: AppColors.title,
+                              height: 1.35,
+                            ),
+                          ),
                         ),
                     ],
                   ),
@@ -99,25 +106,21 @@ class LeaveTimelineWidget extends StatelessWidget {
 
   Color _colorForAction(String action) {
     switch (action.toLowerCase()) {
-      case "submitted":
-        return Colors.blue;
-
-      case "approved":
-        return Colors.green;
-
-      case "rejected":
-        return Colors.red;
-
-      case "revoked":
-        return Colors.grey;
-
+      case 'submitted':
+        return AppColors.info;
+      case 'approved':
+        return AppColors.success;
+      case 'rejected':
+        return AppColors.danger;
+      case 'revoked':
+        return AppColors.draft;
       default:
-        return Colors.orange;
+        return AppColors.warning;
     }
   }
 
   String _formatDate(DateTime date) {
-    return "${date.day}/${date.month}/${date.year} "
-        "${date.hour}:${date.minute.toString().padLeft(2, '0')}";
+    return '${date.day}/${date.month}/${date.year} '
+        '${date.hour}:${date.minute.toString().padLeft(2, '0')}';
   }
 }

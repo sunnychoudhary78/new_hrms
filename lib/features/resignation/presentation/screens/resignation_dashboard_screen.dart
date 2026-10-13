@@ -4,8 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lms/core/providers/global_loading_provider.dart';
 import 'package:lms/features/resignation/data/resignation_list_query.dart';
 import 'package:lms/features/resignation/presentation/providers/resignation_providers.dart';
+import 'package:lms/core/theme/app_design.dart';
 import 'package:lms/shared/widgets/app_bar.dart';
-import 'package:lms/shared/widgets/premium_feature_components.dart';
+import 'package:lms/shared/widgets/app_form_widgets.dart';
 
 class ResignationDashboardScreen extends ConsumerStatefulWidget {
   const ResignationDashboardScreen({super.key});
@@ -105,33 +106,43 @@ class _ResignationDashboardScreenState
             parent: BouncingScrollPhysics(),
           )
         : const AlwaysScrollableScrollPhysics();
-    final actionBtnShape = RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(isIOS ? 12 : 14),
-    );
-
     return Scaffold(
+      backgroundColor: AppColors.bg,
       appBar: const AppAppBar(title: "Resignation Dashboard"),
 
       body: Column(
         children: [
-          _WorkflowHeader(roleTitle: roleTitle),
-          const SizedBox(height: 4),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.md,
+              AppSpacing.md,
+              AppSpacing.md,
+              0,
+            ),
+            child: AppHeroBanner(
+              icon: Icons.assignment_return_outlined,
+              title: "$roleTitle approval queue",
+              message: "Workflow: Employee → Manager → HOD → HR",
+            ),
+          ),
           if (role != ResignationRole.employee)
             Padding(
-              padding: const EdgeInsets.fromLTRB(12, 0, 12, 4),
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.md,
+                AppSpacing.sm,
+                AppSpacing.md,
+                0,
+              ),
               child: Align(
                 alignment: Alignment.centerLeft,
                 child: Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
+                  spacing: AppSpacing.sm,
+                  runSpacing: AppSpacing.sm,
                   children: ResignationListQuery.values.map((q) {
                     final selected = listFilter == q;
-                    return ChoiceChip(
-                      label: Text(q.label),
+                    return AppFilterChip(
+                      label: q.label,
                       selected: selected,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(isIOS ? 12 : 14),
-                      ),
                       onSelected: (sel) {
                         if (sel) {
                           ref
@@ -216,13 +227,11 @@ class _ResignationDashboardScreenState
                         status: r.status,
                       );
 
-                      return PremiumCard(
-                        margin: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 8,
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.md,
                         ),
-                        child: Padding(
-                          padding: EdgeInsets.zero,
+                        child: AppSectionCard(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -234,22 +243,19 @@ class _ResignationDashboardScreenState
                                       style: const TextStyle(
                                         fontWeight: FontWeight.w700,
                                         fontSize: 16,
+                                        color: AppColors.title,
                                       ),
                                     ),
                                   ),
-                                  _StatusChip(status: r.status),
+                                  AppStatusPill(label: r.status),
                                 ],
                               ),
-                              const SizedBox(height: 10),
+                              const SizedBox(height: AppSpacing.sm + 2),
                               Text(
                                 r.reason,
-                                style: TextStyle(
-                                  color: Theme.of(
-                                    context,
-                                  ).colorScheme.onSurfaceVariant,
-                                ),
+                                style: const TextStyle(color: AppColors.muted),
                               ),
-                              const SizedBox(height: 10),
+                              const SizedBox(height: AppSpacing.sm + 2),
                               Wrap(
                                 spacing: 10,
                                 runSpacing: 8,
@@ -266,38 +272,32 @@ class _ResignationDashboardScreenState
                                 ],
                               ),
                               if (canTakeAction) ...[
-                                const SizedBox(height: 12),
+                                const SizedBox(height: AppSpacing.sm + 4),
                                 Row(
                                   children: [
                                     Expanded(
-                                      child: FilledButton.tonalIcon(
-                                        style: FilledButton.styleFrom(
-                                          shape: actionBtnShape,
-                                        ),
+                                      child: AppSecondaryButton(
+                                        label: "Reject",
+                                        icon: Icons.close_rounded,
                                         onPressed: _isActionLoading
                                             ? null
                                             : () => showActionDialog(
-                                                id: r.id,
-                                                isApprove: false,
-                                              ),
-                                        icon: const Icon(Icons.close_rounded),
-                                        label: const Text("Reject"),
+                                                  id: r.id,
+                                                  isApprove: false,
+                                                ),
                                       ),
                                     ),
                                     const SizedBox(width: 10),
                                     Expanded(
-                                      child: FilledButton.icon(
-                                        style: FilledButton.styleFrom(
-                                          shape: actionBtnShape,
-                                        ),
+                                      child: AppPrimaryButton(
+                                        label: "Approve",
+                                        icon: Icons.check_rounded,
                                         onPressed: _isActionLoading
                                             ? null
                                             : () => showActionDialog(
-                                                id: r.id,
-                                                isApprove: true,
-                                              ),
-                                        icon: const Icon(Icons.check_rounded),
-                                        label: const Text("Approve"),
+                                                  id: r.id,
+                                                  isApprove: true,
+                                                ),
                                       ),
                                     ),
                                   ],
@@ -392,14 +392,11 @@ class _ResignationActionDialogState extends State<_ResignationActionDialog> {
           onChanged: (_) => setState(() {}),
           textCapitalization: TextCapitalization.sentences,
           textInputAction: TextInputAction.done,
-          decoration: InputDecoration(
+          decoration: appInputDecoration(
             labelText: "Remarks *",
+            hintText: "Required — visible to the employee and on record",
+          ).copyWith(
             helperText: "Required - visible to the employee and on record",
-            filled: true,
-            fillColor: Theme.of(context).colorScheme.surfaceContainerLow,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(isIOS ? 12 : 16),
-            ),
           ),
         ),
       ),
@@ -419,41 +416,6 @@ class _ResignationActionDialogState extends State<_ResignationActionDialog> {
   }
 }
 
-class _WorkflowHeader extends StatelessWidget {
-  final String roleTitle;
-
-  const _WorkflowHeader({required this.roleTitle});
-
-  @override
-  Widget build(BuildContext context) {
-    return PremiumFeatureHeader(
-      icon: Icons.assignment_return_outlined,
-      title: "$roleTitle Approval Queue",
-      subtitle: "Workflow: Employee -> Manager -> HOD -> HR",
-    );
-  }
-}
-
-class _StatusChip extends StatelessWidget {
-  final String status;
-  const _StatusChip({required this.status});
-
-  @override
-  Widget build(BuildContext context) {
-    final s = status.trim().toLowerCase();
-    final color = switch (s) {
-      "pending" => Colors.orange,
-      "manager approved" || "hod approved" => Colors.indigo,
-      "hr approved" => Colors.green,
-      "rejected" => Colors.red,
-      "withdrawn" => Colors.grey,
-      _ => Theme.of(context).colorScheme.primary,
-    };
-
-    return PremiumStatusPill(label: status, color: color);
-  }
-}
-
 class _MetaPill extends StatelessWidget {
   final IconData icon;
   final String text;
@@ -462,23 +424,26 @@ class _MetaPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(isIOS ? 16 : 20),
+        color: AppColors.softFill,
+        borderRadius: BorderRadius.circular(AppRadius.pill),
+        border: Border.all(color: AppColors.border),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            icon,
-            size: 15,
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-          ),
+          Icon(icon, size: 15, color: AppColors.muted),
           const SizedBox(width: 6),
-          Text(text),
+          Text(
+            text,
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: AppColors.title,
+            ),
+          ),
         ],
       ),
     );

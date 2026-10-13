@@ -1,14 +1,14 @@
-import 'dart:ui';
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lms/core/theme/app_design.dart';
 import 'package:lms/features/kra/presentation/kra_route_args.dart';
 import 'package:lms/features/kra/presentation/providers/kra_provider.dart';
 import 'package:lms/features/kra/presentation/widgets/kra_cycles_tab.dart';
 import 'package:lms/features/kra/presentation/widgets/kra_management_tab.dart';
 import 'package:lms/features/kra/presentation/widgets/kra_review_tab.dart';
 import 'package:lms/features/kra/presentation/widgets/kra_ui_widgets.dart';
+import 'package:lms/shared/widgets/app_bar.dart';
 
 class KraDashboardScreen extends ConsumerStatefulWidget {
   const KraDashboardScreen({super.key});
@@ -55,11 +55,14 @@ class _KraDashboardScreenState extends ConsumerState<KraDashboardScreen> {
     }
 
     if (tabs.isEmpty) {
-      return const Scaffold(
-        appBar: _KraAppBar(),
-        body: KraEmptyList(text: 'No KRA access available for this account'),
+      return Scaffold(
+        backgroundColor: AppColors.bg,
+        appBar: const AppAppBar(title: 'KRA / KPI'),
+        body: const KraEmptyList(text: 'No KRA access available for this account'),
       );
     }
+
+    final scheme = Theme.of(context).colorScheme;
 
     return DefaultTabController(
       key: ValueKey(
@@ -68,10 +71,16 @@ class _KraDashboardScreenState extends ConsumerState<KraDashboardScreen> {
       length: tabs.length,
       initialIndex: initialIndex,
       child: Scaffold(
-        appBar: _KraAppBar(
+        backgroundColor: AppColors.bg,
+        appBar: AppAppBar(
+          title: 'KRA / KPI',
           bottom: TabBar(
             isScrollable: true,
             tabAlignment: TabAlignment.start,
+            indicatorColor: AppColors.heroStart,
+            labelColor: AppColors.heroStart,
+            unselectedLabelColor: AppColors.muted,
+            dividerColor: scheme.outline.withValues(alpha: 0.12),
             tabs: [for (final tab in tabs) Tab(text: tab.label)],
           ),
         ),
@@ -100,53 +109,18 @@ class _KraTab {
   const _KraTab(this.label, this.child);
 }
 
-class _KraAppBar extends StatelessWidget implements PreferredSizeWidget {
-  final PreferredSizeWidget? bottom;
-
-  const _KraAppBar({this.bottom});
-
-  @override
-  Size get preferredSize =>
-      Size.fromHeight(kToolbarHeight + (bottom?.preferredSize.height ?? 0));
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
-    final blurSigma = isIOS ? 10.0 : 12.0;
-
-    return ClipRect(
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: blurSigma, sigmaY: blurSigma),
-        child: AppBar(
-          elevation: 0,
-          centerTitle: isIOS,
-          backgroundColor: scheme.surface.withValues(alpha: 0.55),
-          foregroundColor: scheme.onSurface,
-          scrolledUnderElevation: 0,
-          surfaceTintColor: Colors.transparent,
-          shadowColor: Colors.transparent,
-          title: const Text(
-            'KRA / KPI',
-            style: TextStyle(fontWeight: FontWeight.w600, letterSpacing: -0.2),
-          ),
-          bottom: bottom,
-        ),
-      ),
-    );
-  }
-}
-
 class _ActiveCycleBanner extends ConsumerWidget {
   const _ActiveCycleBanner();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final cycleAsync = ref.watch(kraActiveCycleProvider);
-    final scheme = Theme.of(context).colorScheme;
 
     return cycleAsync.when(
-      loading: () => const LinearProgressIndicator(minHeight: 2),
+      loading: () => const LinearProgressIndicator(
+        minHeight: 2,
+        color: AppColors.heroStart,
+      ),
       error: (_, __) => const SizedBox.shrink(),
       data: (cycle) => KraInfoBanner(
         icon: Icons.track_changes,
@@ -156,7 +130,10 @@ class _ActiveCycleBanner extends ConsumerWidget {
         subtitle: cycle == null
             ? 'Start a cycle from the Cycles tab when available.'
             : cycle.status,
-        trailing: Icon(Icons.insights_rounded, color: scheme.primary),
+        trailing: Icon(
+          Icons.insights_rounded,
+          color: Colors.white.withValues(alpha: 0.9),
+        ),
       ),
     );
   }
