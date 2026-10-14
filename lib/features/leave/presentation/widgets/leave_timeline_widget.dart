@@ -51,7 +51,7 @@ class LeaveTimelineWidget extends StatelessWidget {
                     ),
                 ],
               ),
-              const SizedBox(width: AppSpacing.sm + 4),
+              SizedBox(width: AppSpacing.sm + 4),
               Expanded(
                 child: Padding(
                   padding: EdgeInsets.only(bottom: isLast ? 0 : AppSpacing.md),
@@ -60,7 +60,7 @@ class LeaveTimelineWidget extends StatelessWidget {
                     children: [
                       Text(
                         history.action,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontWeight: FontWeight.w700,
                           color: AppColors.title,
                         ),
@@ -68,7 +68,7 @@ class LeaveTimelineWidget extends StatelessWidget {
                       if (history.actorName != null)
                         Text(
                           'by ${history.actorName}',
-                          style: const TextStyle(
+                          style: TextStyle(
                             color: AppColors.muted,
                             fontSize: 13,
                           ),
@@ -76,7 +76,7 @@ class LeaveTimelineWidget extends StatelessWidget {
                       if (history.at != null)
                         Text(
                           _formatDate(history.at!),
-                          style: const TextStyle(
+                          style: TextStyle(
                             color: AppColors.muted,
                             fontSize: 12,
                           ),
@@ -87,7 +87,7 @@ class LeaveTimelineWidget extends StatelessWidget {
                           padding: const EdgeInsets.only(top: 4),
                           child: Text(
                             history.comment!,
-                            style: const TextStyle(
+                            style: TextStyle(
                               color: AppColors.title,
                               height: 1.35,
                             ),

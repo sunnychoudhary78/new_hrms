@@ -330,7 +330,7 @@ class _LeaveApplyScreenState extends ConsumerState<LeaveApplyScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const AppSectionTitle("Supporting Document"),
-                      const SizedBox(height: 12),
+                      SizedBox(height: 12),
 
                       InkWell(
                         onTap: _pickDocument,

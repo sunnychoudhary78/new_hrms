@@ -30,8 +30,8 @@ class MarkAttendancePunchHero extends StatelessWidget {
     final punchLabel = isCheckedIn ? 'Punch Out' : 'Punch In';
     // Punch In = green, Punch Out = red
     final colors = isCheckedIn
-        ? const [Color(0xFFEF4444), Color(0xFFDC2626)]
-        : const [Color(0xFF22C55E), Color(0xFF16A34A)];
+        ? [Color(0xFFEF4444), Color(0xFFDC2626)]
+        : [Color(0xFF22C55E), Color(0xFF16A34A)];
 
     return Container(
       width: double.infinity,
@@ -46,7 +46,7 @@ class MarkAttendancePunchHero extends StatelessWidget {
           Text(
             _greeting,
             textAlign: TextAlign.center,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w800,
               color: HomeDashColors.title,
@@ -124,7 +124,7 @@ class MarkAttendancePunchHero extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
@@ -146,7 +146,7 @@ class MarkAttendancePunchHero extends StatelessWidget {
                         : HomeDashColors.muted,
                   ),
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: 8),
                 Text(
                   isCheckedIn ? 'Punched in' : 'Not punched in',
                   style: TextStyle(

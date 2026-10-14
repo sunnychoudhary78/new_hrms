@@ -26,7 +26,7 @@ class LeavePieChart extends StatelessWidget {
         height: 280,
         decoration: AppColors.cardDecoration(),
         alignment: Alignment.center,
-        child: const Text(
+        child: Text(
           "No leave balance available",
           style: TextStyle(color: AppColors.muted),
         ),
@@ -57,7 +57,7 @@ class LeavePieChart extends StatelessWidget {
                     color: LeaveColorMapper.colorFor(leave.name),
                     radius: 40,
                     title: value == 0 ? "" : '${percent.toStringAsFixed(0)}%',
-                    titleStyle: const TextStyle(
+                    titleStyle: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
                       color: Colors.white,
@@ -69,21 +69,21 @@ class LeavePieChart extends StatelessWidget {
             Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text(
+                Text(
                   "Available",
                   style: TextStyle(fontSize: 14, color: AppColors.muted),
                 ),
-                const SizedBox(height: 4),
+                SizedBox(height: 4),
                 Text(
                   totalAvailable.toStringAsFixed(1),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 26,
                     fontWeight: FontWeight.bold,
                     color: AppColors.title,
                   ),
                 ),
-                const SizedBox(height: 2),
-                const Text(
+                SizedBox(height: 2),
+                Text(
                   "Days",
                   style: TextStyle(fontSize: 12, color: AppColors.muted),
                 ),

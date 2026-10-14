@@ -46,7 +46,7 @@ class ThemeSettingsScreen extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const AppSectionTitle("Appearance"),
-                const SizedBox(height: AppSpacing.md),
+                SizedBox(height: AppSpacing.md),
                 Container(
                   decoration: BoxDecoration(
                     color: AppColors.softFill,
@@ -158,7 +158,7 @@ class ThemeSettingsScreen extends ConsumerWidget {
                           actions: [
                             TextButton(
                               onPressed: () => Navigator.pop(context),
-                              child: const Text("Cancel"),
+                              child: Text("Cancel"),
                             ),
                             ElevatedButton(
                               style: ElevatedButton.styleFrom(
@@ -232,6 +232,7 @@ class _ModeButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Expanded(
       child: GestureDetector(
         onTap: onTap,
@@ -239,7 +240,7 @@ class _ModeButton extends StatelessWidget {
           duration: const Duration(milliseconds: 200),
           padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
-            color: selected ? AppColors.primary : Colors.transparent,
+            color: selected ? scheme.primary : Colors.transparent,
             borderRadius: BorderRadius.circular(AppRadius.pill),
           ),
           child: Row(
@@ -248,14 +249,14 @@ class _ModeButton extends StatelessWidget {
               Icon(
                 icon,
                 size: 18,
-                color: selected ? Colors.white : AppColors.title,
+                color: selected ? scheme.onPrimary : scheme.onSurface,
               ),
               const SizedBox(width: 6),
               Text(
                 label,
                 style: TextStyle(
                   fontWeight: FontWeight.w600,
-                  color: selected ? Colors.white : AppColors.title,
+                  color: selected ? scheme.onPrimary : scheme.onSurface,
                 ),
               ),
             ],

@@ -28,9 +28,6 @@ class HomeWelcomeAttendanceCard extends ConsumerWidget {
     this.imageUrl,
   });
 
-  static const _blueStart = Color(0xFF5B6CF5);
-  static const _blueEnd = Color(0xFF6B7CFA);
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final attendanceAsync = ref.watch(markAttendanceProvider);
@@ -40,20 +37,23 @@ class HomeWelcomeAttendanceCard extends ConsumerWidget {
     final shift = ref.watch(effectiveShiftProvider).asData?.value;
     final greeting = _greeting();
     final firstName = _titleCase(name.trim().split(' ').first);
+    final primary = Theme.of(context).colorScheme.primary;
+    final primaryEnd =
+        Color.lerp(primary, Colors.white, 0.18) ?? primary;
 
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(24),
-        gradient: const LinearGradient(
+        gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [_blueStart, _blueEnd],
+          colors: [primary, primaryEnd],
         ),
         boxShadow: [
           BoxShadow(
-            color: _blueStart.withValues(alpha: 0.32),
+            color: primary.withValues(alpha: 0.32),
             blurRadius: 18,
             offset: const Offset(0, 8),
           ),

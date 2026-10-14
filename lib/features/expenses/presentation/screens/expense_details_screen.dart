@@ -75,7 +75,7 @@ class _ExpenseDetailScreenState extends ConsumerState<ExpenseDetailScreen> {
                                 children: [
                                   Text(
                                     'Line ${index + 1}: ${item.category}',
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontWeight: FontWeight.w700,
                                       fontSize: 15,
                                       color: AppColors.title,
@@ -83,20 +83,20 @@ class _ExpenseDetailScreenState extends ConsumerState<ExpenseDetailScreen> {
                                   ),
                                   if (item.description != null &&
                                       item.description!.isNotEmpty) ...[
-                                    const SizedBox(height: 4),
+                                    SizedBox(height: 4),
                                     Text(
                                       item.description!,
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         color: AppColors.muted,
                                         height: 1.35,
                                       ),
                                     ),
                                   ],
                                   if (item.expenseDate != null) ...[
-                                    const SizedBox(height: 4),
+                                    SizedBox(height: 4),
                                     Text(
                                       'Date: ${item.expenseDate}',
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         color: AppColors.muted,
                                         fontSize: 13,
                                       ),
@@ -107,7 +107,7 @@ class _ExpenseDetailScreenState extends ConsumerState<ExpenseDetailScreen> {
                             ),
                             Text(
                               '₹${item.amount}',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 color: AppColors.primary,
                                 fontWeight: FontWeight.w800,
                                 fontSize: 16,
@@ -115,10 +115,10 @@ class _ExpenseDetailScreenState extends ConsumerState<ExpenseDetailScreen> {
                             ),
                           ],
                         ),
-                        const SizedBox(height: AppSpacing.sm + 2),
-                        const Divider(height: 1, color: AppColors.border),
-                        const SizedBox(height: AppSpacing.sm + 2),
-                        const Text(
+                        SizedBox(height: AppSpacing.sm + 2),
+                        Divider(height: 1, color: AppColors.border),
+                        SizedBox(height: AppSpacing.sm + 2),
+                        Text(
                           'Attached documents',
                           style: TextStyle(
                             fontSize: 13,
@@ -126,9 +126,9 @@ class _ExpenseDetailScreenState extends ConsumerState<ExpenseDetailScreen> {
                             color: AppColors.muted,
                           ),
                         ),
-                        const SizedBox(height: 6),
+                        SizedBox(height: 6),
                         if (item.receiptFiles.isEmpty)
-                          const Padding(
+                          Padding(
                             padding: EdgeInsets.only(bottom: 6),
                             child: Text(
                               'No document attached for this line.',
@@ -485,7 +485,7 @@ class _ExpenseDetailScreenState extends ConsumerState<ExpenseDetailScreen> {
         leading: Icon(_docIconForName(subtitle), color: AppColors.primary),
         title: Text(
           title,
-          style: const TextStyle(
+          style: TextStyle(
             fontWeight: FontWeight.w600,
             fontSize: 14,
             color: AppColors.title,
@@ -495,9 +495,9 @@ class _ExpenseDetailScreenState extends ConsumerState<ExpenseDetailScreen> {
           subtitle,
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
-          style: const TextStyle(fontSize: 12, color: AppColors.muted),
+          style: TextStyle(fontSize: 12, color: AppColors.muted),
         ),
-        trailing: const Icon(Icons.chevron_right, color: AppColors.primary),
+        trailing: Icon(Icons.chevron_right, color: AppColors.primary),
         onTap: () {
           Navigator.of(context).push(
             MaterialPageRoute<void>(

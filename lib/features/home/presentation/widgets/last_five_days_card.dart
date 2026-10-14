@@ -177,6 +177,7 @@ class _LastFiveDaysAttendanceCardState
   @override
   Widget build(BuildContext context) {
     final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
+    final dash = HomeDashColors.of(context);
     final periodLabel = _range == AttendanceRange.year
         ? DateFormat('yyyy').format(widget.month)
         : DateFormat('MMMM yyyy').format(widget.month);
@@ -191,20 +192,20 @@ class _LastFiveDaysAttendanceCardState
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       'Attendance Overview',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
-                        color: HomeDashColors.title,
+                        color: dash.title,
                       ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       periodLabel,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
-                        color: HomeDashColors.muted,
+                        color: dash.muted,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -237,7 +238,7 @@ class _LastFiveDaysAttendanceCardState
               ),
               const Spacer(),
               IconButton(
-                icon: const Icon(Icons.chevron_right_rounded),
+                icon: Icon(Icons.chevron_right_rounded),
                 onPressed: _canGoNextWindow ? _goNext : null,
                 visualDensity: VisualDensity.compact,
                 style: IconButton.styleFrom(
@@ -250,7 +251,7 @@ class _LastFiveDaysAttendanceCardState
           SizedBox(
             height: chartHeight,
             child: visibleList.isEmpty
-                ? const Center(
+                ? Center(
                     child: Text(
                       'No attendance data',
                       style: TextStyle(color: HomeDashColors.muted),
@@ -258,7 +259,7 @@ class _LastFiveDaysAttendanceCardState
                   )
                 : BarChart(_chartData()),
           ),
-          const SizedBox(height: 14),
+          SizedBox(height: 14),
           Row(
             children: [
               Expanded(
@@ -267,16 +268,16 @@ class _LastFiveDaysAttendanceCardState
                   children: [
                     Text(
                       '${_avgWorkedHours.toStringAsFixed(1)} hrs',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.w800,
                         color: HomeDashColors.title,
                       ),
                     ),
-                    const SizedBox(height: 2),
+                    SizedBox(height: 2),
                     Text(
                       'Avg · ${_totalWorkedHours.toStringAsFixed(1)} hrs total',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 11,
                         color: HomeDashColors.muted,
                       ),
@@ -284,7 +285,7 @@ class _LastFiveDaysAttendanceCardState
                   ],
                 ),
               ),
-              const Flexible(
+              Flexible(
                 child: Wrap(
                   spacing: 12,
                   runSpacing: 6,
@@ -325,7 +326,7 @@ class _LastFiveDaysAttendanceCardState
             getTitlesWidget: (value, meta) {
               return Text(
                 '${value.toInt()}h',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 10,
                   color: HomeDashColors.muted,
                 ),
@@ -359,7 +360,7 @@ class _LastFiveDaysAttendanceCardState
                   children: [
                     Text(
                       DateFormat('E').format(date),
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.w600,
                         color: HomeDashColors.muted,
@@ -368,7 +369,7 @@ class _LastFiveDaysAttendanceCardState
                     ),
                     Text(
                       DateFormat('d').format(date),
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
                         color: HomeDashColors.title,
@@ -419,6 +420,9 @@ class _RangeToggle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final dash = HomeDashColors.of(context);
+    final scheme = Theme.of(context).colorScheme;
+
     Widget chip(AttendanceRange range, String label) {
       final selected = value == range;
       return GestureDetector(
@@ -427,7 +431,7 @@ class _RangeToggle extends StatelessWidget {
           duration: const Duration(milliseconds: 180),
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
           decoration: BoxDecoration(
-            color: selected ? HomeDashColors.accentBlue : Colors.transparent,
+            color: selected ? dash.accentBlue : Colors.transparent,
             borderRadius: BorderRadius.circular(20),
           ),
           child: Text(
@@ -435,7 +439,7 @@ class _RangeToggle extends StatelessWidget {
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w700,
-              color: selected ? Colors.white : HomeDashColors.muted,
+              color: selected ? scheme.onPrimary : dash.muted,
             ),
           ),
         ),
@@ -445,8 +449,9 @@ class _RangeToggle extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(3),
       decoration: BoxDecoration(
-        color: const Color(0xFFF1F5F9),
+        color: scheme.surfaceContainerLow,
         borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: scheme.outline.withValues(alpha: 0.4)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -476,10 +481,10 @@ class _Legend extends StatelessWidget {
           height: 8,
           decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
-        const SizedBox(width: 4),
+        SizedBox(width: 4),
         Text(
           label,
-          style: const TextStyle(fontSize: 10, color: HomeDashColors.muted),
+          style: TextStyle(fontSize: 10, color: HomeDashColors.muted),
         ),
       ],
     );

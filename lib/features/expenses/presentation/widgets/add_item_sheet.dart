@@ -244,10 +244,10 @@ class _AddItemSheetState extends State<AddItemSheet> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  SizedBox(height: 4),
                   Text(
                     "Attach images or PDFs so approvers can audit this line item.",
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: AppColors.muted,
                       fontSize: 12,
                     ),

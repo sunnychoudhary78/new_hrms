@@ -154,7 +154,7 @@ class _ViewAttendanceScreenState extends ConsumerState<ViewAttendanceScreen> {
         foregroundColor: HomeDashColors.title,
         centerTitle: false,
         titleSpacing: 0,
-        title: const Text(
+        title: Text(
           'View Attendance',
           style: TextStyle(
             fontSize: 18,
@@ -224,7 +224,7 @@ class _ViewAttendanceScreenState extends ConsumerState<ViewAttendanceScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const ViewAttendanceHeader(),
-                  const SizedBox(height: 14),
+                  SizedBox(height: 14),
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.fromLTRB(12, 14, 12, 12),
@@ -236,7 +236,7 @@ class _ViewAttendanceScreenState extends ConsumerState<ViewAttendanceScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Padding(
+                        Padding(
                           padding: EdgeInsets.fromLTRB(4, 0, 4, 8),
                           child: Text(
                             'Attendance Calendar',
@@ -355,7 +355,7 @@ class _ProfileAvatarButton extends ConsumerWidget {
               child: url.isEmpty
                   ? Text(
                       initials,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w800,
                         color: HomeDashColors.accentBlue,

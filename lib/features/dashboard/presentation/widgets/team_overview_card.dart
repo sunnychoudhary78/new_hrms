@@ -31,7 +31,7 @@ class TeamOverviewCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   "Team Health Overview",
                   style: TextStyle(
                     fontSize: 12,
@@ -40,20 +40,20 @@ class TeamOverviewCard extends StatelessWidget {
                   ),
                 ),
 
-                const SizedBox(height: 10),
+                SizedBox(height: 10),
 
                 Text(
                   "${attendancePercentage.toStringAsFixed(0)}%",
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 30,
                     fontWeight: FontWeight.w700,
                     color: AppColors.title,
                   ),
                 ),
 
-                const SizedBox(height: 4),
+                SizedBox(height: 4),
 
-                const Text(
+                Text(
                   "Attendance Rate",
                   style: TextStyle(
                     fontSize: 12,
@@ -82,11 +82,11 @@ class TeamOverviewCard extends StatelessWidget {
                   ],
                 ),
 
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
 
                 Text(
                   "Total Employees: ${dashboard.total}",
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 11,
                     color: AppColors.muted,
                   ),

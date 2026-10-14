@@ -14,6 +14,7 @@ class HomeStatsCards extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final dash = HomeDashColors.of(context);
     final stats = dashboard.stats;
     final leaveRemaining = stats.leavesRemaining;
     final leaveTotal =
@@ -31,7 +32,7 @@ class HomeStatsCards extends ConsumerWidget {
         Expanded(
           child: _MetricCard(
             icon: Icons.eco_rounded,
-            iconBg: HomeDashColors.softGreen,
+            iconBg: dash.softGreen,
             iconColor: HomeDashColors.accentGreen,
             title: 'Leave Balance',
             value: leaveValue,
@@ -45,12 +46,12 @@ class HomeStatsCards extends ConsumerWidget {
         Expanded(
           child: _MetricCard(
             icon: Icons.nightlight_round,
-            iconBg: HomeDashColors.softPurple,
+            iconBg: dash.softPurple,
             iconColor: HomeDashColors.accentPurple,
             title: 'Working Hours',
             value: '${weekHours.toStringAsFixed(1)} hrs',
             subtitle: 'This Week',
-            subtitleColor: const Color(0xFF7C9CF0),
+            subtitleColor: dash.accentBlue,
           ),
         ),
       ],
@@ -125,6 +126,8 @@ class _MetricCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final dash = HomeDashColors.of(context);
+    final scheme = Theme.of(context).colorScheme;
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -133,9 +136,10 @@ class _MetricCard extends StatelessWidget {
         child: Ink(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: HomeDashColors.card,
+            color: dash.card,
             borderRadius: BorderRadius.circular(22),
-            boxShadow: HomeDashColors.cardShadow,
+            border: Border.all(color: scheme.outline.withValues(alpha: 0.45)),
+            boxShadow: dash.cardShadow,
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -156,17 +160,17 @@ class _MetricCard extends StatelessWidget {
                     Icon(
                       Icons.north_east_rounded,
                       size: 16,
-                      color: HomeDashColors.muted.withValues(alpha: 0.7),
+                      color: dash.muted.withValues(alpha: 0.7),
                     ),
                 ],
               ),
               const SizedBox(height: 12),
               Text(
                 title,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
-                  color: HomeDashColors.title,
+                  color: dash.title,
                 ),
               ),
               const SizedBox(height: 6),
@@ -174,10 +178,10 @@ class _MetricCard extends StatelessWidget {
                 value,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.w800,
-                  color: HomeDashColors.title,
+                  color: dash.title,
                   height: 1.1,
                 ),
               ),
@@ -197,7 +201,7 @@ class _MetricCard extends StatelessWidget {
                   child: LinearProgressIndicator(
                     value: progress,
                     minHeight: 5,
-                    backgroundColor: HomeDashColors.softGreen,
+                    backgroundColor: dash.softGreen,
                     color: HomeDashColors.accentGreen,
                   ),
                 ),

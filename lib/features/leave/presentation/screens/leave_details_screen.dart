@@ -138,23 +138,23 @@ class _DetailRow extends StatelessWidget {
             ),
             child: Icon(icon, size: 18, color: AppColors.primary),
           ),
-          const SizedBox(width: AppSpacing.sm + 2),
+          SizedBox(width: AppSpacing.sm + 2),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   label,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: AppColors.muted,
                     fontSize: 12,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
-                const SizedBox(height: 2),
+                SizedBox(height: 2),
                 Text(
                   value,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: AppColors.title,
                     fontSize: 14,
                     fontWeight: FontWeight.w600,

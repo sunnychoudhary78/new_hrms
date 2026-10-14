@@ -200,7 +200,7 @@ class _PayslipCard extends ConsumerWidget {
               children: [
                 Text(
                   "${_getMonthName(payslip.month)} ${payslip.year}",
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                     color: AppColors.title,
@@ -213,20 +213,20 @@ class _PayslipCard extends ConsumerWidget {
               ],
             ),
 
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
 
             Text(
               "₹${payslip.netSalary.toStringAsFixed(2)}",
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 21,
                 fontWeight: FontWeight.bold,
                 color: AppColors.primary,
               ),
             ),
 
-            const SizedBox(height: 4),
+            SizedBox(height: 4),
 
-            const Text(
+            Text(
               "Net Salary",
               style: TextStyle(color: AppColors.muted),
             ),

@@ -104,11 +104,11 @@ class _LeaveBalanceScreenState extends ConsumerState<LeaveBalanceScreen> {
                     message:
                         "Your leave balances will appear here once assigned.",
                   ),
-                  const SizedBox(height: 120),
+                  SizedBox(height: 120),
                   Center(
                     child: KeyedSubtree(
                       key: _balanceKey,
-                      child: const Text(
+                      child: Text(
                         "No leave data found",
                         style: TextStyle(color: AppColors.muted),
                       ),
@@ -134,13 +134,13 @@ class _LeaveBalanceScreenState extends ConsumerState<LeaveBalanceScreen> {
                     message:
                         "See available days at a glance and tap a type to apply leave.",
                   ),
-                  const SizedBox(height: AppSpacing.md),
+                  SizedBox(height: AppSpacing.md),
                   KeyedSubtree(
                     key: _balanceKey,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
+                        Text(
                           "Overview",
                           style: TextStyle(
                             fontSize: 18,
@@ -148,13 +148,13 @@ class _LeaveBalanceScreenState extends ConsumerState<LeaveBalanceScreen> {
                             color: AppColors.title,
                           ),
                         ),
-                        const SizedBox(height: AppSpacing.sm + 4),
+                        SizedBox(height: AppSpacing.sm + 4),
                         LeavePieChart(leaves: leaves),
                       ],
                     ),
                   ),
-                  const SizedBox(height: AppSpacing.lg + 4),
-                  const Text(
+                  SizedBox(height: AppSpacing.lg + 4),
+                  Text(
                     "Leave Details",
                     style: TextStyle(
                       fontSize: 18,

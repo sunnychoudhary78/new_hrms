@@ -153,20 +153,20 @@ class _PillStatCard extends StatelessWidget {
                 ),
                 child: Icon(item.icon, size: 18, color: item.accent),
               ),
-              const SizedBox(width: 10),
+              SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       item.title,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
                         color: HomeDashColors.muted,
                       ),
                     ),
-                    const SizedBox(height: 2),
+                    SizedBox(height: 2),
                     Text(
                       item.value,
                       style: TextStyle(

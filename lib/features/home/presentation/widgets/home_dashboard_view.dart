@@ -50,12 +50,18 @@ class _HomeDashboardViewState extends ConsumerState<HomeDashboardView> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(homeDashboardProvider);
+    final dash = HomeDashColors.of(context);
 
     return ColoredBox(
-      color: HomeDashColors.bg,
+      color: dash.bg,
       child: state.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Error: $e')),
+        error: (e, _) => Center(
+          child: Text(
+            'Error: $e',
+            style: TextStyle(color: dash.title),
+          ),
+        ),
         data: (dashboard) {
           final scrollPhysics = defaultTargetPlatform == TargetPlatform.iOS
               ? const AlwaysScrollableScrollPhysics(
@@ -73,11 +79,11 @@ class _HomeDashboardViewState extends ConsumerState<HomeDashboardView> {
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
               children: [
                 const DayOneBanner(),
-                const Text(
+                Text(
                   'Stay consistent, achieve more ✨',
                   style: TextStyle(
                     fontSize: 13,
-                    color: HomeDashColors.muted,
+                    color: dash.muted,
                     fontWeight: FontWeight.w500,
                   ),
                 ),

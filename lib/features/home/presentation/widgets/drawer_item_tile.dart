@@ -1,6 +1,5 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:lms/features/home/presentation/widgets/home_dashboard_style.dart';
 
 class DrawerTile extends StatelessWidget {
   final IconData icon;
@@ -26,14 +25,14 @@ class DrawerTile extends StatelessWidget {
     this.subtitle,
   });
 
-  static const _idleIconBg = Color(0xFFF1F5F9);
-  static const _idleIconFg = Color(0xFF64748B);
-
   @override
   Widget build(BuildContext context) {
     final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
+    final scheme = Theme.of(context).colorScheme;
     final tileRadius = BorderRadius.circular(14);
-    final color = accent ?? HomeDashColors.accentBlue;
+    final color = accent ?? scheme.primary;
+    final idleIconBg = scheme.surfaceContainerLow;
+    final idleIconFg = scheme.onSurfaceVariant;
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 1),
@@ -63,13 +62,13 @@ class DrawerTile extends StatelessWidget {
                   width: 38,
                   height: 38,
                   decoration: BoxDecoration(
-                    color: isActive ? color : _idleIconBg,
+                    color: isActive ? color : idleIconBg,
                     borderRadius: BorderRadius.circular(11),
                   ),
                   child: Icon(
                     icon,
                     size: 20,
-                    color: isActive ? Colors.white : _idleIconFg,
+                    color: isActive ? Colors.white : idleIconFg,
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -79,7 +78,7 @@ class DrawerTile extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 14.5,
                       fontWeight: isActive ? FontWeight.w800 : FontWeight.w600,
-                      color: isActive ? color : HomeDashColors.title,
+                      color: isActive ? color : scheme.onSurface,
                     ),
                   ),
                 ),
@@ -91,7 +90,7 @@ class DrawerTile extends StatelessWidget {
                     size: 20,
                     color: isActive
                         ? color.withValues(alpha: 0.75)
-                        : HomeDashColors.muted.withValues(alpha: 0.4),
+                        : scheme.onSurfaceVariant.withValues(alpha: 0.45),
                   ),
               ],
             ),

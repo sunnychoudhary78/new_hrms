@@ -233,13 +233,13 @@ class _TeamComparisonChart extends StatelessWidget {
               maxValue: maxHours,
               color: scheme.outline,
             ),
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
             _horizontalBar(
               context,
               label: "Actual",
               value: totalActualHours,
               maxValue: maxHours,
-              gradient: const LinearGradient(
+              gradient: LinearGradient(
                 colors: [AppColors.primary, AppColors.primaryEnd],
               ),
             ),
@@ -319,7 +319,7 @@ Widget _cardWrapper(
       children: [
         Text(
           title,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 15,
             fontWeight: FontWeight.w700,
             color: AppColors.title,

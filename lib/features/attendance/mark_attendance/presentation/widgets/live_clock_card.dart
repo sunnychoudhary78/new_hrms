@@ -73,17 +73,17 @@ class LiveClockCard extends StatelessWidget {
                   color: const Color(0xFFF1F5F9),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.sync_rounded,
                   size: 16,
                   color: _chipIcon,
                 ),
               ),
-              const SizedBox(width: 8),
+              SizedBox(width: 8),
               Expanded(
                 child: Text(
                   shiftLabel,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
                     color: HomeDashColors.title,
@@ -93,16 +93,16 @@ class LiveClockCard extends StatelessWidget {
               if (isCheckedIn) ...[
                 Text(
                   workingTime,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w800,
                     color: HomeDashColors.accentBlue,
                   ),
                 ),
-                const SizedBox(width: 6),
+                SizedBox(width: 6),
                 Text(
                   '${(progress * 100).clamp(0, 100).toStringAsFixed(0)}%',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
                     color: HomeDashColors.muted,
@@ -112,7 +112,7 @@ class LiveClockCard extends StatelessWidget {
             ],
           ),
           if (isCheckedIn) ...[
-            const SizedBox(height: 10),
+            SizedBox(height: 10),
             ClipRRect(
               borderRadius: BorderRadius.circular(8),
               child: LinearProgressIndicator(
@@ -152,7 +152,7 @@ class _ShiftChip extends StatelessWidget {
       child: Column(
         children: [
           Icon(icon, size: 18, color: LiveClockCard._chipIcon),
-          const SizedBox(height: 6),
+          SizedBox(height: 6),
           Text(
             label,
             textAlign: TextAlign.center,
@@ -164,13 +164,13 @@ class _ShiftChip extends StatelessWidget {
               color: HomeDashColors.muted.withValues(alpha: 0.95),
             ),
           ),
-          const SizedBox(height: 3),
+          SizedBox(height: 3),
           Text(
             value,
             textAlign: TextAlign.center,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w800,
               color: HomeDashColors.title,

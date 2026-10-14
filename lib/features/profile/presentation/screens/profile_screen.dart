@@ -239,7 +239,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   children: [
                     ProfileDetailsCard(details: details),
 
-                    const SizedBox(height: 20),
+                    SizedBox(height: 20),
 
                     Padding(
                       padding: const EdgeInsets.symmetric(
@@ -249,8 +249,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         width: double.infinity,
                         height: 52,
                         child: ElevatedButton.icon(
-                          icon: const Icon(Icons.badge_outlined),
-                          label: const Text(
+                          icon: Icon(Icons.badge_outlined),
+                          label: Text(
                             "View as ID Card",
                             style: TextStyle(fontWeight: FontWeight.w600),
                           ),

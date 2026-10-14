@@ -79,11 +79,11 @@ class _AttendanceCorrectionScreenState
 
                 CorrectionStats(requests: state.requests),
 
-                const SizedBox(height: AppSpacing.lg),
+                SizedBox(height: AppSpacing.lg),
 
                 const AttendanceFilterTabs(),
 
-                const SizedBox(height: AppSpacing.md),
+                SizedBox(height: AppSpacing.md),
 
                 Text(
                   "${filtered.length} requests",

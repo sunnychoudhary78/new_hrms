@@ -104,13 +104,13 @@ class _LeaveApproveScreenState extends ConsumerState<LeaveApproveScreen>
                     children: [
                       Text(
                         "${pending.length}",
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.w800,
                           color: AppColors.statusOrange,
                         ),
                       ),
-                      const Text(
+                      Text(
                         "pending",
                         style: TextStyle(fontSize: 11, color: AppColors.muted),
                       ),
@@ -132,14 +132,14 @@ class _LeaveApproveScreenState extends ConsumerState<LeaveApproveScreen>
                         count: approved.length,
                       ),
                     ),
-                    const SizedBox(width: AppSpacing.sm),
+                    SizedBox(width: AppSpacing.sm),
                     Expanded(
                       child: _MetricChip(label: "Closed", count: closed.length),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: AppSpacing.sm),
+              SizedBox(height: AppSpacing.sm),
 
               /// TAB BAR WITH COLORED BADGES
               Container(
@@ -308,16 +308,16 @@ class _MetricChip extends StatelessWidget {
         children: [
           Text(
             label,
-            style: const TextStyle(
+            style: TextStyle(
               color: AppColors.muted,
               fontSize: 12,
               fontWeight: FontWeight.w500,
             ),
           ),
-          const SizedBox(height: 2),
+          SizedBox(height: 2),
           Text(
             count.toString(),
-            style: const TextStyle(
+            style: TextStyle(
               color: AppColors.primary,
               fontSize: 16,
               fontWeight: FontWeight.w700,

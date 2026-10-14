@@ -32,7 +32,7 @@ class AttendanceOverviewCard extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  const Expanded(
+                  Expanded(
                     child: Text(
                       'Attendance Monthly Overview',
                       style: TextStyle(
@@ -44,7 +44,7 @@ class AttendanceOverviewCard extends StatelessWidget {
                   ),
                   Text(
                     DateFormat('MMM yyyy').format(dashboard.attendanceMonth),
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
                       color: HomeDashColors.muted,
                       fontWeight: FontWeight.w500,
@@ -70,7 +70,7 @@ class AttendanceOverviewCard extends StatelessWidget {
                             children: [
                               Text(
                                 _trackedDaysLabel(dashboard.distribution),
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 22,
                                   fontWeight: FontWeight.w800,
                                   color: HomeDashColors.title,
@@ -78,7 +78,7 @@ class AttendanceOverviewCard extends StatelessWidget {
                               ),
                               Text(
                                 'of $daysInMonth days',
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 11,
                                   color: HomeDashColors.muted,
                                   fontWeight: FontWeight.w500,
@@ -100,14 +100,14 @@ class AttendanceOverviewCard extends StatelessWidget {
             ],
           ),
         ),
-        const SizedBox(height: 14),
+        SizedBox(height: 14),
         HomeDashCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
-                  const Expanded(
+                  Expanded(
                     child: Text(
                       'Keep going!',
                       style: TextStyle(
@@ -124,15 +124,15 @@ class AttendanceOverviewCard extends StatelessWidget {
                       color: HomeDashColors.softBlue,
                       borderRadius: BorderRadius.circular(14),
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.flag_rounded,
                       color: HomeDashColors.accentBlue,
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 6),
-              const Text(
+              SizedBox(height: 6),
+              Text(
                 'Track your progress against expected hours.',
                 style: TextStyle(
                   fontSize: 12,
@@ -148,10 +148,10 @@ class AttendanceOverviewCard extends StatelessWidget {
                     : 1,
                 color: HomeDashColors.accentGreen,
               ),
-              const SizedBox(height: 14),
+              SizedBox(height: 14),
               Row(
                 children: [
-                  const Expanded(
+                  Expanded(
                     child: Text(
                       'Expected (target)',
                       style: TextStyle(
@@ -163,7 +163,7 @@ class AttendanceOverviewCard extends StatelessWidget {
                   ),
                   Text(
                     '${dashboard.attendance.expectedHours.toStringAsFixed(1)} hrs',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
                       color: HomeDashColors.accentBlue,
@@ -322,11 +322,11 @@ class _LegendItem extends StatelessWidget {
             height: 10,
             decoration: BoxDecoration(color: color, shape: BoxShape.circle),
           ),
-          const SizedBox(width: 8),
+          SizedBox(width: 8),
           Expanded(
             child: Text(
               label,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12,
                 color: HomeDashColors.title,
                 fontWeight: FontWeight.w500,
@@ -335,7 +335,7 @@ class _LegendItem extends StatelessWidget {
           ),
           Text(
             '${percent.toStringAsFixed(0)}%',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w700,
               color: HomeDashColors.muted,
@@ -372,7 +372,7 @@ class _ModernProgressBar extends StatelessWidget {
           children: [
             Text(
               label,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
                 color: HomeDashColors.title,

@@ -197,8 +197,8 @@ class _MyResignationScreenState extends ConsumerState<MyResignationScreen> {
                                 icon: Icons.assignment_outlined,
                                 size: 56,
                               ),
-                              const SizedBox(height: 14),
-                              const Text(
+                              SizedBox(height: 14),
+                              Text(
                                 "No active resignation",
                                 style: TextStyle(
                                   fontSize: 18,
@@ -206,8 +206,8 @@ class _MyResignationScreenState extends ConsumerState<MyResignationScreen> {
                                   color: AppColors.title,
                                 ),
                               ),
-                              const SizedBox(height: 8),
-                              const Text(
+                              SizedBox(height: 8),
+                              Text(
                                 "Create a resignation request only when you are ready to start the approval workflow.",
                                 textAlign: TextAlign.center,
                                 style: TextStyle(color: AppColors.muted),
@@ -247,7 +247,7 @@ class _MyResignationScreenState extends ConsumerState<MyResignationScreen> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SizedBox(height: 6),
+          SizedBox(height: 6),
           Container(
             width: 46,
             height: 5,
@@ -258,8 +258,8 @@ class _MyResignationScreenState extends ConsumerState<MyResignationScreen> {
             ),
           ),
           const AppSectionTitle("Apply Resignation"),
-          const SizedBox(height: 6),
-          const Text(
+          SizedBox(height: 6),
+          Text(
             "This request will move to Manager, then HOD, then HR for final approval.",
             style: TextStyle(color: AppColors.muted),
           ),
@@ -356,7 +356,7 @@ class _MyResignationScreenState extends ConsumerState<MyResignationScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _WorkflowStepper(status: status),
-                const SizedBox(height: 14),
+                SizedBox(height: 14),
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
@@ -375,7 +375,7 @@ class _MyResignationScreenState extends ConsumerState<MyResignationScreen> {
                         ),
                         child: Text(
                           "LWD: ${resignation.lastWorkingDate}",
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
                             color: AppColors.title,
@@ -384,21 +384,21 @@ class _MyResignationScreenState extends ConsumerState<MyResignationScreen> {
                       ),
                   ],
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
                 const AppSectionTitle("Reason / remarks"),
-                const SizedBox(height: 6),
+                SizedBox(height: 6),
                 Text(
                   resignation.reason,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.w600,
                     fontSize: 15,
                     color: AppColors.title,
                   ),
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 Text(
                   timelineText(),
-                  style: const TextStyle(color: AppColors.muted),
+                  style: TextStyle(color: AppColors.muted),
                 ),
               ],
             ),
@@ -531,14 +531,14 @@ class _WorkflowStepper extends StatelessWidget {
             );
           }),
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: steps
               .map(
                 (label) => Text(
                   label,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 11,
                     color: AppColors.muted,
                     fontWeight: FontWeight.w600,

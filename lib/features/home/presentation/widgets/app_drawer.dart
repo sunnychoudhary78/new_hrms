@@ -6,7 +6,6 @@ import 'package:lms/core/network/api_constants.dart';
 import 'package:lms/core/providers/user_data_invalidation.dart';
 import 'package:lms/features/auth/presentation/providers/auth_provider.dart';
 import 'package:lms/features/home/presentation/widgets/drawer_item_tile.dart';
-import 'package:lms/features/home/presentation/widgets/home_dashboard_style.dart';
 import 'package:lms/features/kra/presentation/kra_route_args.dart';
 import 'package:lms/features/onboarding/presentation/providers/onboarding_providers.dart';
 import 'package:lms/features/meetings/presentation/providers/meetings_providers.dart';
@@ -62,9 +61,10 @@ class _AppDrawerState extends ConsumerState<AppDrawer> {
         : null;
 
     int index = 0;
+    final scheme = Theme.of(context).colorScheme;
 
     return Drawer(
-      backgroundColor: const Color(0xFFF7F9FC),
+      backgroundColor: scheme.surfaceContainerLowest,
       elevation: isIOS ? 6 : 12,
       width: MediaQuery.sizeOf(context).width * 0.72,
       shape: RoundedRectangleBorder(
@@ -94,12 +94,13 @@ class _AppDrawerState extends ConsumerState<AppDrawer> {
                     const SizedBox(height: 18),
 
                     _menuGroup(
+                      scheme: scheme,
                       children: [
                         DrawerTile(
                           index: index++,
                           icon: Icons.home_rounded,
                           title: 'Home',
-                          accent: HomeDashColors.accentBlue,
+                          accent: Theme.of(context).colorScheme.primary,
                           isActive: route == '/home',
                           onTap: () {
                             Navigator.pop(context);
@@ -115,7 +116,7 @@ class _AppDrawerState extends ConsumerState<AppDrawer> {
                             index: index++,
                             icon: Icons.flag_rounded,
                             title: 'Day-one Guide',
-                            accent: HomeDashColors.accentBlue,
+                            accent: Theme.of(context).colorScheme.primary,
                             isActive: route == '/day-one',
                             onTap: () {
                               Navigator.pop(context);
@@ -127,12 +128,13 @@ class _AppDrawerState extends ConsumerState<AppDrawer> {
 
                     const SizedBox(height: 12),
                     _menuGroup(
+                      scheme: scheme,
                       children: [
                         _buildExpandable(
                           index: index++,
                           title: 'Attendance',
                           icon: Icons.access_time_filled_rounded,
-                          accent: HomeDashColors.accentBlue,
+                          accent: Theme.of(context).colorScheme.primary,
                           expanded: _isAttendanceExpanded,
                           isActive: route == '/mark-attendance' ||
                               route == '/view-attendance' ||
@@ -170,7 +172,7 @@ class _AppDrawerState extends ConsumerState<AppDrawer> {
                           index: index++,
                           title: 'Leave',
                           icon: Icons.park_rounded,
-                          accent: HomeDashColors.accentBlue,
+                          accent: Theme.of(context).colorScheme.primary,
                           expanded: _isLeaveExpanded,
                           isActive: route == '/leave-balance' ||
                               route == '/leave-apply' ||
@@ -208,7 +210,7 @@ class _AppDrawerState extends ConsumerState<AppDrawer> {
                             index: index++,
                             icon: Icons.groups_rounded,
                             title: 'Team Dashboard',
-                            accent: HomeDashColors.accentBlue,
+                            accent: Theme.of(context).colorScheme.primary,
                             isActive: route == '/team-dashboard',
                             onTap: () {
                               Navigator.pop(context);
@@ -220,7 +222,7 @@ class _AppDrawerState extends ConsumerState<AppDrawer> {
                             index: index++,
                             icon: Icons.videocam_rounded,
                             title: 'Meetings',
-                            accent: HomeDashColors.accentBlue,
+                            accent: Theme.of(context).colorScheme.primary,
                             isActive: route == '/meetings' ||
                                 route == '/meetings/detail',
                             onTap: () {
@@ -234,7 +236,7 @@ class _AppDrawerState extends ConsumerState<AppDrawer> {
                             index: index++,
                             icon: Icons.video_library_rounded,
                             title: 'Recordings',
-                            accent: HomeDashColors.accentBlue,
+                            accent: Theme.of(context).colorScheme.primary,
                             isActive: route == '/meetings/recordings',
                             onTap: () {
                               Navigator.pop(context);
@@ -249,13 +251,14 @@ class _AppDrawerState extends ConsumerState<AppDrawer> {
 
                     const SizedBox(height: 12),
                     _menuGroup(
+                      scheme: scheme,
                       children: [
                         if (hasAnyKraPermission)
                           _buildExpandable(
                             index: index++,
                             title: 'KRA / KPI',
                             icon: Icons.track_changes_rounded,
-                            accent: HomeDashColors.accentBlue,
+                            accent: Theme.of(context).colorScheme.primary,
                             expanded: _isKraExpanded,
                             isActive: route == '/kra',
                             onTap: () => setState(
@@ -292,7 +295,7 @@ class _AppDrawerState extends ConsumerState<AppDrawer> {
                           index: index++,
                           title: 'Expenses',
                           icon: Icons.receipt_long_rounded,
-                          accent: HomeDashColors.accentBlue,
+                          accent: Theme.of(context).colorScheme.primary,
                           expanded: _isExpenseExpanded,
                           isActive: route == '/expenses/my' ||
                               route == '/expenses-dashboard',
@@ -319,7 +322,7 @@ class _AppDrawerState extends ConsumerState<AppDrawer> {
                           index: index++,
                           icon: Icons.account_balance_wallet_rounded,
                           title: 'Payslip',
-                          accent: HomeDashColors.accentBlue,
+                          accent: Theme.of(context).colorScheme.primary,
                           isActive: route == '/payslip',
                           onTap: () {
                             Navigator.pop(context);
@@ -330,7 +333,7 @@ class _AppDrawerState extends ConsumerState<AppDrawer> {
                           index: index++,
                           icon: Icons.verified_user_rounded,
                           title: 'Policies',
-                          accent: HomeDashColors.accentBlue,
+                          accent: Theme.of(context).colorScheme.primary,
                           isActive: route == '/policies',
                           onTap: () {
                             Navigator.pop(context);
@@ -341,7 +344,7 @@ class _AppDrawerState extends ConsumerState<AppDrawer> {
                           index: index++,
                           title: 'Resignation',
                           icon: Icons.work_off_rounded,
-                          accent: HomeDashColors.accentBlue,
+                          accent: Theme.of(context).colorScheme.primary,
                           expanded: _isResignationExpanded,
                           isActive: route == '/resignation/my' ||
                               route == '/resignation-dashboard',
@@ -370,12 +373,13 @@ class _AppDrawerState extends ConsumerState<AppDrawer> {
 
                     const SizedBox(height: 12),
                     _menuGroup(
+                      scheme: scheme,
                       children: [
                         DrawerTile(
                           index: index++,
                           icon: Icons.settings_rounded,
                           title: 'Settings',
-                          accent: HomeDashColors.accentBlue,
+                          accent: Theme.of(context).colorScheme.primary,
                           isActive: route == '/settings',
                           onTap: () {
                             Navigator.pop(context);
@@ -395,17 +399,17 @@ class _AppDrawerState extends ConsumerState<AppDrawer> {
             Container(
               padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: scheme.surface,
                 border: Border(
-                  top: BorderSide(color: Colors.black.withValues(alpha: 0.05)),
+                  top: BorderSide(color: scheme.outline.withValues(alpha: 0.45)),
                 ),
               ),
               child: TextButton.icon(
                 style: TextButton.styleFrom(
                   foregroundColor: const Color(0xFFBE123C),
-                  backgroundColor: const Color(0xFFF8FAFC),
+                  backgroundColor: scheme.surfaceContainerLow,
                   minimumSize: const Size(double.infinity, 48),
-                  side: const BorderSide(color: Color(0xFFE2E8F0)),
+                  side: BorderSide(color: scheme.outline),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14),
                   ),
@@ -445,16 +449,23 @@ class _AppDrawerState extends ConsumerState<AppDrawer> {
     );
   }
 
-  Widget _menuGroup({required List<Widget> children}) {
+  Widget _menuGroup({
+    required List<Widget> children,
+    ColorScheme? scheme,
+  }) {
+    final colors = scheme ?? Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: colors.outline.withValues(alpha: 0.55)),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF0F172A).withValues(alpha: 0.04),
+            color: (isDark ? Colors.black : const Color(0xFF0F172A))
+                .withValues(alpha: isDark ? 0.28 : 0.04),
             blurRadius: 14,
             offset: const Offset(0, 4),
           ),
@@ -504,14 +515,25 @@ class _AppDrawerState extends ConsumerState<AppDrawer> {
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(24),
-            gradient: const LinearGradient(
+            gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [Color(0xFF1D4ED8), Color(0xFF2563EB)],
+              colors: [
+                Theme.of(context).colorScheme.primary,
+                Color.lerp(
+                      Theme.of(context).colorScheme.primary,
+                      Colors.white,
+                      0.18,
+                    ) ??
+                    Theme.of(context).colorScheme.primary,
+              ],
             ),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF2563EB).withValues(alpha: 0.22),
+                color: Theme.of(context)
+                    .colorScheme
+                    .primary
+                    .withValues(alpha: 0.22),
                 blurRadius: 16,
                 offset: const Offset(0, 6),
               ),
@@ -632,6 +654,7 @@ class _AppDrawerState extends ConsumerState<AppDrawer> {
   }
 
   Widget _buildHelpCard() {
+    final scheme = Theme.of(context).colorScheme;
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -644,9 +667,9 @@ class _AppDrawerState extends ConsumerState<AppDrawer> {
           width: double.infinity,
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: const Color(0xFFF8FAFC),
+            color: scheme.surfaceContainerLow,
             borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: const Color(0xFFE2E8F0)),
+            border: Border.all(color: scheme.outline),
           ),
           child: Row(
             children: [
@@ -654,16 +677,16 @@ class _AppDrawerState extends ConsumerState<AppDrawer> {
                 width: 42,
                 height: 42,
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: scheme.surface,
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.support_agent_rounded,
-                  color: HomeDashColors.accentBlue,
+                  color: scheme.primary,
                 ),
               ),
               const SizedBox(width: 12),
-              const Expanded(
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -672,15 +695,15 @@ class _AppDrawerState extends ConsumerState<AppDrawer> {
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w800,
-                        color: HomeDashColors.title,
+                        color: scheme.onSurface,
                       ),
                     ),
-                    SizedBox(height: 2),
+                    const SizedBox(height: 2),
                     Text(
                       'Policies & HR support resources',
                       style: TextStyle(
                         fontSize: 12,
-                        color: HomeDashColors.muted,
+                        color: scheme.onSurfaceVariant,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -689,7 +712,7 @@ class _AppDrawerState extends ConsumerState<AppDrawer> {
               ),
               Icon(
                 Icons.chevron_right_rounded,
-                color: HomeDashColors.muted.withValues(alpha: 0.7),
+                color: scheme.onSurfaceVariant.withValues(alpha: 0.7),
               ),
             ],
           ),
@@ -731,8 +754,8 @@ class _AppDrawerState extends ConsumerState<AppDrawer> {
             child: Container(
               width: 28,
               height: 28,
-              decoration: const BoxDecoration(
-                color: Color(0xFFF1F5F9),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surfaceContainerLow,
                 shape: BoxShape.circle,
               ),
               child: Icon(
@@ -740,7 +763,7 @@ class _AppDrawerState extends ConsumerState<AppDrawer> {
                 size: 20,
                 color: isActive || expanded
                     ? accent
-                    : const Color(0xFF64748B),
+                    : Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             ),
           ),
@@ -754,7 +777,7 @@ class _AppDrawerState extends ConsumerState<AppDrawer> {
                   margin: const EdgeInsets.fromLTRB(12, 0, 8, 6),
                   padding: const EdgeInsets.fromLTRB(8, 4, 8, 6),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF8FAFC),
+                    color: Theme.of(context).colorScheme.surfaceContainerLow,
                     borderRadius: BorderRadius.circular(14),
                   ),
                   child: Column(children: subItems),
@@ -779,7 +802,7 @@ class _AppDrawerState extends ConsumerState<AppDrawer> {
     return _SubNavTile(
       title: title,
       icon: Icons.circle,
-      accent: HomeDashColors.accentBlue,
+      accent: Theme.of(context).colorScheme.primary,
       isActive: false,
       onTap: () => _goToKra(args),
     );
@@ -790,7 +813,7 @@ class _AppDrawerState extends ConsumerState<AppDrawer> {
     return _SubNavTile(
       title: title,
       icon: icon,
-      accent: HomeDashColors.accentBlue,
+      accent: Theme.of(context).colorScheme.primary,
       isActive: isActive,
       onTap: () {
         Navigator.pop(context);
@@ -832,7 +855,9 @@ class _SubNavTile extends StatelessWidget {
                 Icon(
                   icon,
                   size: 16,
-                  color: isActive ? accent : HomeDashColors.muted,
+                  color: isActive
+                      ? accent
+                      : Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
                 const SizedBox(width: 10),
                 Expanded(
@@ -840,7 +865,9 @@ class _SubNavTile extends StatelessWidget {
                     title,
                     style: TextStyle(
                       fontSize: 13.5,
-                      color: isActive ? accent : HomeDashColors.title,
+                      color: isActive
+                          ? accent
+                          : Theme.of(context).colorScheme.onSurface,
                       fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
                     ),
                   ),
@@ -848,7 +875,7 @@ class _SubNavTile extends StatelessWidget {
                 Icon(
                   Icons.chevron_right_rounded,
                   size: 18,
-                  color: HomeDashColors.muted.withValues(alpha: 0.45),
+                  color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.45),
                 ),
               ],
             ),

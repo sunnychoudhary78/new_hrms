@@ -57,14 +57,19 @@ class AppIconBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final primary = Theme.of(context).colorScheme.primary;
     return Container(
       width: size,
       height: size,
       decoration: BoxDecoration(
-        color: backgroundColor ?? AppColors.primary,
+        color: backgroundColor ?? primary,
         borderRadius: BorderRadius.circular(AppRadius.md),
       ),
-      child: Icon(icon, color: iconColor ?? Colors.white, size: size * 0.45),
+      child: Icon(
+        icon,
+        color: iconColor ?? Colors.white,
+        size: size * 0.45,
+      ),
     );
   }
 }
@@ -87,6 +92,7 @@ class AppHeroBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
     final radius = isIOS ? AppRadius.md + 2 : AppRadius.lg - 2;
+    final scheme = Theme.of(context).colorScheme;
 
     return Container(
       width: double.infinity,
@@ -94,7 +100,7 @@ class AppHeroBanner extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(radius),
         gradient: AppColors.softHeroGradient,
-        border: Border.all(color: AppColors.border.withValues(alpha: 0.6)),
+        border: Border.all(color: scheme.outline.withValues(alpha: 0.6)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -108,8 +114,8 @@ class AppHeroBanner extends StatelessWidget {
                 if (title != null) ...[
                   Text(
                     title!,
-                    style: const TextStyle(
-                      color: AppColors.title,
+                    style: TextStyle(
+                      color: scheme.onSurface,
                       fontWeight: FontWeight.w700,
                       fontSize: 16,
                     ),
@@ -118,8 +124,8 @@ class AppHeroBanner extends StatelessWidget {
                 ],
                 Text(
                   message,
-                  style: const TextStyle(
-                    color: AppColors.title,
+                  style: TextStyle(
+                    color: scheme.onSurface,
                     fontWeight: FontWeight.w600,
                     height: 1.35,
                   ),
@@ -178,7 +184,7 @@ InputDecoration appInputDecoration({
 }) {
   final border = OutlineInputBorder(
     borderRadius: BorderRadius.circular(radius),
-    borderSide: const BorderSide(color: AppColors.border),
+    borderSide: BorderSide(color: AppColors.border),
   );
 
   return InputDecoration(
@@ -190,14 +196,14 @@ InputDecoration appInputDecoration({
     prefixText: prefixText,
     filled: true,
     fillColor: AppColors.softFill,
-    labelStyle: const TextStyle(
+    labelStyle: TextStyle(
       color: AppColors.muted,
       fontWeight: FontWeight.w500,
     ),
     border: border,
     enabledBorder: border,
     focusedBorder: border.copyWith(
-      borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+      borderSide: BorderSide(color: AppColors.primary, width: 1.5),
     ),
   );
 }
@@ -218,13 +224,16 @@ class AppPrimaryButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final primary = Theme.of(context).colorScheme.primary;
+    final onPrimary = Theme.of(context).colorScheme.onPrimary;
+
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.primary,
-          foregroundColor: Colors.white,
-          disabledBackgroundColor: AppColors.primary.withValues(alpha: 0.45),
+          backgroundColor: primary,
+          foregroundColor: onPrimary,
+          disabledBackgroundColor: primary.withValues(alpha: 0.45),
           padding: const EdgeInsets.symmetric(vertical: 14),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppRadius.md),
@@ -233,12 +242,12 @@ class AppPrimaryButton extends StatelessWidget {
         ),
         onPressed: isLoading ? null : onPressed,
         child: isLoading
-            ? const SizedBox(
+            ? SizedBox(
                 width: 20,
                 height: 20,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
-                  color: Colors.white,
+                  color: onPrimary,
                 ),
               )
             : icon != null
@@ -276,12 +285,14 @@ class AppSecondaryButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final primary = Theme.of(context).colorScheme.primary;
+
     return SizedBox(
       width: double.infinity,
       child: OutlinedButton(
         style: OutlinedButton.styleFrom(
-          foregroundColor: AppColors.primary,
-          side: const BorderSide(color: AppColors.primary),
+          foregroundColor: primary,
+          side: BorderSide(color: primary),
           padding: const EdgeInsets.symmetric(vertical: 14),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppRadius.md),
@@ -323,19 +334,21 @@ class AppFilterChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
     return ChoiceChip(
       label: Text(label),
       selected: selected,
       onSelected: onSelected,
       labelStyle: TextStyle(
-        color: selected ? Colors.white : AppColors.muted,
+        color: selected ? scheme.onPrimary : scheme.onSurfaceVariant,
         fontWeight: FontWeight.w600,
         fontSize: 13,
       ),
-      selectedColor: AppColors.primary,
+      selectedColor: scheme.primary,
       backgroundColor: AppColors.softFill,
       side: BorderSide(
-        color: selected ? AppColors.primary : AppColors.border,
+        color: selected ? scheme.primary : scheme.outline,
       ),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppRadius.pill),
@@ -352,23 +365,25 @@ class AppSectionTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
     return Row(
       children: [
         Container(
           width: 4,
           height: 16,
           decoration: BoxDecoration(
-            color: AppColors.primary,
+            color: scheme.primary,
             borderRadius: BorderRadius.circular(4),
           ),
         ),
         const SizedBox(width: AppSpacing.sm),
         Text(
           text,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 15,
             fontWeight: FontWeight.w600,
-            color: AppColors.title,
+            color: scheme.onSurface,
           ),
         ),
       ],

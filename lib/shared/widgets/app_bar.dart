@@ -21,6 +21,7 @@ class AppAppBar extends StatelessWidget implements PreferredSizeWidget {
     final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
     final scaffold = Scaffold.maybeOf(context);
     final showDrawer = !showBack && (scaffold?.hasDrawer ?? false);
+    final scheme = Theme.of(context).colorScheme;
 
     Widget? leading;
     if (showBack) {
@@ -44,16 +45,15 @@ class AppAppBar extends StatelessWidget implements PreferredSizeWidget {
       elevation: 0,
       centerTitle: false,
       automaticallyImplyLeading: false,
-      backgroundColor: AppColors.bg,
-      foregroundColor: AppColors.title,
+      backgroundColor: scheme.surfaceContainerLowest,
+      foregroundColor: scheme.onSurface,
       surfaceTintColor: Colors.transparent,
       scrolledUnderElevation: 0,
-      // With no leading icon, keep title off the screen edge.
       titleSpacing: leading == null ? AppSpacing.md : 0,
       title: Text(
         title,
-        style: const TextStyle(
-          color: AppColors.title,
+        style: TextStyle(
+          color: scheme.onSurface,
           fontWeight: FontWeight.w800,
           fontSize: 18,
           letterSpacing: -.2,

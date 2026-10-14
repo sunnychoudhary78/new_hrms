@@ -62,7 +62,7 @@ class LeaveBalanceTile extends StatelessWidget {
                   Expanded(
                     child: Text(
                       name,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
                         color: AppColors.title,
@@ -80,7 +80,7 @@ class LeaveBalanceTile extends StatelessWidget {
                           color: accentColor,
                         ),
                       ),
-                      const Text(
+                      Text(
                         'days available',
                         style: TextStyle(fontSize: 12, color: AppColors.muted),
                       ),
@@ -89,8 +89,8 @@ class LeaveBalanceTile extends StatelessWidget {
                 ],
               ),
               if (carried > 0 || reserved > 0) ...[
-                const SizedBox(height: AppSpacing.sm + 6),
-                const Divider(color: AppColors.border, height: 1),
+                SizedBox(height: AppSpacing.sm + 6),
+                Divider(color: AppColors.border, height: 1),
                 const SizedBox(height: AppSpacing.sm + 4),
                 Row(
                   children: [
@@ -134,11 +134,11 @@ class _MetaText extends StatelessWidget {
   Widget build(BuildContext context) {
     return RichText(
       text: TextSpan(
-        style: const TextStyle(fontSize: 13, color: AppColors.title),
+        style: TextStyle(fontSize: 13, color: AppColors.title),
         children: [
           TextSpan(
             text: '$label: ',
-            style: const TextStyle(color: AppColors.muted),
+            style: TextStyle(color: AppColors.muted),
           ),
           TextSpan(
             text: formatDays(value),

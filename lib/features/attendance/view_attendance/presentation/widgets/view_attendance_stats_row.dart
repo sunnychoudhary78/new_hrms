@@ -111,7 +111,7 @@ class ViewAttendanceStatsRow extends StatelessWidget {
                               color: Colors.white,
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            child: const Icon(
+                            child: Icon(
                               Icons.description_outlined,
                               size: 18,
                               color: HomeDashColors.accentBlue,
@@ -126,7 +126,7 @@ class ViewAttendanceStatsRow extends StatelessWidget {
                         ],
                       ),
                       const Spacer(),
-                      const Text(
+                      Text(
                         'Request\nCorrection',
                         style: TextStyle(
                           fontSize: 14,
@@ -135,7 +135,7 @@ class ViewAttendanceStatsRow extends StatelessWidget {
                           height: 1.25,
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      SizedBox(height: 4),
                       Text(
                         'Fix attendance errors',
                         maxLines: 1,

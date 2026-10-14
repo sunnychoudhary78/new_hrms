@@ -240,7 +240,7 @@ class _ResignationDashboardScreenState
                                   Expanded(
                                     child: Text(
                                       r.employeeName ?? "Employee",
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         fontWeight: FontWeight.w700,
                                         fontSize: 16,
                                         color: AppColors.title,
@@ -250,10 +250,10 @@ class _ResignationDashboardScreenState
                                   AppStatusPill(label: r.status),
                                 ],
                               ),
-                              const SizedBox(height: AppSpacing.sm + 2),
+                              SizedBox(height: AppSpacing.sm + 2),
                               Text(
                                 r.reason,
-                                style: const TextStyle(color: AppColors.muted),
+                                style: TextStyle(color: AppColors.muted),
                               ),
                               const SizedBox(height: AppSpacing.sm + 2),
                               Wrap(
@@ -435,10 +435,10 @@ class _MetaPill extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(icon, size: 15, color: AppColors.muted),
-          const SizedBox(width: 6),
+          SizedBox(width: 6),
           Text(
             text,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w600,
               color: AppColors.title,

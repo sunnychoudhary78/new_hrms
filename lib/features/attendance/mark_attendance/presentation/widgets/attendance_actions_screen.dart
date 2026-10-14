@@ -102,19 +102,19 @@ class AttendanceActionsSection extends ConsumerWidget {
                       color: const Color(0xFFF1F5F9),
                       borderRadius: BorderRadius.circular(11),
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.wifi_tethering_rounded,
                       size: 20,
                       color: Color(0xFF64748B),
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  SizedBox(width: 12),
                   Expanded(
                     child: Text(
                       hasOpenSession
                           ? 'Work remotely (check-out)'
                           : 'Work remotely (check-in)',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
                         color: HomeDashColors.title,
@@ -144,7 +144,7 @@ class AttendanceActionsSection extends ConsumerWidget {
               hasOpenSession
                   ? 'Remote check-out enabled'
                   : 'Remote check-in enabled',
-              style: const TextStyle(
+              style: TextStyle(
                 color: HomeDashColors.accentBlue,
                 fontWeight: FontWeight.w700,
                 fontSize: 12,
@@ -306,25 +306,25 @@ class _TimeInfoCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           Text(
             title,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w600,
               color: HomeDashColors.muted,
             ),
           ),
-          const SizedBox(height: 4),
+          SizedBox(height: 4),
           Text(
             time,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w800,
               color: HomeDashColors.title,
             ),
           ),
-          const SizedBox(height: 2),
+          SizedBox(height: 2),
           Text(
             detail,
             style: TextStyle(

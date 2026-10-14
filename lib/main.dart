@@ -81,38 +81,60 @@ class MyApp extends ConsumerWidget {
     final primaryColor = ref.watch(appThemeProvider);
     final themeMode = ref.watch(themeModeProvider);
 
+    final lightTheme = AppTheme.light(primaryColor).copyWith(
+      textTheme: GoogleFonts.interTextTheme(
+        AppTheme.light(primaryColor).textTheme,
+      ).apply(
+        bodyColor: AppColors.lightTitle,
+        displayColor: AppColors.lightTitle,
+      ),
+    );
+    final darkTheme = AppTheme.dark(primaryColor).copyWith(
+      textTheme: GoogleFonts.interTextTheme(
+        ThemeData(brightness: Brightness.dark).textTheme,
+      ).apply(
+        bodyColor: AppColors.darkTitle,
+        displayColor: AppColors.darkTitle,
+      ),
+    );
+
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       themeMode: themeMode,
       navigatorKey: navigatorKey,
-      theme: AppTheme.light(primaryColor).copyWith(
-        textTheme: GoogleFonts.interTextTheme(
-          AppTheme.light(primaryColor).textTheme,
-        ),
-      ),
-      darkTheme: AppTheme.dark(primaryColor).copyWith(
-        textTheme: GoogleFonts.interTextTheme(
-          AppTheme.dark(primaryColor).textTheme,
-        ),
-      ),
+      theme: lightTheme,
+      darkTheme: darkTheme,
       home: _buildHome(),
       routes: AppRoutes.routes,
       builder: (context, child) {
+        // Resolve the active theme here (builder context is not always themed).
+        final platformBrightness = MediaQuery.platformBrightnessOf(context);
+        final useDark = switch (themeMode) {
+          ThemeMode.dark => true,
+          ThemeMode.light => false,
+          ThemeMode.system => platformBrightness == Brightness.dark,
+        };
+        final activeTheme = useDark ? darkTheme : lightTheme;
+        AppColors.bindFromTheme(activeTheme);
+
         final overlay = ref.watch(globalLoadingProvider);
         final auth = ref.watch(authProvider);
         final showPasswordGate =
             auth.profile != null && auth.mustChangePassword;
 
-        return Stack(
-          clipBehavior: Clip.none,
-          children: [
-            MeetingPersistentHost(child: child!),
-            if (overlay.isLoading) GlobalLoader(message: overlay.message),
-            if (overlay.isSuccess) GlobalSuccess(message: overlay.message),
-            if (overlay.isError) GlobalError(message: overlay.message),
-            if (overlay.isMessage) GlobalMessage(message: overlay.message),
-            if (showPasswordGate) const ForcePasswordChangeGate(),
-          ],
+        return Theme(
+          data: activeTheme,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              MeetingPersistentHost(child: child!),
+              if (overlay.isLoading) GlobalLoader(message: overlay.message),
+              if (overlay.isSuccess) GlobalSuccess(message: overlay.message),
+              if (overlay.isError) GlobalError(message: overlay.message),
+              if (overlay.isMessage) GlobalMessage(message: overlay.message),
+              if (showPasswordGate) const ForcePasswordChangeGate(),
+            ],
+          ),
         );
       },
     );

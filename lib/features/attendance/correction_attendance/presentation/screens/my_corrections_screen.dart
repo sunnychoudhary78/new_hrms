@@ -91,10 +91,10 @@ class _MyCorrectionsScreenState extends ConsumerState<MyCorrectionsScreen> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: 16),
                 Row(
                   children: [
-                    const Text(
+                    Text(
                       'Filter by status',
                       style: TextStyle(
                         fontSize: 13,
@@ -136,15 +136,15 @@ class _MyCorrectionsScreenState extends ConsumerState<MyCorrectionsScreen> {
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(
+                            Icon(
                               Icons.filter_list_rounded,
                               size: 18,
                               color: AppColors.primary,
                             ),
-                            const SizedBox(width: 6),
+                            SizedBox(width: 6),
                             Text(
                               _prettyFilter(state.statusFilter),
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontWeight: FontWeight.w700,
                                 fontSize: 12,
                                 color: AppColors.title,
@@ -156,9 +156,9 @@ class _MyCorrectionsScreenState extends ConsumerState<MyCorrectionsScreen> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 14),
+                SizedBox(height: 14),
                 if (requests.isEmpty)
-                  const AppSectionCard(
+                  AppSectionCard(
                     child: Column(
                       children: [
                         Icon(

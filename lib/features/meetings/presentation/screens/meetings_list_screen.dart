@@ -290,7 +290,7 @@ class _MeetingTile extends StatelessWidget {
               backgroundColor: AppColors.iconBg,
               iconColor: AppColors.primary,
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -299,32 +299,32 @@ class _MeetingTile extends StatelessWidget {
                     meeting.title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontWeight: FontWeight.w700,
                       color: AppColors.title,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  SizedBox(height: 4),
                   Text(
                     '${meeting.typeLabel} · ${meeting.formatWhen()}',
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: AppColors.muted,
                       fontSize: 12,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  SizedBox(height: 4),
                   Text(
                     'Host: ${meeting.creator?.name ?? '—'}',
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: AppColors.muted,
                       fontSize: 12,
                     ),
                   ),
                   if (meeting.autoTranscribe) ...[
-                    const SizedBox(height: 6),
-                    const Text(
+                    SizedBox(height: 6),
+                    Text(
                       'Auto transcript',
                       style: TextStyle(
                         color: Color(0xFF0369A1),
@@ -335,10 +335,10 @@ class _MeetingTile extends StatelessWidget {
                   ],
                   if (showRecordings &&
                       (meeting.recordingSummary?.count ?? 0) > 0) ...[
-                    const SizedBox(height: 6),
+                    SizedBox(height: 6),
                     Text(
                       '${meeting.recordingSummary!.count} recording${meeting.recordingSummary!.count == 1 ? '' : 's'}',
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: AppColors.muted,
                         fontSize: 12,
                       ),

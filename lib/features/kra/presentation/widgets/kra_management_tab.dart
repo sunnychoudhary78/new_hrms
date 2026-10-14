@@ -130,7 +130,7 @@ class _KraCard extends ConsumerWidget {
                   children: [
                     Text(
                       kra.name,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w800,
                         color: AppColors.title,

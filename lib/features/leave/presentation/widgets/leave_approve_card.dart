@@ -64,7 +64,7 @@ class _LeaveApproveCardState extends State<LeaveApproveCard> {
                   r.employeeName.isNotEmpty
                       ? r.employeeName[0].toUpperCase()
                       : "?",
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: AppColors.primary,
                     fontWeight: FontWeight.w600,
                   ),
@@ -112,7 +112,7 @@ class _LeaveApproveCardState extends State<LeaveApproveCard> {
                 size: 16,
                 color: scheme.onSurfaceVariant,
               ),
-              const SizedBox(width: 6),
+              SizedBox(width: 6),
               Text(
                 "${_format(r.startDate)} → ${_format(r.endDate)}",
                 style: Theme.of(
@@ -132,7 +132,7 @@ class _LeaveApproveCardState extends State<LeaveApproveCard> {
                 ),
                 child: Text(
                   "${formatDays(r.days)} day${r.days > 1 ? 's' : ''}",
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
                     color: AppColors.primary,
                     fontWeight: FontWeight.w600,

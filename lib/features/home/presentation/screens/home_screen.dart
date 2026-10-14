@@ -13,23 +13,25 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
+    final dash = HomeDashColors.of(context);
+    final scheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      backgroundColor: HomeDashColors.bg,
+      backgroundColor: dash.bg,
       drawer: const AppDrawer(),
       appBar: AppBar(
         elevation: 0,
-        backgroundColor: HomeDashColors.bg,
+        backgroundColor: scheme.surfaceContainerLowest,
         surfaceTintColor: Colors.transparent,
-        foregroundColor: HomeDashColors.title,
+        foregroundColor: scheme.onSurface,
         centerTitle: false,
         titleSpacing: 0,
-        title: const Text(
+        title: Text(
           'Home',
           style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.w800,
-            color: HomeDashColors.title,
+            color: scheme.onSurface,
             letterSpacing: -0.3,
           ),
         ),

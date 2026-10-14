@@ -72,7 +72,7 @@ class _StatCard extends StatelessWidget {
                 ),
                 child: Icon(icon, size: 16, color: accent),
               ),
-              const SizedBox(width: AppSpacing.sm),
+              SizedBox(width: AppSpacing.sm),
               Text(
                 label,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(

@@ -6,33 +6,36 @@ class HomeQuickActions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final dash = HomeDashColors.of(context);
+    final scheme = Theme.of(context).colorScheme;
+
     final actions = [
       _QuickAction(
         icon: Icons.event_note_rounded,
         label: 'Apply Leave',
         iconColor: HomeDashColors.accentPurple,
-        iconBg: HomeDashColors.softPurple,
+        iconBg: dash.softPurple,
         onTap: () => Navigator.of(context).pushNamed('/leave-apply'),
       ),
       _QuickAction(
         icon: Icons.sync_rounded,
         label: 'View Attendance',
-        iconColor: HomeDashColors.accentBlue,
-        iconBg: HomeDashColors.softBlue,
+        iconColor: dash.accentBlue,
+        iconBg: dash.softBlue,
         onTap: () => Navigator.of(context).pushNamed('/view-attendance'),
       ),
       _QuickAction(
         icon: Icons.description_outlined,
         label: 'Payslip',
         iconColor: HomeDashColors.accentOrange,
-        iconBg: HomeDashColors.softOrange,
+        iconBg: dash.softOrange,
         onTap: () => Navigator.of(context).pushNamed('/payslip'),
       ),
       _QuickAction(
         icon: Icons.more_horiz_rounded,
         label: 'More',
         iconColor: HomeDashColors.accentGreen,
-        iconBg: HomeDashColors.softGreen,
+        iconBg: dash.softGreen,
         onTap: () => Scaffold.of(context).openDrawer(),
       ),
     ];
@@ -40,12 +43,12 @@ class HomeQuickActions extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'Quick Actions',
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w800,
-            color: HomeDashColors.title,
+            color: dash.title,
           ),
         ),
         const SizedBox(height: 12),
@@ -53,7 +56,15 @@ class HomeQuickActions extends StatelessWidget {
           children: [
             for (var i = 0; i < actions.length; i++) ...[
               if (i > 0) const SizedBox(width: 10),
-              Expanded(child: _QuickActionTile(action: actions[i])),
+              Expanded(
+                child: _QuickActionTile(
+                  action: actions[i],
+                  cardColor: dash.card,
+                  titleColor: dash.title,
+                  borderColor: scheme.outline.withValues(alpha: 0.45),
+                  shadows: dash.cardShadow,
+                ),
+              ),
             ],
           ],
         ),
@@ -80,8 +91,18 @@ class _QuickAction {
 
 class _QuickActionTile extends StatelessWidget {
   final _QuickAction action;
+  final Color cardColor;
+  final Color titleColor;
+  final Color borderColor;
+  final List<BoxShadow> shadows;
 
-  const _QuickActionTile({required this.action});
+  const _QuickActionTile({
+    required this.action,
+    required this.cardColor,
+    required this.titleColor,
+    required this.borderColor,
+    required this.shadows,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -93,9 +114,10 @@ class _QuickActionTile extends StatelessWidget {
         child: Ink(
           padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 6),
           decoration: BoxDecoration(
-            color: HomeDashColors.card,
+            color: cardColor,
             borderRadius: BorderRadius.circular(18),
-            boxShadow: HomeDashColors.cardShadow,
+            border: Border.all(color: borderColor),
+            boxShadow: shadows,
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -119,10 +141,10 @@ class _QuickActionTile extends StatelessWidget {
                 textAlign: TextAlign.center,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w600,
-                  color: HomeDashColors.title,
+                  color: titleColor,
                   height: 1.2,
                 ),
               ),

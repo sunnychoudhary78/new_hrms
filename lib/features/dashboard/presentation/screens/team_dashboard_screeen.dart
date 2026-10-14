@@ -110,7 +110,7 @@ class _TeamDashboardScreenState extends ConsumerState<TeamDashboardScreen> {
       decoration: AppColors.cardDecoration(radius: AppRadius.lg),
       child: TextField(
         onChanged: (v) => setState(() => searchQuery = v),
-        decoration: const InputDecoration(
+        decoration: InputDecoration(
           icon: Icon(Icons.search_rounded, color: AppColors.muted),
           hintText: "Search team member...",
           hintStyle: TextStyle(color: AppColors.muted),

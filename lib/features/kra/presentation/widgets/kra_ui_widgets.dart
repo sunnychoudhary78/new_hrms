@@ -70,10 +70,10 @@ class KraMetaPill extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(icon, size: 15, color: AppColors.heroStart),
-          const SizedBox(width: 5),
+          SizedBox(width: 5),
           Text(
             text,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w600,
               color: AppColors.title,
@@ -158,7 +158,7 @@ class KraAssignmentCard extends StatelessWidget {
               color: AppColors.heroStart,
             ),
           ),
-          const SizedBox(height: 6),
+          SizedBox(height: 6),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -168,7 +168,7 @@ class KraAssignmentCard extends StatelessWidget {
                   children: [
                     Text(
                       kra.name,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w800,
                         color: AppColors.title,
@@ -206,7 +206,7 @@ class KraAssignmentCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 14),
+          SizedBox(height: 14),
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(12),

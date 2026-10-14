@@ -118,7 +118,7 @@ class _MarkAttendanceScreenState extends ConsumerState<MarkAttendanceScreen> {
         foregroundColor: HomeDashColors.title,
         centerTitle: false,
         titleSpacing: 0,
-        title: const Text(
+        title: Text(
           'Mark Attendance',
           style: TextStyle(
             fontSize: 18,

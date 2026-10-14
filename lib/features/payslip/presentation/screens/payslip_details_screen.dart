@@ -109,7 +109,7 @@ class _PayslipDetailScreenState extends ConsumerState<PayslipDetailScreen> {
 
   Widget _buildBody() {
     if (_loading) {
-      return const Center(child: CircularProgressIndicator());
+      return Center(child: CircularProgressIndicator());
     }
 
     if (_error != null) {
@@ -123,7 +123,7 @@ class _PayslipDetailScreenState extends ConsumerState<PayslipDetailScreen> {
                 Text(
                   _error!,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: AppColors.muted,
                     height: 1.4,
                   ),

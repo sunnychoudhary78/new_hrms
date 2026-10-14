@@ -39,7 +39,7 @@ class StatusFilterPills extends StatelessWidget {
             ? const BouncingScrollPhysics()
             : const ClampingScrollPhysics(),
         itemCount: statuses.length,
-        separatorBuilder: (_, __) => const SizedBox(width: AppSpacing.sm),
+        separatorBuilder: (_, __) => SizedBox(width: AppSpacing.sm),
         itemBuilder: (context, index) {
           final s = statuses[index];
           final active = s == selected;

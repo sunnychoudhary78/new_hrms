@@ -56,11 +56,11 @@ class RequestCard extends StatelessWidget {
             ],
           ),
 
-          const SizedBox(height: AppSpacing.md),
+          SizedBox(height: AppSpacing.md),
 
           UserCell(name: item.userName, image: item.userImage),
 
-          const SizedBox(height: AppSpacing.sm),
+          SizedBox(height: AppSpacing.sm),
 
           Text(
             item.reason ?? "—",
@@ -72,7 +72,7 @@ class RequestCard extends StatelessWidget {
             ),
           ),
 
-          const SizedBox(height: AppSpacing.md),
+          SizedBox(height: AppSpacing.md),
 
           if (item.isCorrection || item.isRemote)
             Container(
@@ -86,7 +86,7 @@ class RequestCard extends StatelessWidget {
                 children: [
                   Row(
                     children: [
-                      const Text(
+                      Text(
                         "Original",
                         style: TextStyle(
                           color: AppColors.muted,
@@ -96,17 +96,17 @@ class RequestCard extends StatelessWidget {
                       const Spacer(),
                       Text(
                         "${formatTime(item.originalCheckIn)} → ${formatTime(item.originalCheckOut)}",
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: AppColors.muted,
                           decoration: TextDecoration.lineThrough,
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 6),
+                  SizedBox(height: 6),
                   Row(
                     children: [
-                      const Text(
+                      Text(
                         "Proposed",
                         style: TextStyle(
                           fontWeight: FontWeight.w600,
@@ -117,7 +117,7 @@ class RequestCard extends StatelessWidget {
                       const Spacer(),
                       Text(
                         "${formatTime(item.proposedCheckIn)} → ${formatTime(item.proposedCheckOut)}",
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontWeight: FontWeight.w700,
                           color: AppColors.title,
                         ),

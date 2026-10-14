@@ -374,10 +374,10 @@ class _CreateExpenseScreenState extends ConsumerState<CreateExpenseScreen> {
                               ),
                             ],
                             if (_receiptCount(item) > 0) ...[
-                              const SizedBox(height: 4),
+                              SizedBox(height: 4),
                               Text(
                                 "${_receiptCount(item)} receipt(s) for this line",
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 12,
                                   color: AppColors.primary,
                                   fontWeight: FontWeight.w600,
@@ -391,14 +391,14 @@ class _CreateExpenseScreenState extends ConsumerState<CreateExpenseScreen> {
                           children: [
                             Text(
                               "₹${item['amount']}",
-                              style: const TextStyle(
+                              style: TextStyle(
                                 color: AppColors.primary,
                                 fontWeight: FontWeight.w700,
                               ),
                             ),
                             IconButton(
                               tooltip: "Edit item",
-                              icon: const Icon(Icons.edit_outlined),
+                              icon: Icon(Icons.edit_outlined),
                               color: AppColors.primary,
                               style: IconButton.styleFrom(
                                 splashFactory: isIOS
@@ -429,19 +429,19 @@ class _CreateExpenseScreenState extends ConsumerState<CreateExpenseScreen> {
                       ),
                     );
                   }),
-                const SizedBox(height: 4),
+                SizedBox(height: 4),
                 PremiumCard(
                   padding: const EdgeInsets.all(12),
                   child: Row(
                     children: [
-                      const Icon(Icons.attach_file, color: AppColors.primary),
-                      const SizedBox(width: 8),
+                      Icon(Icons.attach_file, color: AppColors.primary),
+                      SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           selectedFile == null
                               ? "Optional: extra receipt added to the first line"
                               : "Extra receipt will upload with the first line",
-                          style: const TextStyle(color: AppColors.muted),
+                          style: TextStyle(color: AppColors.muted),
                         ),
                       ),
                       TextButton(

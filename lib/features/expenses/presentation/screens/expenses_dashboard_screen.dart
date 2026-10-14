@@ -32,7 +32,7 @@ class _ExpensesDashboardScreenState
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'Status',
           style: TextStyle(
             fontWeight: FontWeight.w700,
@@ -158,7 +158,7 @@ class _ExpensesDashboardScreenState
                         value: claimCount.toString(),
                       ),
                     ),
-                    const SizedBox(width: 10),
+                    SizedBox(width: 10),
                     Expanded(
                       child: _MetricCard(
                         title: "Total amount",
@@ -167,10 +167,10 @@ class _ExpensesDashboardScreenState
                     ),
                   ],
                 ),
-                const SizedBox(height: 6),
+                SizedBox(height: 6),
                 Text(
                   'Showing: $statusFilter',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
                     color: AppColors.muted,
                     fontWeight: FontWeight.w500,
@@ -217,12 +217,12 @@ class _ExpensesDashboardScreenState
                   borderRadius: BorderRadius.circular(AppRadius.md),
                   color: AppColors.iconBg,
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.receipt_long_outlined,
                   color: AppColors.primary,
                 ),
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -231,28 +231,28 @@ class _ExpensesDashboardScreenState
                       expense.title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontWeight: FontWeight.w700,
                         fontSize: 15,
                         color: AppColors.title,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    SizedBox(height: 4),
                     Text(
                       expense.employeeName?.trim().isNotEmpty == true
                           ? expense.employeeName!
                           : "Employee",
-                      style: const TextStyle(color: AppColors.muted),
+                      style: TextStyle(color: AppColors.muted),
                     ),
-                    const SizedBox(height: 6),
+                    SizedBox(height: 6),
                     _StatusChip(status: expense.status),
                   ],
                 ),
               ),
-              const SizedBox(width: 10),
+              SizedBox(width: 10),
               Text(
                 "₹${expense.totalAmount.toStringAsFixed(0)}",
-                style: const TextStyle(
+                style: TextStyle(
                   fontWeight: FontWeight.w800,
                   color: AppColors.primary,
                   fontSize: 15,
@@ -280,11 +280,11 @@ class _MetricCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: const TextStyle(color: AppColors.muted)),
-          const SizedBox(height: 6),
+          Text(title, style: TextStyle(color: AppColors.muted)),
+          SizedBox(height: 6),
           Text(
             value,
-            style: const TextStyle(
+            style: TextStyle(
               fontWeight: FontWeight.w800,
               color: AppColors.primary,
               fontSize: 18,

@@ -70,7 +70,7 @@ class CurvedProfileHeader extends StatelessWidget {
                         border: Border.all(color: AppColors.border),
                         boxShadow: AppColors.cardShadow,
                       ),
-                      child: const Icon(
+                      child: Icon(
                         Icons.edit_rounded,
                         size: 16,
                         color: AppColors.primary,
@@ -79,17 +79,17 @@ class CurvedProfileHeader extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: AppSpacing.sm + 6),
+              SizedBox(height: AppSpacing.sm + 6),
               Text(
                 name,
-                style: const TextStyle(
+                style: TextStyle(
                   color: AppColors.title,
                   fontSize: 22,
                   fontWeight: FontWeight.w700,
                   letterSpacing: -.3,
                 ),
               ),
-              const SizedBox(height: AppSpacing.xs),
+              SizedBox(height: AppSpacing.xs),
               Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: AppSpacing.sm + 4,
@@ -102,7 +102,7 @@ class CurvedProfileHeader extends StatelessWidget {
                 ),
                 child: Text(
                   empId,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: AppColors.muted,
                     fontSize: 12,
                     fontWeight: FontWeight.w600,

@@ -28,11 +28,11 @@ class ProfileDetailsCard extends StatelessWidget {
               ),
               title: Text(
                 d.$1,
-                style: const TextStyle(fontSize: 13, color: AppColors.muted),
+                style: TextStyle(fontSize: 13, color: AppColors.muted),
               ),
               subtitle: Text(
                 d.$2,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w600,
                   color: AppColors.title,

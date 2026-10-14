@@ -211,12 +211,12 @@ class _MyExpensesScreenState extends ConsumerState<MyExpensesScreen> {
                 borderRadius: BorderRadius.circular(AppRadius.md),
                 color: AppColors.iconBg,
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.payments_outlined,
                 color: AppColors.primary,
               ),
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -225,7 +225,7 @@ class _MyExpensesScreenState extends ConsumerState<MyExpensesScreen> {
                     exp.title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontWeight: FontWeight.w700,
                       fontSize: 15,
                       color: AppColors.title,
@@ -257,7 +257,7 @@ class _MyExpensesScreenState extends ConsumerState<MyExpensesScreen> {
               ),
             Text(
               "₹${exp.totalAmount.toStringAsFixed(0)}",
-              style: const TextStyle(
+              style: TextStyle(
                 fontWeight: FontWeight.w800,
                 color: AppColors.primary,
                 fontSize: 15,

@@ -67,11 +67,11 @@ class _KraCyclesTabState extends ConsumerState<KraCyclesTab> {
                       fillColor: AppColors.bg,
                       border: OutlineInputBorder(
                         borderRadius: fieldRadius,
-                        borderSide: const BorderSide(color: AppColors.border),
+                        borderSide: BorderSide(color: AppColors.border),
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: fieldRadius,
-                        borderSide: const BorderSide(color: AppColors.border),
+                        borderSide: BorderSide(color: AppColors.border),
                       ),
                     ),
                   items: List.generate(
@@ -82,7 +82,7 @@ class _KraCyclesTabState extends ConsumerState<KraCyclesTab> {
                   onChanged: (v) => setState(() => _month = v ?? _month),
                 ),
               ),
-              const SizedBox(width: 10),
+              SizedBox(width: 10),
                 Expanded(
                   child: TextFormField(
                     initialValue: _year.toString(),
@@ -92,11 +92,11 @@ class _KraCyclesTabState extends ConsumerState<KraCyclesTab> {
                       fillColor: AppColors.bg,
                       border: OutlineInputBorder(
                         borderRadius: fieldRadius,
-                        borderSide: const BorderSide(color: AppColors.border),
+                        borderSide: BorderSide(color: AppColors.border),
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: fieldRadius,
-                        borderSide: const BorderSide(color: AppColors.border),
+                        borderSide: BorderSide(color: AppColors.border),
                       ),
                     ),
                     keyboardType: TextInputType.number,
@@ -142,27 +142,27 @@ class _KraCyclesTabState extends ConsumerState<KraCyclesTab> {
                               borderRadius:
                                   BorderRadius.circular(AppRadius.sm),
                             ),
-                            child: const Icon(
+                            child: Icon(
                               Icons.event_available,
                               color: AppColors.heroStart,
                             ),
                           ),
-                          const SizedBox(width: AppSpacing.md),
+                          SizedBox(width: AppSpacing.md),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
                                   cycle.label,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontWeight: FontWeight.w700,
                                     color: AppColors.title,
                                   ),
                                 ),
-                                const SizedBox(height: 2),
+                                SizedBox(height: 2),
                                 Text(
                                   cycle.status,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 12,
                                     color: AppColors.muted,
                                   ),

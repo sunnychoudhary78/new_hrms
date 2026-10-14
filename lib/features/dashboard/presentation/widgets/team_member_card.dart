@@ -34,7 +34,7 @@ class TeamMemberCard extends StatelessWidget {
               Row(
                 children: [
                   _buildAvatar(context),
-                  const SizedBox(width: 14),
+                  SizedBox(width: 14),
 
                   Expanded(
                     child: Column(
@@ -42,16 +42,16 @@ class TeamMemberCard extends StatelessWidget {
                       children: [
                         Text(
                           employee.name,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontWeight: FontWeight.w600,
                             fontSize: 15,
                             color: AppColors.title,
                           ),
                         ),
-                        const SizedBox(height: 4),
+                        SizedBox(height: 4),
                         Text(
                           employee.employeeId,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 12,
                             color: AppColors.muted,
                           ),
@@ -227,7 +227,7 @@ class TeamMemberCard extends StatelessWidget {
           "Working Hours Completion",
           style: TextStyle(fontSize: 10, color: scheme.onSurfaceVariant),
         ),
-        const SizedBox(height: 6),
+        SizedBox(height: 6),
         ClipRRect(
           borderRadius: BorderRadius.circular(8),
           child: LinearProgressIndicator(

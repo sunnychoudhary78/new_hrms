@@ -198,7 +198,7 @@ class _PolicyCard extends StatelessWidget {
         ),
         title: Text(
           policy.title,
-          style: const TextStyle(
+          style: TextStyle(
             fontWeight: FontWeight.w700,
             color: AppColors.title,
           ),
@@ -207,10 +207,10 @@ class _PolicyCard extends StatelessWidget {
           padding: const EdgeInsets.only(top: 4),
           child: Text(
             meta.isEmpty ? (policy.originalName ?? 'PDF document') : meta,
-            style: const TextStyle(color: AppColors.muted),
+            style: TextStyle(color: AppColors.muted),
           ),
         ),
-        trailing: const Icon(
+        trailing: Icon(
           Icons.open_in_new_rounded,
           color: AppColors.primary,
         ),
@@ -282,20 +282,20 @@ class _StateCard extends StatelessWidget {
                 backgroundColor: AppColors.iconBg,
                 iconColor: AppColors.primary,
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               Text(
                 title,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
                   color: AppColors.title,
                 ),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 6),
+              SizedBox(height: 6),
               Text(
                 message,
-                style: const TextStyle(color: AppColors.muted),
+                style: TextStyle(color: AppColors.muted),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 14),
