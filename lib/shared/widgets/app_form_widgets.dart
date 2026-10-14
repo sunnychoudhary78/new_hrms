@@ -151,6 +151,7 @@ class AppStatusPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = AppColors.statusColor(label);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
       padding: const EdgeInsets.symmetric(
@@ -158,14 +159,16 @@ class AppStatusPill extends StatelessWidget {
         vertical: 5,
       ),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
+        color: isDark ? color : color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(AppRadius.pill),
-        border: Border.all(color: color.withValues(alpha: 0.35)),
+        border: Border.all(
+          color: color.withValues(alpha: isDark ? 0.0 : 0.35),
+        ),
       ),
       child: Text(
         label.toUpperCase(),
         style: TextStyle(
-          color: color,
+          color: isDark ? Colors.white : color,
           fontSize: 11,
           fontWeight: FontWeight.w700,
           letterSpacing: 0.3,

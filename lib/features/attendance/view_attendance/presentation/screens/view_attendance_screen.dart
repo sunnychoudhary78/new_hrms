@@ -143,15 +143,16 @@ class _ViewAttendanceScreenState extends ConsumerState<ViewAttendanceScreen> {
   Widget build(BuildContext context) {
     final async = ref.watch(viewAttendanceProvider);
     final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
+    final dash = HomeDashColors.of(context);
 
     return Scaffold(
-      backgroundColor: HomeDashColors.bg,
+      backgroundColor: dash.bg,
       drawer: const AppDrawer(),
       appBar: AppBar(
         elevation: 0,
-        backgroundColor: HomeDashColors.bg,
+        backgroundColor: dash.bg,
         surfaceTintColor: Colors.transparent,
-        foregroundColor: HomeDashColors.title,
+        foregroundColor: dash.title,
         centerTitle: false,
         titleSpacing: 0,
         title: Text(
@@ -159,7 +160,7 @@ class _ViewAttendanceScreenState extends ConsumerState<ViewAttendanceScreen> {
           style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.w800,
-            color: HomeDashColors.title,
+            color: dash.title,
           ),
         ),
         actions: [
@@ -225,25 +226,32 @@ class _ViewAttendanceScreenState extends ConsumerState<ViewAttendanceScreen> {
                 children: [
                   const ViewAttendanceHeader(),
                   SizedBox(height: 14),
-                  Container(
+                  Builder(
+                    builder: (context) {
+                      final dash = HomeDashColors.of(context);
+                      final scheme = Theme.of(context).colorScheme;
+                      return Container(
                     width: double.infinity,
                     padding: const EdgeInsets.fromLTRB(12, 14, 12, 12),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: dash.card,
                       borderRadius: BorderRadius.circular(22),
-                      boxShadow: HomeDashColors.cardShadow,
+                      border: Border.all(
+                        color: scheme.outline.withValues(alpha: 0.45),
+                      ),
+                      boxShadow: dash.cardShadow,
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Padding(
-                          padding: EdgeInsets.fromLTRB(4, 0, 4, 8),
+                          padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
                           child: Text(
                             'Attendance Calendar',
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w800,
-                              color: HomeDashColors.title,
+                              color: dash.title,
                             ),
                           ),
                         ),
@@ -302,6 +310,8 @@ class _ViewAttendanceScreenState extends ConsumerState<ViewAttendanceScreen> {
                         ),
                       ],
                     ),
+                      );
+                    },
                   ),
                   const SizedBox(height: 14),
                   ViewAttendanceStatsRow(

@@ -41,12 +41,12 @@ class _MyCorrectionCardState extends State<MyCorrectionCard> {
   Color _statusColor(ColorScheme scheme) {
     switch (widget.request.status) {
       case 'APPROVED':
-        return scheme.primary;
+        return const Color(0xFF22C55E);
       case 'REJECTED':
         return scheme.error;
       case 'PENDING':
       default:
-        return scheme.tertiary;
+        return const Color(0xFFF59E0B);
     }
   }
 
@@ -135,21 +135,21 @@ class _MyCorrectionCardState extends State<MyCorrectionCard> {
                     ),
                   ),
 
-                  /// Status Badge
+                  /// Status Badge — solid fill so label stays readable in dark mode
                   Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: AppSpacing.sm + 2,
                       vertical: 6,
                     ),
                     decoration: BoxDecoration(
-                      color: statusColor.withOpacity(0.12),
+                      color: statusColor,
                       borderRadius: BorderRadius.circular(AppRadius.pill),
                     ),
                     child: Text(
                       req.status,
                       style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                        color: statusColor,
-                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                   ),

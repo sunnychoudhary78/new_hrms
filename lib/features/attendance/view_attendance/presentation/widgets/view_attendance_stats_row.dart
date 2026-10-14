@@ -91,13 +91,18 @@ class ViewAttendanceStatsRow extends StatelessWidget {
               child: InkWell(
                 onTap: onRequestCorrection,
                 borderRadius: BorderRadius.circular(20),
-                child: Ink(
+                child: Builder(
+                  builder: (context) {
+                    final dash = HomeDashColors.of(context);
+                    return Ink(
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFEFF6FF),
+                    color: dash.softBlue,
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: const Color(0xFFBFDBFE)),
-                    boxShadow: HomeDashColors.cardShadow,
+                    border: Border.all(
+                      color: dash.accentBlue.withValues(alpha: 0.35),
+                    ),
+                    boxShadow: dash.cardShadow,
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -108,20 +113,20 @@ class ViewAttendanceStatsRow extends StatelessWidget {
                             width: 34,
                             height: 34,
                             decoration: BoxDecoration(
-                              color: Colors.white,
+                              color: dash.card,
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Icon(
                               Icons.description_outlined,
                               size: 18,
-                              color: HomeDashColors.accentBlue,
+                              color: dash.accentBlue,
                             ),
                           ),
                           const Spacer(),
                           Icon(
                             Icons.chevron_right_rounded,
                             size: 18,
-                            color: HomeDashColors.muted.withValues(alpha: 0.5),
+                            color: dash.muted.withValues(alpha: 0.5),
                           ),
                         ],
                       ),
@@ -131,11 +136,11 @@ class ViewAttendanceStatsRow extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w800,
-                          color: HomeDashColors.title,
+                          color: dash.title,
                           height: 1.25,
                         ),
                       ),
-                      SizedBox(height: 4),
+                      const SizedBox(height: 4),
                       Text(
                         'Fix attendance errors',
                         maxLines: 1,
@@ -143,11 +148,13 @@ class ViewAttendanceStatsRow extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w500,
-                          color: HomeDashColors.muted.withValues(alpha: 0.9),
+                          color: dash.muted,
                         ),
                       ),
                     ],
                   ),
+                );
+                  },
                 ),
               ),
             ),

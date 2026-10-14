@@ -107,15 +107,16 @@ class _MarkAttendanceScreenState extends ConsumerState<MarkAttendanceScreen> {
     final attendanceAsync = ref.watch(markAttendanceProvider);
     final shift = ref.watch(effectiveShiftProvider).asData?.value;
     final dayName = DateFormat('EEEE').format(now);
+    final dash = HomeDashColors.of(context);
 
     return Scaffold(
-      backgroundColor: HomeDashColors.bg,
+      backgroundColor: dash.bg,
       drawer: const AppDrawer(),
       appBar: AppBar(
         elevation: 0,
-        backgroundColor: HomeDashColors.bg,
+        backgroundColor: dash.bg,
         surfaceTintColor: Colors.transparent,
-        foregroundColor: HomeDashColors.title,
+        foregroundColor: dash.title,
         centerTitle: false,
         titleSpacing: 0,
         title: Text(
@@ -123,7 +124,7 @@ class _MarkAttendanceScreenState extends ConsumerState<MarkAttendanceScreen> {
           style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.w800,
-            color: HomeDashColors.title,
+            color: dash.title,
           ),
         ),
         actions: [

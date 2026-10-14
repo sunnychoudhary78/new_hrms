@@ -88,10 +88,15 @@ class AttendanceActionsSection extends ConsumerWidget {
               width: double.infinity,
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: HomeDashColors.of(context).card,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
-                boxShadow: HomeDashColors.cardShadow,
+                border: Border.all(
+                  color: Theme.of(context)
+                      .colorScheme
+                      .outline
+                      .withValues(alpha: 0.45),
+                ),
+                boxShadow: HomeDashColors.of(context).cardShadow,
               ),
               child: Row(
                 children: [
@@ -99,16 +104,16 @@ class AttendanceActionsSection extends ConsumerWidget {
                     width: 38,
                     height: 38,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF1F5F9),
+                      color: Theme.of(context).colorScheme.surfaceContainerLow,
                       borderRadius: BorderRadius.circular(11),
                     ),
                     child: Icon(
                       Icons.wifi_tethering_rounded,
                       size: 20,
-                      color: Color(0xFF64748B),
+                      color: HomeDashColors.of(context).muted,
                     ),
                   ),
-                  SizedBox(width: 12),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: Text(
                       hasOpenSession
@@ -117,13 +122,15 @@ class AttendanceActionsSection extends ConsumerWidget {
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
-                        color: HomeDashColors.title,
+                        color: HomeDashColors.of(context).title,
                       ),
                     ),
                   ),
                   Icon(
                     Icons.chevron_right_rounded,
-                    color: HomeDashColors.muted.withValues(alpha: 0.7),
+                    color: HomeDashColors.of(context)
+                        .muted
+                        .withValues(alpha: 0.7),
                   ),
                 ],
               ),
@@ -131,25 +138,32 @@ class AttendanceActionsSection extends ConsumerWidget {
           ),
         ),
         if (isRemoteMode)
-          Container(
-            margin: const EdgeInsets.only(top: 10),
-            width: double.infinity,
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: const Color(0xFFEFF6FF),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFFBFDBFE)),
-            ),
-            child: Text(
-              hasOpenSession
-                  ? 'Remote check-out enabled'
-                  : 'Remote check-in enabled',
-              style: TextStyle(
-                color: HomeDashColors.accentBlue,
-                fontWeight: FontWeight.w700,
-                fontSize: 12,
-              ),
-            ),
+          Builder(
+            builder: (context) {
+              final dash = HomeDashColors.of(context);
+              return Container(
+                margin: const EdgeInsets.only(top: 10),
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: dash.softBlue,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: dash.accentBlue.withValues(alpha: 0.35),
+                  ),
+                ),
+                child: Text(
+                  hasOpenSession
+                      ? 'Remote check-out enabled'
+                      : 'Remote check-in enabled',
+                  style: TextStyle(
+                    color: dash.accentBlue,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 12,
+                  ),
+                ),
+              );
+            },
           ),
       ],
     );
@@ -273,13 +287,15 @@ class _TimeInfoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final dash = HomeDashColors.of(context);
+    final scheme = Theme.of(context).colorScheme;
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: dash.card,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-        boxShadow: HomeDashColors.cardShadow,
+        border: Border.all(color: scheme.outline.withValues(alpha: 0.45)),
+        boxShadow: dash.cardShadow,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -290,10 +306,10 @@ class _TimeInfoCard extends StatelessWidget {
                 width: 34,
                 height: 34,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF1F5F9),
+                  color: scheme.surfaceContainerLow,
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Icon(icon, size: 18, color: const Color(0xFF64748B)),
+                child: Icon(icon, size: 18, color: dash.muted),
               ),
               const Spacer(),
               Container(
@@ -306,31 +322,31 @@ class _TimeInfoCard extends StatelessWidget {
               ),
             ],
           ),
-          SizedBox(height: 12),
+          const SizedBox(height: 12),
           Text(
             title,
             style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w600,
-              color: HomeDashColors.muted,
+              color: dash.muted,
             ),
           ),
-          SizedBox(height: 4),
+          const SizedBox(height: 4),
           Text(
             time,
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w800,
-              color: HomeDashColors.title,
+              color: dash.title,
             ),
           ),
-          SizedBox(height: 2),
+          const SizedBox(height: 2),
           Text(
             detail,
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w500,
-              color: HomeDashColors.muted.withValues(alpha: 0.9),
+              color: dash.muted,
             ),
           ),
         ],

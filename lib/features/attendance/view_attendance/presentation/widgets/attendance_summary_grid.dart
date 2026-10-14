@@ -19,6 +19,7 @@ class AttendanceSummaryGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final dash = HomeDashColors.of(context);
     final items = [
       _StatItem(
         keyName: 'present',
@@ -26,7 +27,7 @@ class AttendanceSummaryGrid extends StatelessWidget {
         value: _formatNumber(summary.workingDays),
         icon: Icons.check_circle_rounded,
         accent: HomeDashColors.accentGreen,
-        soft: HomeDashColors.softGreen,
+        soft: dash.softGreen,
       ),
       _StatItem(
         keyName: 'late',
@@ -34,7 +35,7 @@ class AttendanceSummaryGrid extends StatelessWidget {
         value: '${summary.lateDays}',
         icon: Icons.schedule_rounded,
         accent: HomeDashColors.accentOrange,
-        soft: HomeDashColors.softOrange,
+        soft: dash.softOrange,
       ),
       _StatItem(
         keyName: 'absent',
@@ -42,7 +43,7 @@ class AttendanceSummaryGrid extends StatelessWidget {
         value: _formatNumber(summary.absentDays),
         icon: Icons.cancel_rounded,
         accent: HomeDashColors.accentRed,
-        soft: const Color(0xFFFFE4E6),
+        soft: HomeDashColors.accentRed.withValues(alpha: dash.isDark ? 0.22 : 0.12),
       ),
       _StatItem(
         keyName: 'leave',
@@ -50,15 +51,15 @@ class AttendanceSummaryGrid extends StatelessWidget {
         value: _formatNumber(summary.totalLeaves),
         icon: Icons.beach_access_rounded,
         accent: const Color(0xFF8B5CF6),
-        soft: HomeDashColors.softPurple,
+        soft: dash.softPurple,
       ),
       _StatItem(
         keyName: 'holiday',
         title: 'Holiday',
         value: '${summary.totalHolidays}',
         icon: Icons.celebration_rounded,
-        accent: HomeDashColors.accentBlue,
-        soft: HomeDashColors.softBlue,
+        accent: dash.accentBlue,
+        soft: dash.softBlue,
       ),
       _StatItem(
         keyName: 'weekoff',
@@ -66,7 +67,7 @@ class AttendanceSummaryGrid extends StatelessWidget {
         value: '${summary.totalWeekoffs}',
         icon: Icons.weekend_rounded,
         accent: const Color(0xFF6366F1),
-        soft: const Color(0xFFE0E7FF),
+        soft: const Color(0xFF6366F1).withValues(alpha: dash.isDark ? 0.22 : 0.12),
       ),
     ];
 
@@ -129,6 +130,8 @@ class _PillStatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final dash = HomeDashColors.of(context);
+    final scheme = Theme.of(context).colorScheme;
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -137,10 +140,10 @@ class _PillStatCard extends StatelessWidget {
         child: Ink(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: dash.card,
             borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: const Color(0xFFE2E8F0)),
-            boxShadow: HomeDashColors.cardShadow,
+            border: Border.all(color: scheme.outline.withValues(alpha: 0.45)),
+            boxShadow: dash.cardShadow,
           ),
           child: Row(
             children: [
@@ -153,7 +156,7 @@ class _PillStatCard extends StatelessWidget {
                 ),
                 child: Icon(item.icon, size: 18, color: item.accent),
               ),
-              SizedBox(width: 10),
+              const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -163,10 +166,10 @@ class _PillStatCard extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
-                        color: HomeDashColors.muted,
+                        color: dash.muted,
                       ),
                     ),
-                    SizedBox(height: 2),
+                    const SizedBox(height: 2),
                     Text(
                       item.value,
                       style: TextStyle(
@@ -181,7 +184,7 @@ class _PillStatCard extends StatelessWidget {
               Icon(
                 Icons.chevron_right_rounded,
                 size: 18,
-                color: HomeDashColors.muted.withValues(alpha: 0.45),
+                color: dash.muted.withValues(alpha: 0.45),
               ),
             ],
           ),

@@ -30,6 +30,7 @@ class StatusFilterPills extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
+    final scheme = Theme.of(context).colorScheme;
 
     return SizedBox(
       height: 44,
@@ -39,7 +40,7 @@ class StatusFilterPills extends StatelessWidget {
             ? const BouncingScrollPhysics()
             : const ClampingScrollPhysics(),
         itemCount: statuses.length,
-        separatorBuilder: (_, __) => SizedBox(width: AppSpacing.sm),
+        separatorBuilder: (_, __) => const SizedBox(width: AppSpacing.sm),
         itemBuilder: (context, index) {
           final s = statuses[index];
           final active = s == selected;
@@ -52,18 +53,19 @@ class StatusFilterPills extends StatelessWidget {
               duration: const Duration(milliseconds: 200),
               padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
               decoration: BoxDecoration(
-                color: active ? accent : AppColors.card,
+                color: active ? accent : scheme.surface,
                 borderRadius: BorderRadius.circular(AppRadius.pill),
                 border: Border.all(
-                  color: active ? accent : AppColors.border,
+                  color: active
+                      ? accent
+                      : scheme.outline.withValues(alpha: 0.55),
                 ),
-                boxShadow: active ? null : AppColors.cardShadow,
               ),
               alignment: Alignment.center,
               child: Text(
                 s,
                 style: TextStyle(
-                  color: active ? Colors.white : AppColors.muted,
+                  color: active ? Colors.white : scheme.onSurfaceVariant,
                   fontWeight: FontWeight.w600,
                   fontSize: 13,
                 ),

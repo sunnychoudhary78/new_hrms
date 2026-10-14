@@ -27,19 +27,22 @@ class MarkAttendancePunchHero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final dash = HomeDashColors.of(context);
+    final scheme = Theme.of(context).colorScheme;
     final punchLabel = isCheckedIn ? 'Punch Out' : 'Punch In';
     // Punch In = green, Punch Out = red
     final colors = isCheckedIn
-        ? [Color(0xFFEF4444), Color(0xFFDC2626)]
-        : [Color(0xFF22C55E), Color(0xFF16A34A)];
+        ? const [Color(0xFFEF4444), Color(0xFFDC2626)]
+        : const [Color(0xFF22C55E), Color(0xFF16A34A)];
 
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(18, 20, 18, 20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: dash.card,
         borderRadius: BorderRadius.circular(24),
-        boxShadow: HomeDashColors.cardShadow,
+        border: Border.all(color: scheme.outline.withValues(alpha: 0.45)),
+        boxShadow: dash.cardShadow,
       ),
       child: Column(
         children: [
@@ -49,7 +52,7 @@ class MarkAttendancePunchHero extends StatelessWidget {
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w800,
-              color: HomeDashColors.title,
+              color: dash.title,
             ),
           ),
           const SizedBox(height: 20),
@@ -124,14 +127,15 @@ class MarkAttendancePunchHero extends StatelessWidget {
               ),
             ),
           ),
-          SizedBox(height: 16),
+          const SizedBox(height: 16),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: isCheckedIn
-                  ? HomeDashColors.softGreen
-                  : const Color(0xFFF1F5F9),
+              color: isCheckedIn ? dash.softGreen : scheme.surfaceContainerLow,
               borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: scheme.outline.withValues(alpha: 0.35),
+              ),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -143,10 +147,10 @@ class MarkAttendancePunchHero extends StatelessWidget {
                     shape: BoxShape.circle,
                     color: isCheckedIn
                         ? HomeDashColors.accentGreen
-                        : HomeDashColors.muted,
+                        : dash.muted,
                   ),
                 ),
-                SizedBox(width: 8),
+                const SizedBox(width: 8),
                 Text(
                   isCheckedIn ? 'Punched in' : 'Not punched in',
                   style: TextStyle(
@@ -154,7 +158,7 @@ class MarkAttendancePunchHero extends StatelessWidget {
                     fontWeight: FontWeight.w700,
                     color: isCheckedIn
                         ? HomeDashColors.accentGreen
-                        : HomeDashColors.muted,
+                        : dash.muted,
                   ),
                 ),
               ],

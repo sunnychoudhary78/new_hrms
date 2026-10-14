@@ -16,11 +16,10 @@ class LiveClockCard extends StatelessWidget {
     required this.isCheckedIn,
   });
 
-  static const _chipBg = Color(0xFFF8FAFC);
-  static const _chipIcon = Color(0xFF64748B);
-
   @override
   Widget build(BuildContext context) {
+    final dash = HomeDashColors.of(context);
+    final scheme = Theme.of(context).colorScheme;
     final lunch = shift?.lunchDisplay;
     final shiftLabel = shift?.startSubtitle.isNotEmpty == true
         ? shift!.startSubtitle
@@ -30,9 +29,10 @@ class LiveClockCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: dash.card,
         borderRadius: BorderRadius.circular(22),
-        boxShadow: HomeDashColors.cardShadow,
+        border: Border.all(color: scheme.outline.withValues(alpha: 0.45)),
+        boxShadow: dash.cardShadow,
       ),
       child: Column(
         children: [
@@ -70,23 +70,23 @@ class LiveClockCard extends StatelessWidget {
                 width: 28,
                 height: 28,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF1F5F9),
+                  color: scheme.surfaceContainerLow,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(
                   Icons.sync_rounded,
                   size: 16,
-                  color: _chipIcon,
+                  color: dash.muted,
                 ),
               ),
-              SizedBox(width: 8),
+              const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   shiftLabel,
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
-                    color: HomeDashColors.title,
+                    color: dash.title,
                   ),
                 ),
               ),
@@ -96,30 +96,30 @@ class LiveClockCard extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w800,
-                    color: HomeDashColors.accentBlue,
+                    color: dash.accentBlue,
                   ),
                 ),
-                SizedBox(width: 6),
+                const SizedBox(width: 6),
                 Text(
                   '${(progress * 100).clamp(0, 100).toStringAsFixed(0)}%',
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
-                    color: HomeDashColors.muted,
+                    color: dash.muted,
                   ),
                 ),
               ],
             ],
           ),
           if (isCheckedIn) ...[
-            SizedBox(height: 10),
+            const SizedBox(height: 10),
             ClipRRect(
               borderRadius: BorderRadius.circular(8),
               child: LinearProgressIndicator(
                 value: progress.clamp(0.0, 1.0),
                 minHeight: 7,
-                backgroundColor: const Color(0xFFE2E8F0),
-                color: HomeDashColors.accentBlue,
+                backgroundColor: scheme.surfaceContainerLow,
+                color: dash.accentBlue,
               ),
             ),
           ],
@@ -142,17 +142,20 @@ class _ShiftChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final dash = HomeDashColors.of(context);
+    final scheme = Theme.of(context).colorScheme;
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
       decoration: BoxDecoration(
-        color: LiveClockCard._chipBg,
+        color: scheme.surfaceContainerLow,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(color: scheme.outline.withValues(alpha: 0.55)),
       ),
       child: Column(
         children: [
-          Icon(icon, size: 18, color: LiveClockCard._chipIcon),
-          SizedBox(height: 6),
+          Icon(icon, size: 18, color: dash.muted),
+          const SizedBox(height: 6),
           Text(
             label,
             textAlign: TextAlign.center,
@@ -161,10 +164,10 @@ class _ShiftChip extends StatelessWidget {
             style: TextStyle(
               fontSize: 9,
               fontWeight: FontWeight.w600,
-              color: HomeDashColors.muted.withValues(alpha: 0.95),
+              color: dash.muted,
             ),
           ),
-          SizedBox(height: 3),
+          const SizedBox(height: 3),
           Text(
             value,
             textAlign: TextAlign.center,
@@ -173,7 +176,7 @@ class _ShiftChip extends StatelessWidget {
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w800,
-              color: HomeDashColors.title,
+              color: dash.title,
               height: 1.15,
             ),
           ),

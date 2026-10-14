@@ -122,15 +122,20 @@ class _MyCorrectionsScreenState extends ConsumerState<MyCorrectionsScreen> {
                         ),
                         PopupMenuItem(value: 'ALL', child: Text('All')),
                       ],
-                      child: Container(
+                      child: Builder(
+                        builder: (context) {
+                          final scheme = Theme.of(context).colorScheme;
+                          return Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 12,
                           vertical: 8,
                         ),
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: scheme.surface,
                           borderRadius: BorderRadius.circular(AppRadius.pill),
-                          border: Border.all(color: AppColors.border),
+                          border: Border.all(
+                            color: scheme.outline.withValues(alpha: 0.55),
+                          ),
                           boxShadow: AppColors.cardShadow,
                         ),
                         child: Row(
@@ -139,19 +144,21 @@ class _MyCorrectionsScreenState extends ConsumerState<MyCorrectionsScreen> {
                             Icon(
                               Icons.filter_list_rounded,
                               size: 18,
-                              color: AppColors.primary,
+                              color: scheme.primary,
                             ),
-                            SizedBox(width: 6),
+                            const SizedBox(width: 6),
                             Text(
                               _prettyFilter(state.statusFilter),
                               style: TextStyle(
                                 fontWeight: FontWeight.w700,
                                 fontSize: 12,
-                                color: AppColors.title,
+                                color: scheme.onSurface,
                               ),
                             ),
                           ],
                         ),
+                      );
+                        },
                       ),
                     ),
                   ],
