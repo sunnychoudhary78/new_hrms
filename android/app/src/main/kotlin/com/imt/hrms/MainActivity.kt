@@ -61,10 +61,20 @@ class MainActivity : FlutterActivity() {
             override fun onListen(arguments: Any?, events: EventChannel.EventSink?) {
                 screenShareSink = events
                 ScreenShareHub.onFrame = { frame ->
-                    runOnUiThread { screenShareSink?.success(frame) }
+                    runOnUiThread {
+                        try {
+                            screenShareSink?.success(frame)
+                        } catch (_: Throwable) {
+                        }
+                    }
                 }
                 ScreenShareHub.onStopped = {
-                    runOnUiThread { screenShareSink?.success("__stopped__") }
+                    runOnUiThread {
+                        try {
+                            screenShareSink?.success("__stopped__")
+                        } catch (_: Throwable) {
+                        }
+                    }
                 }
             }
 
@@ -84,8 +94,13 @@ class MainActivity : FlutterActivity() {
         val callback = pendingScreenResult
         pendingScreenResult = null
         if (resultCode == RESULT_OK && data != null) {
-            ScreenShareService.start(this, resultCode, data)
-            callback?.success(true)
+            try {
+                ScreenShareService.start(this, resultCode, data)
+                callback?.success(true)
+            } catch (_: Throwable) {
+                ScreenShareHub.emitStopped()
+                callback?.success(false)
+            }
         } else {
             callback?.success(false)
             ScreenShareHub.emitStopped()

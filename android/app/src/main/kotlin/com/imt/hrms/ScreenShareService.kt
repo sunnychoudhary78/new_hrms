@@ -22,8 +22,10 @@ import android.os.HandlerThread
 import android.os.IBinder
 import android.os.Looper
 import android.util.Base64
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import java.io.ByteArrayOutputStream
+import java.util.concurrent.atomic.AtomicBoolean
 
 object ScreenShareHub {
     var resultCode: Int = Activity.RESULT_CANCELED
@@ -46,6 +48,12 @@ class ScreenShareService : Service() {
     private var imageReader: ImageReader? = null
     private var handlerThread: HandlerThread? = null
     private var lastFrameAt = 0L
+    private val stopping = AtomicBoolean(false)
+    private val frameBusy = AtomicBoolean(false)
+
+    // Reused across frames to avoid GC / OOM pressure on mid-range devices.
+    private var argbBitmap: Bitmap? = null
+    private val jpegOut = ByteArrayOutputStream(64 * 1024)
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -57,8 +65,15 @@ class ScreenShareService : Service() {
             stopSelf()
             return START_NOT_STICKY
         }
-        startInForeground()
-        startCapture(code, data)
+        try {
+            startInForeground()
+            startCapture(code, data)
+        } catch (t: Throwable) {
+            Log.e(TAG, "Failed to start screen share", t)
+            stopCapture()
+            ScreenShareHub.emitStopped()
+            stopSelf()
+        }
         return START_NOT_STICKY
     }
 
@@ -106,12 +121,12 @@ class ScreenShareService : Service() {
 
     private fun startCapture(code: Int, data: Intent) {
         stopCapture()
+        stopping.set(false)
+
         val thread = HandlerThread("hrms-screen-share")
         thread.start()
         handlerThread = thread
-        val threadLooper = thread.looper
-        val mainLooper = Looper.getMainLooper()
-        val looper = threadLooper ?: mainLooper
+        val looper = thread.looper ?: Looper.getMainLooper()
         if (looper == null) {
             ScreenShareHub.emitStopped()
             stopSelf()
@@ -120,49 +135,73 @@ class ScreenShareService : Service() {
         @Suppress("DEPRECATION")
         val handler = Handler(looper)
 
+        // Capture already scaled — full-res bitmaps OOMed Xiaomi/mid-range devices
+        // after a few seconds ("IMT-HRMS keeps stopping").
         val metrics = resources.displayMetrics
-        val width = metrics.widthPixels.coerceAtLeast(2)
-        val height = metrics.heightPixels.coerceAtLeast(2)
+        val srcW = metrics.widthPixels.coerceAtLeast(2)
+        val srcH = metrics.heightPixels.coerceAtLeast(2)
         val density = metrics.densityDpi
+        val (width, height) = scaledCaptureSize(srcW, srcH)
 
         val reader = ImageReader.newInstance(width, height, PixelFormat.RGBA_8888, 2)
         imageReader = reader
         reader.setOnImageAvailableListener({ source ->
-            val image = source.acquireLatestImage() ?: return@setOnImageAvailableListener
-            try {
-                val now = System.currentTimeMillis()
-                if (now - lastFrameAt < 90) {
-                    return@setOnImageAvailableListener
+            if (stopping.get()) return@setOnImageAvailableListener
+            if (!frameBusy.compareAndSet(false, true)) {
+                // Drop backlog instead of queuing huge frames on the heap.
+                try {
+                    source.acquireLatestImage()?.close()
+                } catch (_: Throwable) {
                 }
+                return@setOnImageAvailableListener
+            }
+            var image: Image? = null
+            try {
+                image = source.acquireLatestImage()
+                if (image == null || stopping.get()) return@setOnImageAvailableListener
+                val now = System.currentTimeMillis()
+                if (now - lastFrameAt < FRAME_INTERVAL_MS) return@setOnImageAvailableListener
                 lastFrameAt = now
                 val jpeg = imageToJpeg(image) ?: return@setOnImageAvailableListener
                 val encoded = Base64.encodeToString(jpeg, Base64.NO_WRAP)
-                val mainLooper = Looper.getMainLooper()
-                if (mainLooper != null) {
-                    Handler(mainLooper).post { ScreenShareHub.emitFrame(encoded) }
+                val mainLooper = Looper.getMainLooper() ?: return@setOnImageAvailableListener
+                Handler(mainLooper).post {
+                    if (!stopping.get()) ScreenShareHub.emitFrame(encoded)
                 }
-            } catch (_: Exception) {
+            } catch (t: Throwable) {
+                Log.w(TAG, "Frame encode failed", t)
             } finally {
-                image.close()
+                try {
+                    image?.close()
+                } catch (_: Throwable) {
+                }
+                frameBusy.set(false)
             }
         }, handler)
 
         val manager = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
-        val mediaProjection = manager.getMediaProjection(code, data) ?: run {
+        val mediaProjection = try {
+            manager.getMediaProjection(code, data)
+        } catch (t: Throwable) {
+            Log.e(TAG, "getMediaProjection failed", t)
+            null
+        }
+        if (mediaProjection == null) {
             ScreenShareHub.emitStopped()
             stopSelf()
             return
         }
         projection = mediaProjection
-        if (Build.VERSION.SDK_INT >= 34) {
-            mediaProjection.registerCallback(object : MediaProjection.Callback() {
-                override fun onStop() {
+        mediaProjection.registerCallback(object : MediaProjection.Callback() {
+            override fun onStop() {
+                // Callback may run off the main thread; tear down safely.
+                Handler(Looper.getMainLooper()).post {
                     stopCapture(stopProjection = false)
                     ScreenShareHub.emitStopped()
                     stopSelf()
                 }
-            }, handler)
-        }
+            }
+        }, handler)
 
         virtualDisplay = mediaProjection.createVirtualDisplay(
             "hrms-screen-share",
@@ -176,58 +215,113 @@ class ScreenShareService : Service() {
         )
     }
 
+    private fun scaledCaptureSize(srcW: Int, srcH: Int): Pair<Int, Int> {
+        val maxEdge = MAX_CAPTURE_EDGE
+        val longest = maxOf(srcW, srcH).toFloat()
+        if (longest <= maxEdge) {
+            return srcW.coerceAtLeast(2) to srcH.coerceAtLeast(2)
+        }
+        val scale = maxEdge / longest
+        val w = (srcW * scale).toInt().coerceAtLeast(2) and 1.inv()
+        val h = (srcH * scale).toInt().coerceAtLeast(2) and 1.inv()
+        return w to h
+    }
+
     private fun imageToJpeg(image: Image): ByteArray? {
         val plane = image.planes.firstOrNull() ?: return null
         val buffer = plane.buffer
         val pixelStride = plane.pixelStride.coerceAtLeast(1)
         val rowStride = plane.rowStride
-        val rowPadding = rowStride - pixelStride * image.width
+        val width = image.width
+        val height = image.height
+        if (width <= 0 || height <= 0) return null
+
+        val rowPadding = (rowStride - pixelStride * width).coerceAtLeast(0)
+        val bitmapWidth = width + rowPadding / pixelStride
+
+        var bitmap = argbBitmap
+        if (bitmap == null ||
+            bitmap.width != bitmapWidth ||
+            bitmap.height != height ||
+            bitmap.isRecycled
+        ) {
+            bitmap?.recycle()
+            bitmap = Bitmap.createBitmap(bitmapWidth, height, Bitmap.Config.ARGB_8888)
+            argbBitmap = bitmap
+        }
         buffer.rewind()
-        val bitmap = Bitmap.createBitmap(
-            image.width + rowPadding / pixelStride,
-            image.height,
-            Bitmap.Config.ARGB_8888,
-        )
         bitmap.copyPixelsFromBuffer(buffer)
-        val cropped = Bitmap.createBitmap(bitmap, 0, 0, image.width, image.height)
-        val targetW = 960
-        val targetH = (targetW.toFloat() / image.width * image.height).toInt().coerceAtLeast(1)
+
+        val cropped = if (bitmapWidth == width) {
+            bitmap
+        } else {
+            Bitmap.createBitmap(bitmap, 0, 0, width, height)
+        }
+
+        val targetW = minOf(width, TARGET_JPEG_WIDTH)
+        val targetH = (targetW.toFloat() / width * height).toInt().coerceAtLeast(1)
         val scaled = if (cropped.width == targetW) {
             cropped
         } else {
             Bitmap.createScaledBitmap(cropped, targetW, targetH, true)
         }
-        val out = ByteArrayOutputStream()
-        scaled.compress(Bitmap.CompressFormat.JPEG, 52, out)
+
+        jpegOut.reset()
+        val ok = scaled.compress(Bitmap.CompressFormat.JPEG, JPEG_QUALITY, jpegOut)
         if (scaled !== cropped) scaled.recycle()
         if (cropped !== bitmap) cropped.recycle()
-        bitmap.recycle()
-        return out.toByteArray()
+        if (!ok) return null
+        return jpegOut.toByteArray()
     }
 
     private fun stopCapture(stopProjection: Boolean = true) {
-        virtualDisplay?.release()
+        stopping.set(true)
+        try {
+            virtualDisplay?.release()
+        } catch (_: Throwable) {
+        }
         virtualDisplay = null
-        imageReader?.close()
+        try {
+            imageReader?.setOnImageAvailableListener(null, null)
+            imageReader?.close()
+        } catch (_: Throwable) {
+        }
         imageReader = null
         val current = projection
         projection = null
         if (stopProjection) {
-            current?.stop()
+            try {
+                current?.stop()
+            } catch (_: Throwable) {
+            }
         }
-        handlerThread?.quitSafely()
+        try {
+            handlerThread?.quitSafely()
+        } catch (_: Throwable) {
+        }
         handlerThread = null
+        try {
+            argbBitmap?.recycle()
+        } catch (_: Throwable) {
+        }
+        argbBitmap = null
         ScreenShareHub.resultCode = Activity.RESULT_CANCELED
         ScreenShareHub.resultData = null
     }
 
     companion object {
+        private const val TAG = "ScreenShareService"
         private const val CHANNEL_ID = "meeting_screen_share"
         private const val NOTIFICATION_ID = 890
+        private const val MAX_CAPTURE_EDGE = 720
+        private const val TARGET_JPEG_WIDTH = 640
+        private const val JPEG_QUALITY = 40
+        private const val FRAME_INTERVAL_MS = 200L
 
         fun start(context: Context, code: Int, data: Intent) {
             ScreenShareHub.resultCode = code
-            ScreenShareHub.resultData = data
+            // Copy — some OEMs invalidate the result Intent after onActivityResult returns.
+            ScreenShareHub.resultData = Intent(data)
             val intent = Intent(context, ScreenShareService::class.java)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 context.startForegroundService(intent)

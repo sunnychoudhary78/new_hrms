@@ -344,6 +344,9 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
   bool _handleExitNavigation(String url) {
     final exit = _isJitsiExitUrl(url) || _roomWasCleared(url);
     if (!exit) return false;
+    // MediaProjection consent pauses the activity; Jitsi may briefly hit an
+    // exit URL. Never tear down the call while screen share is in flight.
+    if (_sharing) return true;
     if (_seenInCall && !_inJoinGrace()) {
       _leaveMeeting();
       return true;
@@ -405,7 +408,7 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
     final value = event?.toString() ?? '';
     if (value == '__stopped__') {
       _controller?.runJavaScript(
-        'window.__hrmsCancelScreenShare&&window.__hrmsCancelScreenShare()',
+        'window.__hrmsOnNativeShareStopped&&window.__hrmsOnNativeShareStopped()',
       );
       if (mounted) setState(() => _sharing = false);
       return;
@@ -414,7 +417,9 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
   }
 
   Future<void> _pushFrame(String b64) async {
-    if (_frameBusy || b64.isEmpty) return;
+    // Guard against bridge OOM — oversized payloads have crashed the process
+    // ("IMT-HRMS keeps stopping") on mid-range Android devices.
+    if (_frameBusy || b64.isEmpty || !_sharing || b64.length > 350000) return;
     final controller = _controller;
     if (controller == null) return;
     _frameBusy = true;
@@ -422,8 +427,10 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
       await controller.runJavaScript(
         "window.__hrmsDrawScreen&&window.__hrmsDrawScreen('$b64')",
       );
-    } catch (_) {}
-    _frameBusy = false;
+    } catch (_) {
+    } finally {
+      _frameBusy = false;
+    }
   }
 
   Future<void> _startNativeShare() async {
@@ -432,10 +439,18 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
     if (mounted) setState(() => _sharing = true);
     try {
       final ok = await _shareChannel.invokeMethod<bool>('start');
-      if (ok == true) return;
+      if (ok == true) {
+        // Permission granted — only now attach the desktop track in Jitsi.
+        // Starting share before the MediaProjection dialog returns pauses the
+        // activity, drops WebRTC, and the leave hook used to kick the sharer.
+        await _controller?.runJavaScript(
+          'window.__hrmsOnNativeShareReady&&window.__hrmsOnNativeShareReady()',
+        );
+        return;
+      }
     } catch (_) {}
     await _controller?.runJavaScript(
-      'window.__hrmsCancelScreenShare&&window.__hrmsCancelScreenShare()',
+      'window.__hrmsOnNativeShareDenied&&window.__hrmsOnNativeShareDenied()',
     );
     if (mounted) setState(() => _sharing = false);
   }
@@ -935,6 +950,7 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
 
   window.__hrmsMarkSharing = function (on) {
     window.__hrmsSharing = !!on;
+    if (!on) window.__hrmsShareStarting = false;
   };
 
   window.__hrmsDrawScreen = function (b64) {
@@ -955,6 +971,7 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
 
   window.__hrmsCancelScreenShare = function () {
     window.__hrmsShareEnding = true;
+    window.__hrmsShareStarting = false;
     var stream = window.__hrmsScreenStream;
     window.__hrmsScreenStream = null;
     window.__hrmsMarkSharing(false);
@@ -962,6 +979,27 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
     stream.getTracks().forEach(function (track) {
       try { track.stop(); } catch (e) {}
     });
+  };
+
+  function stopJitsiScreenShare() {
+    try {
+      if (window.APP && APP.conference && typeof APP.conference.toggleScreenSharing === 'function') {
+        var stop = APP.conference.toggleScreenSharing(false);
+        if (stop && typeof stop.catch === 'function') stop.catch(function () {});
+      }
+    } catch (e) {}
+  }
+
+  window.__hrmsOnNativeShareDenied = function () {
+    window.__hrmsShareStarting = false;
+    window.__hrmsCancelScreenShare();
+    stopJitsiScreenShare();
+  };
+
+  window.__hrmsOnNativeShareStopped = function () {
+    window.__hrmsShareStarting = false;
+    window.__hrmsCancelScreenShare();
+    stopJitsiScreenShare();
   };
 
   window.__hrmsCanvasDisplayMedia = function () {
@@ -978,7 +1016,7 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
       ctx.fillStyle = '#111827';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
     } catch (e) {}
-    var stream = canvas.captureStream(12);
+    var stream = canvas.captureStream(8);
     window.__hrmsScreenStream = stream;
     window.__hrmsShareEnding = false;
     window.__hrmsMarkSharing(true);
@@ -997,7 +1035,6 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
         origStop();
       };
     }
-    try { if (window.HrmsScreenShare) HrmsScreenShare.postMessage('start'); } catch (e) {}
     return Promise.resolve(stream);
   };
 
@@ -1025,22 +1062,10 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
     });
   }
 
-  window.__hrmsStartOrStopShare = function () {
+  function beginJitsiScreenShare() {
     patchDisplayMedia();
     window.__hrmsEnableDesktopShare();
     patchCreateLocalTracks();
-    if (window.__hrmsSharing) {
-      try {
-        if (window.APP && APP.conference && typeof APP.conference.toggleScreenSharing === 'function') {
-          var stop = APP.conference.toggleScreenSharing(false);
-          if (stop && typeof stop.catch === 'function') stop.catch(function () {});
-        }
-      } catch (e) {}
-      window.__hrmsCancelScreenShare();
-      try { if (window.HrmsScreenShare) HrmsScreenShare.postMessage('stop'); } catch (e) {}
-      return;
-    }
-    try { if (window.HrmsScreenShare) HrmsScreenShare.postMessage('start'); } catch (e) {}
     var streamP = window.__hrmsCanvasDisplayMedia();
     var usedToggle = false;
     try {
@@ -1059,6 +1084,40 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
     if (!usedToggle) {
       streamP.then(attachDesktopTrack).catch(function () {});
     }
+  }
+
+  // Called from Flutter only after MediaProjection permission is granted.
+  window.__hrmsOnNativeShareReady = function () {
+    beginJitsiScreenShare();
+  };
+
+  window.__hrmsStartOrStopShare = function () {
+    patchDisplayMedia();
+    window.__hrmsEnableDesktopShare();
+    patchCreateLocalTracks();
+    if (window.__hrmsSharing || window.__hrmsShareStarting) {
+      window.__hrmsShareStarting = false;
+      stopJitsiScreenShare();
+      window.__hrmsCancelScreenShare();
+      try { if (window.HrmsScreenShare) HrmsScreenShare.postMessage('stop'); } catch (e) {}
+      return;
+    }
+    // Request native capture first. Do NOT toggle Jitsi share until Flutter
+    // calls __hrmsOnNativeShareReady — otherwise the consent dialog backgrounds
+    // the WebView and the leave hook disconnects the sharer after a few seconds.
+    window.__hrmsShareStarting = true;
+    if (!window.__hrmsUseCanvasShare) {
+      beginJitsiScreenShare();
+      return;
+    }
+    try {
+      if (window.HrmsScreenShare) {
+        HrmsScreenShare.postMessage('start');
+        return;
+      }
+    } catch (e) {}
+    window.__hrmsShareStarting = false;
+    beginJitsiScreenShare();
   };
 
   function patchDisplayMedia() {
@@ -1224,14 +1283,22 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
 
   // Prosody sets member/owner affiliation while the occupant joins (lobby bypass).
   // That emits CONFERENCE_LEFT and then joins again. Wait before closing HRMS.
-  function scheduleLeft() {
+  // Screen-share MediaProjection consent also pauses the activity and can briefly
+  // drop WebRTC — do not treat that as a real hangup while share is starting.
+  function scheduleLeft(fromHangup) {
     if (!window.__hrmsJoinedSent || window.__hrmsLeftSent) return;
     if (window.__hrmsLeftTimer) clearTimeout(window.__hrmsLeftTimer);
+    var shareBusy = !fromHangup && (window.__hrmsShareStarting || window.__hrmsSharing);
+    var delay = shareBusy ? 12000 : 2500;
     window.__hrmsLeftTimer = setTimeout(function () {
       window.__hrmsLeftTimer = null;
       if (stillInCall()) return;
+      if (!fromHangup && window.__hrmsShareStarting) {
+        scheduleLeft(false);
+        return;
+      }
       notifyLeft();
-    }, 2500);
+    }, delay);
   }
 
   function wrapHangup() {
@@ -1241,7 +1308,7 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
       APP.conference.__hrmsHangupWrapped = true;
       var orig = APP.conference.hangup.bind(APP.conference);
       APP.conference.hangup = function () {
-        scheduleLeft();
+        scheduleLeft(true);
         return orig.apply(APP.conference, arguments);
       };
     } catch (e) {}
@@ -1254,7 +1321,9 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
       if (!room || typeof room.on !== 'function' || room.__hrmsLeftHooked) return;
       if (!window.JitsiMeetJS || !JitsiMeetJS.events || !JitsiMeetJS.events.conference) return;
       room.__hrmsLeftHooked = true;
-      room.on(JitsiMeetJS.events.conference.CONFERENCE_LEFT, scheduleLeft);
+      room.on(JitsiMeetJS.events.conference.CONFERENCE_LEFT, function () {
+        scheduleLeft(false);
+      });
       if (JitsiMeetJS.events.conference.CONFERENCE_JOINED) {
         room.on(JitsiMeetJS.events.conference.CONFERENCE_JOINED, notifyJoined);
       }
@@ -1297,7 +1366,7 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
           notifyLeft();
           return;
         }
-        scheduleLeft();
+        scheduleLeft(true);
       }, true);
     }
   }
@@ -1305,7 +1374,7 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
   function checkWelcomeAfterLeave() {
     if (!window.__hrmsJoinedSent) return;
     var path = (location.pathname || '').toLowerCase();
-    if (path.indexOf('close') !== -1) scheduleLeft();
+    if (path.indexOf('close') !== -1) scheduleLeft(false);
   }
 
   window.__hrmsArmLeaveHook = function () {
