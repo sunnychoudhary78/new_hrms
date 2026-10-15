@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
@@ -42,10 +43,14 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
   bool _seenInCall = false;
   bool _cookiesReady = false;
   bool _refreshingJoin = false;
+  bool _appBackgrounded = false;
+  bool _pendingBackgroundLeave = false;
+  bool _pipMode = false;
   int _joinRefreshes = 0;
   int _exitReloads = 0;
   DateTime? _joinedAt;
   StreamSubscription<dynamic>? _shareFrames;
+  StreamSubscription<bool>? _pipSub;
 
   /// Chrome mobile, without the WebView `wv` token. Jitsi treats `wv` as an
   /// embedded browser and redirects to static/close before config.js runs.
@@ -67,14 +72,26 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
     _shareFrames = const EventChannel('hrms/screen_share_frames')
         .receiveBroadcastStream()
         .listen(_onShareEvent, onError: (_) {});
+    _pipSub = MeetingCallKeepAlive.pipModeChanges.listen(_onPipModeChanged);
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _shareFrames?.cancel();
+    _pipSub?.cancel();
     _controller = null;
     super.dispose();
+  }
+
+  void _onPipModeChanged(bool inPip) {
+    if (!mounted) return;
+    setState(() => _pipMode = inPip);
+    if (inPip) {
+      // PiP window must show the call, not the HRMS home under it.
+      ref.read(meetingSessionProvider.notifier).expand();
+      _kickMedia();
+    }
   }
 
   @override
@@ -94,15 +111,71 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (!ref.read(meetingSessionProvider).isActive) return;
-    if (state == AppLifecycleState.inactive ||
-        state == AppLifecycleState.paused ||
+    if (state == AppLifecycleState.inactive) {
+      // Prepare meeting UI before Android snapshots / auto-enters PiP.
+      _prepareForPip();
+      _onAppBackgrounded();
+      return;
+    }
+    if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.hidden) {
-      _injectKeepAlive();
+      _onAppBackgrounded();
       return;
     }
     if (state == AppLifecycleState.resumed) {
-      _kickMedia();
+      _onAppResumed();
     }
+  }
+
+  Future<void> _prepareForPip() async {
+    if (_sharing || _pipMode) return;
+    if (!_seenInCall) return;
+    if (defaultTargetPlatform != TargetPlatform.android) return;
+    // Expand so Home / gesture leave (auto-enter PiP) captures the call UI,
+    // not the HRMS shell. Actual PiP enter is handled natively.
+    ref.read(meetingSessionProvider.notifier).expand();
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _onAppBackgrounded() async {
+    _appBackgrounded = true;
+    final session = ref.read(meetingSessionProvider);
+    // Keep the microphone/camera FGS alive — OEMs kill WebRTC without it.
+    await MeetingCallKeepAlive.start(title: session.title);
+    await _injectKeepAlive();
+    // While in PiP the activity stays partially visible — don't treat as left.
+    if (!_pipMode) {
+      await _setJsBackgrounded(true);
+    }
+  }
+
+  Future<void> _onAppResumed() async {
+    _appBackgrounded = false;
+    if (_pipMode) {
+      // Still in the floating window — keep the call expanded.
+      return;
+    }
+    await _setJsBackgrounded(false);
+    await _kickMedia();
+    if (_pendingBackgroundLeave) {
+      _pendingBackgroundLeave = false;
+      // Only leave if Jitsi still reports not joined after media kick.
+      await _controller?.runJavaScript(
+        'window.__hrmsCheckStillInCallAfterResume&&window.__hrmsCheckStillInCallAfterResume()',
+      );
+    }
+  }
+
+  Future<void> _setJsBackgrounded(bool backgrounded) async {
+    final controller = _controller;
+    if (controller == null) return;
+    try {
+      await controller.runJavaScript(
+        'window.__hrmsAppBackgrounded = ${backgrounded ? 'true' : 'false'};'
+        'if(!${backgrounded ? 'true' : 'false'} && window.__hrmsLeftTimer){'
+        'clearTimeout(window.__hrmsLeftTimer);window.__hrmsLeftTimer=null;}',
+      );
+    } catch (_) {}
   }
 
   Size _stageSize(MediaQueryData media) {
@@ -156,7 +229,14 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
             _seenInCall = true;
             _joinedAt ??= DateTime.now();
             _joinRefreshes = 0;
+            _pendingBackgroundLeave = false;
           } else if (message.message == 'left') {
+            // Minimizing the app briefly drops WebRTC; ignore leave while
+            // backgrounded and re-check on resume instead of hanging up.
+            if (_appBackgrounded) {
+              _pendingBackgroundLeave = true;
+              return;
+            }
             _leaveMeeting();
           }
         },
@@ -173,6 +253,7 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
             _injectDisplayName();
             _injectRaiseHand();
             _injectScreenShare();
+            _injectVideoPreviewFix();
             _injectLeaveHook();
           },
           onNavigationRequest: (request) {
@@ -231,6 +312,7 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
     await _injectJitsiUiFixes();
     await _injectRaiseHand();
     await _injectScreenShare();
+    await _injectVideoPreviewFix();
     await _injectLeaveHook();
   }
 
@@ -347,6 +429,8 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
     // MediaProjection consent pauses the activity; Jitsi may briefly hit an
     // exit URL. Never tear down the call while screen share is in flight.
     if (_sharing) return true;
+    // Same for home-screen minimize — do not end the meeting from a blip.
+    if (_appBackgrounded) return true;
     if (_seenInCall && !_inJoinGrace()) {
       _leaveMeeting();
       return true;
@@ -401,6 +485,9 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
       _joinRefreshes = 0;
       _refreshingJoin = false;
       _cookiesReady = false;
+      _appBackgrounded = false;
+      _pendingBackgroundLeave = false;
+      _pipMode = false;
     });
   }
 
@@ -419,13 +506,15 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
   Future<void> _pushFrame(String b64) async {
     // Guard against bridge OOM — oversized payloads have crashed the process
     // ("IMT-HRMS keeps stopping") on mid-range Android devices.
-    if (_frameBusy || b64.isEmpty || !_sharing || b64.length > 350000) return;
+    if (_frameBusy || b64.isEmpty || !_sharing || b64.length > 400000) return;
     final controller = _controller;
     if (controller == null) return;
     _frameBusy = true;
     try {
+      // jsonEncode keeps the payload a valid JS string (no quote breakage).
+      final arg = jsonEncode(b64);
       await controller.runJavaScript(
-        "window.__hrmsDrawScreen&&window.__hrmsDrawScreen('$b64')",
+        'window.__hrmsDrawScreen&&window.__hrmsDrawScreen($arg)',
       );
     } catch (_) {
     } finally {
@@ -437,6 +526,7 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
     if (defaultTargetPlatform != TargetPlatform.android) return;
     if (_sharing) return;
     if (mounted) setState(() => _sharing = true);
+    await MeetingCallKeepAlive.setPipEnabled(false);
     try {
       final ok = await _shareChannel.invokeMethod<bool>('start');
       if (ok == true) {
@@ -453,6 +543,9 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
       'window.__hrmsOnNativeShareDenied&&window.__hrmsOnNativeShareDenied()',
     );
     if (mounted) setState(() => _sharing = false);
+    if (ref.read(meetingSessionProvider).isActive) {
+      await MeetingCallKeepAlive.setPipEnabled(true);
+    }
   }
 
   Future<void> _stopNativeShare() async {
@@ -462,6 +555,9 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
       } catch (_) {}
     }
     if (mounted && _sharing) setState(() => _sharing = false);
+    if (ref.read(meetingSessionProvider).isActive) {
+      await MeetingCallKeepAlive.setPipEnabled(true);
+    }
   }
 
   Future<void> _injectLeaveHook() async {
@@ -491,6 +587,14 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
     } catch (_) {}
   }
 
+  Future<void> _injectVideoPreviewFix() async {
+    final controller = _controller;
+    if (controller == null) return;
+    try {
+      await controller.runJavaScript(_jitsiVideoPreviewFixJs);
+    } catch (_) {}
+  }
+
   Future<void> _kickMedia() async {
     final controller = _controller;
     if (controller == null) return;
@@ -498,13 +602,22 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
       await controller.runJavaScript('''
         (function() {
           document.querySelectorAll('video').forEach(function(v) {
-            try { v.play(); } catch (e) {}
+            try {
+              var stream = v.srcObject;
+              var live = stream && stream.getVideoTracks && stream.getVideoTracks().some(function(t) {
+                return t && t.readyState === 'live' && t.enabled !== false;
+              });
+              if (live && v.videoWidth > 0) v.play();
+            } catch (e) {}
           });
+          if (window.__hrmsFixCameraOffAvatars) window.__hrmsFixCameraOffAvatars();
         })();
       ''');
     } catch (_) {}
     await _injectKeepAlive();
     await _injectScreenShare();
+    await _injectVideoPreviewFix();
+    await _injectJitsiUiFixes();
     await _injectLeaveHook();
   }
 
@@ -515,6 +628,47 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
     if (controller == null) return;
     try {
       await controller.runJavaScript(_jitsiIconFixJs);
+      await controller.runJavaScript(_jitsiCameraOffAvatarFixJs);
+      await _injectSafeTopInset();
+    } catch (_) {}
+  }
+
+  /// Push the in-call subject / timer below the OS status bar when the
+  /// WebView is edge-to-edge in fullscreen.
+  Future<void> _injectSafeTopInset() async {
+    final controller = _controller;
+    if (controller == null || !mounted) return;
+    final top = MediaQuery.paddingOf(context).top;
+    final px = top > 0 ? top : 28.0;
+    try {
+      await controller.runJavaScript('''
+(function () {
+  var top = ${px.toStringAsFixed(1)};
+  var css = [
+    '.subject,',
+    '#videoconference-subject,',
+    '.details-container,',
+    '.subject-info-container,',
+    '.filmstrip__toolbar,',
+    '[class*="Subject"] {',
+    '  top: ' + top + 'px !important;',
+    '  margin-top: 0 !important;',
+    '  padding-top: 4px !important;',
+    '}',
+    '.subject-text, .subject-timer, .conference-timer {',
+    '  position: relative;',
+    '  z-index: 2;',
+    '}'
+  ].join('');
+  var style = document.getElementById('hrms-safe-top');
+  if (!style) {
+    style = document.createElement('style');
+    style.id = 'hrms-safe-top';
+    (document.head || document.documentElement).appendChild(style);
+  }
+  style.textContent = css;
+})();
+''');
     } catch (_) {}
   }
 
@@ -651,6 +805,120 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
     setTimeout(wait, 1500);
   }
   wait();
+})();
+''';
+
+  /// After camera on→off, Android WebView leaves a paused <video> with its
+  /// default play glyph. Hide that overlay so Jitsi’s avatar initial shows.
+  static const _jitsiCameraOffAvatarFixJs = r'''
+(function () {
+  if (window.__hrmsCameraOffAvatarReady) {
+    if (window.__hrmsFixCameraOffAvatars) window.__hrmsFixCameraOffAvatars();
+    return;
+  }
+  window.__hrmsCameraOffAvatarReady = true;
+
+  function ensureStyle() {
+    if (document.getElementById('hrms-camera-off-style') || !document.head) return;
+    var style = document.createElement('style');
+    style.id = 'hrms-camera-off-style';
+    style.textContent = [
+      'video::-webkit-media-controls { display: none !important; }',
+      'video::-webkit-media-controls-enclosure { display: none !important; }',
+      'video::-webkit-media-controls-start-playback-button { display: none !important; }',
+      'video::-webkit-media-controls-overlay-play-button { display: none !important; opacity: 0 !important; }',
+      'video::-webkit-media-controls-play-button { display: none !important; }',
+      'video { -webkit-appearance: none; }',
+      'video.hrms-camera-off {',
+      '  opacity: 0 !important;',
+      '  visibility: hidden !important;',
+      '  pointer-events: none !important;',
+      '}'
+    ].join('');
+    document.head.appendChild(style);
+  }
+
+  function hasLiveVideo(el) {
+    try {
+      var stream = el.srcObject;
+      if (!stream || !stream.getVideoTracks) return false;
+      return stream.getVideoTracks().some(function (t) {
+        return t && t.readyState === 'live' && t.enabled !== false;
+      });
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function isScreenShareVideo(el) {
+    try {
+      var stream = el.srcObject;
+      if (!stream || !stream.getVideoTracks) return false;
+      return stream.getVideoTracks().some(function (t) {
+        var label = ((t && t.label) || '').toLowerCase();
+        return label.indexOf('screen') !== -1 || label.indexOf('display') !== -1;
+      });
+    } catch (e) {
+      return false;
+    }
+  }
+
+  window.__hrmsFixCameraOffAvatars = function () {
+    ensureStyle();
+    var nodes = document.querySelectorAll('video');
+    for (var i = 0; i < nodes.length; i++) {
+      var el = nodes[i];
+      try {
+        el.controls = false;
+        el.removeAttribute('controls');
+        el.setAttribute('playsinline', 'true');
+        el.setAttribute('webkit-playsinline', 'true');
+      } catch (e) {}
+      if (isScreenShareVideo(el)) {
+        el.classList.remove('hrms-camera-off');
+        continue;
+      }
+      var live = hasLiveVideo(el);
+      var blank = !live || el.readyState < 2 || el.videoWidth === 0;
+      if (blank) {
+        el.classList.add('hrms-camera-off');
+      } else {
+        el.classList.remove('hrms-camera-off');
+      }
+    }
+  };
+
+  ensureStyle();
+  window.__hrmsFixCameraOffAvatars();
+
+  ['play', 'pause', 'ended', 'emptied', 'loadeddata', 'resize'].forEach(function (evt) {
+    document.addEventListener(evt, function (e) {
+      if (e && e.target && e.target.tagName === 'VIDEO') {
+        window.__hrmsFixCameraOffAvatars();
+      }
+    }, true);
+  });
+
+  if (!window.__hrmsCameraOffObserver && document.documentElement) {
+    window.__hrmsCameraOffObserver = new MutationObserver(function () {
+      if (window.__hrmsCameraOffScan) return;
+      window.__hrmsCameraOffScan = setTimeout(function () {
+        window.__hrmsCameraOffScan = null;
+        window.__hrmsFixCameraOffAvatars();
+      }, 200);
+    });
+    window.__hrmsCameraOffObserver.observe(document.documentElement, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['src', 'style', 'class']
+    });
+  }
+  if (!window.__hrmsCameraOffTimer) {
+    window.__hrmsCameraOffTimer = setInterval(function () {
+      window.__hrmsFixCameraOffAvatars();
+    }, 1000);
+  }
 })();
 ''';
 
@@ -953,25 +1221,82 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
     if (!on) window.__hrmsShareStarting = false;
   };
 
-  window.__hrmsDrawScreen = function (b64) {
+  // Fixed-size canvas must stay in the DOM. Resizing after captureStream()
+  // resets the track and remotes only see a black "X's screen" tile.
+  window.__hrmsEnsureShareCanvas = function () {
     var canvas = window.__hrmsScreenCanvas;
+    if (!canvas) {
+      canvas = document.createElement('canvas');
+      canvas.id = 'hrms-screen-share-canvas';
+      canvas.width = 1280;
+      canvas.height = 720;
+      canvas.setAttribute('width', '1280');
+      canvas.setAttribute('height', '720');
+      canvas.style.cssText = 'position:fixed;left:0;top:0;width:1280px;height:720px;opacity:0.01;pointer-events:none;z-index:-1;';
+      window.__hrmsScreenCanvas = canvas;
+      window.__hrmsScreenCtx = canvas.getContext('2d', { alpha: false });
+    }
+    if (!canvas.isConnected) {
+      var root = document.body || document.documentElement;
+      if (root) root.appendChild(canvas);
+    }
+    return canvas;
+  };
+
+  window.__hrmsRequestShareFrame = function () {
+    try {
+      var stream = window.__hrmsScreenStream;
+      var track = stream && stream.getVideoTracks && stream.getVideoTracks()[0];
+      if (track && typeof track.requestFrame === 'function') track.requestFrame();
+    } catch (e) {}
+  };
+
+  window.__hrmsDrawScreen = function (b64) {
+    var canvas = window.__hrmsEnsureShareCanvas();
     var ctx = window.__hrmsScreenCtx;
     if (!canvas || !ctx || !b64) return;
     var img = window.__hrmsScreenImg || new Image();
     window.__hrmsScreenImg = img;
     img.onload = function () {
-      if (canvas.width !== img.width || canvas.height !== img.height) {
-        canvas.width = img.width;
-        canvas.height = img.height;
-      }
-      ctx.drawImage(img, 0, 0);
+      try {
+        // Do NOT change canvas.width/height here — that kills captureStream.
+        ctx.fillStyle = '#000000';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        var scale = Math.min(canvas.width / img.width, canvas.height / img.height);
+        var w = Math.max(1, img.width * scale);
+        var h = Math.max(1, img.height * scale);
+        var x = (canvas.width - w) / 2;
+        var y = (canvas.height - h) / 2;
+        ctx.drawImage(img, x, y, w, h);
+        window.__hrmsLastShareDrawAt = Date.now();
+        window.__hrmsRequestShareFrame();
+      } catch (e) {}
     };
+    img.onerror = function () {};
     img.src = 'data:image/jpeg;base64,' + b64;
+  };
+
+  window.__hrmsStopSharePump = function () {
+    if (window.__hrmsShareRaf) {
+      try { cancelAnimationFrame(window.__hrmsShareRaf); } catch (e) {}
+      window.__hrmsShareRaf = 0;
+    }
+  };
+
+  window.__hrmsStartSharePump = function () {
+    if (window.__hrmsShareRaf) return;
+    var tick = function () {
+      window.__hrmsShareRaf = requestAnimationFrame(tick);
+      if (!window.__hrmsSharing) return;
+      window.__hrmsRequestShareFrame();
+    };
+    tick();
   };
 
   window.__hrmsCancelScreenShare = function () {
     window.__hrmsShareEnding = true;
     window.__hrmsShareStarting = false;
+    window.__hrmsStopSharePump();
     var stream = window.__hrmsScreenStream;
     window.__hrmsScreenStream = null;
     window.__hrmsMarkSharing(false);
@@ -1006,23 +1331,25 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
     if (window.__hrmsScreenStream && window.__hrmsSharing) {
       return Promise.resolve(window.__hrmsScreenStream);
     }
-    var canvas = window.__hrmsScreenCanvas || document.createElement('canvas');
-    canvas.width = 960;
-    canvas.height = 540;
-    window.__hrmsScreenCanvas = canvas;
-    window.__hrmsScreenCtx = canvas.getContext('2d', { alpha: false });
+    var canvas = window.__hrmsEnsureShareCanvas();
+    var ctx = window.__hrmsScreenCtx;
     try {
-      var ctx = window.__hrmsScreenCtx;
       ctx.fillStyle = '#111827';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#9ca3af';
+      ctx.font = '28px sans-serif';
+      ctx.fillText('Sharing screen…', 48, 64);
     } catch (e) {}
-    var stream = canvas.captureStream(8);
+    // Non-zero fps for Android WebView; requestFrame still called after draws.
+    var stream = canvas.captureStream(12);
     window.__hrmsScreenStream = stream;
     window.__hrmsShareEnding = false;
     window.__hrmsMarkSharing(true);
+    window.__hrmsStartSharePump();
     var track = stream.getVideoTracks()[0];
     if (track) {
       try { track.contentHint = 'detail'; } catch (e) {}
+      try { track.enabled = true; } catch (e) {}
       var origStop = track.stop.bind(track);
       track.stop = function () {
         try {
@@ -1032,9 +1359,11 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
         } catch (e) {}
         window.__hrmsShareEnding = false;
         window.__hrmsMarkSharing(false);
+        window.__hrmsStopSharePump();
         origStop();
       };
     }
+    window.__hrmsRequestShareFrame();
     return Promise.resolve(stream);
   };
 
@@ -1067,23 +1396,27 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
     window.__hrmsEnableDesktopShare();
     patchCreateLocalTracks();
     var streamP = window.__hrmsCanvasDisplayMedia();
-    var usedToggle = false;
-    try {
-      if (window.APP && APP.conference && typeof APP.conference.toggleScreenSharing === 'function') {
-        usedToggle = true;
-        var result = APP.conference.toggleScreenSharing(true);
-        if (result && typeof result.catch === 'function') {
-          result.catch(function () {
-            streamP.then(attachDesktopTrack).catch(function () {});
-          });
+    streamP.then(function (stream) {
+      var usedToggle = false;
+      try {
+        if (window.APP && APP.conference && typeof APP.conference.toggleScreenSharing === 'function') {
+          usedToggle = true;
+          var result = APP.conference.toggleScreenSharing(true);
+          if (result && typeof result.then === 'function') {
+            result.then(function () {
+              window.__hrmsRequestShareFrame();
+            }).catch(function () {
+              attachDesktopTrack(stream).catch(function () {});
+            });
+          }
         }
+      } catch (e) {
+        usedToggle = false;
       }
-    } catch (e) {
-      usedToggle = false;
-    }
-    if (!usedToggle) {
-      streamP.then(attachDesktopTrack).catch(function () {});
-    }
+      if (!usedToggle) {
+        attachDesktopTrack(stream).catch(function () {});
+      }
+    }).catch(function () {});
   }
 
   // Called from Flutter only after MediaProjection permission is granted.
@@ -1283,16 +1616,21 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
 
   // Prosody sets member/owner affiliation while the occupant joins (lobby bypass).
   // That emits CONFERENCE_LEFT and then joins again. Wait before closing HRMS.
-  // Screen-share MediaProjection consent also pauses the activity and can briefly
-  // drop WebRTC — do not treat that as a real hangup while share is starting.
+  // Screen-share MediaProjection consent and home-screen minimize also pause the
+  // activity and can briefly drop WebRTC — do not treat that as a real hangup.
   function scheduleLeft(fromHangup) {
     if (!window.__hrmsJoinedSent || window.__hrmsLeftSent) return;
     if (window.__hrmsLeftTimer) clearTimeout(window.__hrmsLeftTimer);
+    if (!fromHangup && window.__hrmsAppBackgrounded) {
+      // Stay in the meeting while HRMS is minimized; Flutter re-checks on resume.
+      return;
+    }
     var shareBusy = !fromHangup && (window.__hrmsShareStarting || window.__hrmsSharing);
     var delay = shareBusy ? 12000 : 2500;
     window.__hrmsLeftTimer = setTimeout(function () {
       window.__hrmsLeftTimer = null;
       if (stillInCall()) return;
+      if (!fromHangup && window.__hrmsAppBackgrounded) return;
       if (!fromHangup && window.__hrmsShareStarting) {
         scheduleLeft(false);
         return;
@@ -1300,6 +1638,21 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
       notifyLeft();
     }, delay);
   }
+
+  window.__hrmsCheckStillInCallAfterResume = function () {
+    if (window.__hrmsLeftSent) return;
+    if (stillInCall()) {
+      window.__hrmsJoinedSent = true;
+      return;
+    }
+    // Give ICE a moment to recover after the activity resumes.
+    if (window.__hrmsLeftTimer) clearTimeout(window.__hrmsLeftTimer);
+    window.__hrmsLeftTimer = setTimeout(function () {
+      window.__hrmsLeftTimer = null;
+      if (stillInCall() || window.__hrmsAppBackgrounded) return;
+      notifyLeft();
+    }, 5000);
+  };
 
   function wrapHangup() {
     try {
@@ -1395,19 +1748,234 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
 })();
 ''';
 
+  /// Android WebView often cannot open a second camera stream while the
+  /// meeting already holds the device. Jitsi Video settings then shows a
+  /// black preview. Reuse / clone the live local track for settings previews.
+  static const _jitsiVideoPreviewFixJs = r'''
+(function () {
+  if (window.__hrmsVideoPreviewFixReady) {
+    if (window.__hrmsFixVideoPreviews) window.__hrmsFixVideoPreviews();
+    return;
+  }
+  window.__hrmsVideoPreviewFixReady = true;
+
+  function isScreenTrack(track) {
+    if (!track) return true;
+    var label = ((track.label || '') + ' ' + (track.contentHint || '')).toLowerCase();
+    return label.indexOf('screen') !== -1 || label.indexOf('display') !== -1 || label.indexOf('web contents') !== -1;
+  }
+
+  function streamFromJitsiLocal() {
+    try {
+      if (!window.APP || !APP.conference) return null;
+      var track = null;
+      if (typeof APP.conference.getLocalVideoTrack === 'function') {
+        track = APP.conference.getLocalVideoTrack();
+      }
+      if (!track && APP.conference._room && typeof APP.conference._room.getLocalVideoTrack === 'function') {
+        track = APP.conference._room.getLocalVideoTrack();
+      }
+      if (!track) return null;
+      var media = null;
+      if (track.stream) media = track.stream;
+      else if (typeof track.getOriginalStream === 'function') media = track.getOriginalStream();
+      else if (typeof track.getTrack === 'function') {
+        var mt = track.getTrack();
+        if (mt) media = new MediaStream([mt]);
+      } else if (track.track) {
+        media = new MediaStream([track.track]);
+      }
+      if (!media) return null;
+      var vtracks = media.getVideoTracks();
+      if (!vtracks.length || isScreenTrack(vtracks[0])) return null;
+      if (vtracks[0].readyState === 'ended') return null;
+      return media;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function streamFromDomVideos() {
+    try {
+      var nodes = document.querySelectorAll('video');
+      for (var i = 0; i < nodes.length; i++) {
+        var el = nodes[i];
+        if (inSettingsDialog(el)) continue;
+        var stream = el.srcObject;
+        if (!stream) continue;
+        var tracks = stream.getVideoTracks();
+        if (!tracks.length || isScreenTrack(tracks[0])) continue;
+        if (tracks[0].readyState !== 'live') continue;
+        if (el.videoWidth > 0 || !el.paused) return stream;
+      }
+    } catch (e) {}
+    return null;
+  }
+
+  function getLocalCameraStream() {
+    return streamFromJitsiLocal() || streamFromDomVideos();
+  }
+
+  function cloneVideoOnly(stream) {
+    try {
+      var cloned = stream.clone();
+      cloned.getAudioTracks().forEach(function (t) {
+        try { t.stop(); } catch (e) {}
+        try { cloned.removeTrack(t); } catch (e) {}
+      });
+      return cloned;
+    } catch (e) {
+      try {
+        var tracks = stream.getVideoTracks().filter(function (t) { return !isScreenTrack(t); });
+        if (!tracks.length) return null;
+        return new MediaStream(tracks.map(function (t) {
+          try { return t.clone(); } catch (err) { return t; }
+        }));
+      } catch (e2) {
+        return null;
+      }
+    }
+  }
+
+  function inSettingsDialog(el) {
+    if (!el || !el.closest) return false;
+    return !!(el.closest('.settings-dialog') ||
+      el.closest('.settings-pane') ||
+      el.closest('[class*="settings-dialog"]') ||
+      el.closest('[class*="SettingsDialog"]') ||
+      el.closest('[class*="video-preview"]') ||
+      el.closest('[class*="VideoPreview"]') ||
+      el.closest('[aria-label*="Settings"]') ||
+      el.closest('[role="dialog"]'));
+  }
+
+  function looksLikePreviewVideo(el) {
+    if (!el || el.tagName !== 'VIDEO') return false;
+    if (!inSettingsDialog(el)) return false;
+    var rect = null;
+    try { rect = el.getBoundingClientRect(); } catch (e) {}
+    // Ignore tiny sink / hidden elements.
+    if (rect && rect.width > 0 && rect.width < 40) return false;
+    return true;
+  }
+
+  function bindPreview(el, stream) {
+    if (!el || !stream) return;
+    try {
+      el.setAttribute('playsinline', 'true');
+      el.setAttribute('webkit-playsinline', 'true');
+      el.muted = true;
+      el.autoplay = true;
+      if (el.srcObject !== stream) el.srcObject = stream;
+      var play = el.play();
+      if (play && typeof play.catch === 'function') play.catch(function () {});
+    } catch (e) {}
+  }
+
+  function patchGetUserMedia() {
+    if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== 'function') return;
+    if (navigator.mediaDevices.__hrmsGumPreviewPatched) return;
+    navigator.mediaDevices.__hrmsGumPreviewPatched = true;
+    var orig = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
+    navigator.mediaDevices.getUserMedia = function (constraints) {
+      // Try a real open first so camera switching still works. If Android
+      // rejects a second camera client, reuse the live meeting track.
+      return orig(constraints).catch(function (err) {
+        var wantsVideo = !!(constraints && constraints.video);
+        if (!wantsVideo) return Promise.reject(err);
+        var fallback = getLocalCameraStream();
+        if (!fallback) return Promise.reject(err);
+        var cloned = cloneVideoOnly(fallback);
+        if (!cloned) return Promise.reject(err);
+        return cloned;
+      });
+    };
+  }
+
+  window.__hrmsFixVideoPreviews = function () {
+    patchGetUserMedia();
+    var local = getLocalCameraStream();
+    if (!local) return;
+    var nodes = document.querySelectorAll('video');
+    for (var i = 0; i < nodes.length; i++) {
+      var el = nodes[i];
+      if (!looksLikePreviewVideo(el)) continue;
+      var hasLive = false;
+      try {
+        hasLive = !!(el.srcObject && el.srcObject.getVideoTracks().some(function (t) {
+          return t.readyState === 'live' && !isScreenTrack(t);
+        })) && el.videoWidth > 0;
+      } catch (e) {}
+      if (hasLive) continue;
+      bindPreview(el, cloneVideoOnly(local) || local);
+    }
+  };
+
+  patchGetUserMedia();
+  window.__hrmsFixVideoPreviews();
+  if (!window.__hrmsVideoPreviewObserver && document.documentElement) {
+    window.__hrmsVideoPreviewObserver = new MutationObserver(function () {
+      if (window.__hrmsVideoPreviewScanTimer) return;
+      window.__hrmsVideoPreviewScanTimer = setTimeout(function () {
+        window.__hrmsVideoPreviewScanTimer = null;
+        window.__hrmsFixVideoPreviews();
+      }, 200);
+    });
+    window.__hrmsVideoPreviewObserver.observe(document.documentElement, {
+      childList: true,
+      subtree: true
+    });
+  }
+  if (!window.__hrmsVideoPreviewTimer) {
+    window.__hrmsVideoPreviewTimer = setInterval(function () {
+      window.__hrmsFixVideoPreviews();
+    }, 1000);
+  }
+})();
+''';
+
   static const _jitsiKeepAliveJs = r'''
 (function () {
   if (window.__hrmsKeepMeeting) return;
   window.__hrmsKeepMeeting = true;
   var block = function (e) {
     try { e.stopImmediatePropagation(); } catch (err) {}
+    try { e.preventDefault(); } catch (err) {}
   };
   document.addEventListener('visibilitychange', block, true);
   window.addEventListener('pagehide', block, true);
   window.addEventListener('freeze', block, true);
+  window.addEventListener('blur', block, true);
+  document.addEventListener('pause', block, true);
   try {
     Object.defineProperty(document, 'hidden', { configurable: true, get: function () { return false; } });
     Object.defineProperty(document, 'visibilityState', { configurable: true, get: function () { return 'visible'; } });
+    Object.defineProperty(document, 'webkitHidden', { configurable: true, get: function () { return false; } });
+  } catch (err) {}
+  // Keep active media playing — never force-play camera-off tiles (that
+  // leaves the WebView's big play icon over the avatar).
+  try {
+    if (!window.__hrmsMediaKeepTimer) {
+      window.__hrmsMediaKeepTimer = setInterval(function () {
+        try {
+          document.querySelectorAll('audio,video').forEach(function (el) {
+            try {
+              if (el.tagName === 'VIDEO') {
+                var stream = el.srcObject;
+                var live = false;
+                if (stream && stream.getVideoTracks) {
+                  live = stream.getVideoTracks().some(function (t) {
+                    return t && t.readyState === 'live' && t.enabled !== false;
+                  });
+                }
+                if (!live || el.videoWidth === 0) return;
+              }
+              if (el.paused) el.play();
+            } catch (e) {}
+          });
+        } catch (e) {}
+      }, 2000);
+    }
   } catch (err) {}
 })();
 ''';
@@ -1492,59 +2060,89 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
           _joinRefreshes = 0;
           _refreshingJoin = false;
           _cookiesReady = false;
+          _appBackgrounded = false;
+          _pendingBackgroundLeave = false;
+          _pipMode = false;
         });
       });
     }
+
+    // Show the call full-bleed in PiP or when expanded in-app.
+    final showMeeting = session.isActive && (expanded || _pipMode);
 
     return Stack(
       fit: StackFit.expand,
       clipBehavior: Clip.none,
       children: [
-        PopScope(
-          canPop: !expanded,
-          onPopInvokedWithResult: (didPop, _) {
-            if (didPop) return;
-            if (_customView != null) {
-              _dismissCustomView();
-              return;
-            }
-            if (expanded) {
-              ref.read(meetingSessionProvider.notifier).minimize();
-            }
-          },
-          child: widget.child,
-        ),
+        // Keep the WebView laid out on-screen (even when "minimized") so
+        // Android Picture-in-Picture can show the call instead of a blank tile.
         if (session.isActive)
           Positioned(
-            left: expanded ? 0 : stage.width,
+            left: 0,
             top: 0,
             width: stage.width,
             height: stage.height,
             child: IgnorePointer(
-              ignoring: !expanded,
-              child: Material(
-                color: Colors.black,
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    Column(
+              ignoring: !showMeeting,
+              child: Opacity(
+                opacity: showMeeting ? 1 : 0.01,
+                child: Material(
+                  color: Colors.black,
+                  // Keep Jitsi subject/timer below the system status bar in
+                  // fullscreen (otherwise "HRMS Meet" overlaps the clock).
+                  child: SafeArea(
+                    bottom: false,
+                    child: Stack(
+                      fit: StackFit.expand,
                       children: [
-                        _MeetingChrome(
-                          title: session.title ?? 'Meeting',
-                          onBack: () => ref
-                              .read(meetingSessionProvider.notifier)
-                              .minimize(),
+                        Column(
+                          children: [
+                            if (!_pipMode)
+                              _MeetingChrome(
+                                title: session.title ?? 'Meeting',
+                                onBack: () => ref
+                                    .read(meetingSessionProvider.notifier)
+                                    .minimize(),
+                              ),
+                            Expanded(child: _buildWebView()),
+                          ],
                         ),
-                        Expanded(child: _buildWebView()),
+                        if (_customView != null && !_pipMode)
+                          Positioned.fill(
+                            child: ColoredBox(
+                              color: Colors.black,
+                              child: _customView!,
+                            ),
+                          ),
                       ],
                     ),
-                    if (_customView != null) Positioned.fill(child: _customView!),
-                  ],
+                  ),
                 ),
               ),
             ),
           ),
-        if (session.isActive && !expanded)
+        if (!_pipMode)
+          PopScope(
+            canPop: !expanded,
+            onPopInvokedWithResult: (didPop, _) {
+              if (didPop) return;
+              if (_customView != null) {
+                _dismissCustomView();
+                return;
+              }
+              if (expanded) {
+                ref.read(meetingSessionProvider.notifier).minimize();
+              }
+            },
+            child: Visibility(
+              visible: !showMeeting,
+              maintainState: true,
+              maintainAnimation: true,
+              maintainSize: true,
+              child: widget.child,
+            ),
+          ),
+        if (session.isActive && !expanded && !_pipMode)
           Positioned(
             right: 12,
             bottom: 24 + media.padding.bottom,
@@ -1579,39 +2177,37 @@ class _MeetingChrome extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final iconColor = scheme.onSurface;
 
+    // Parent meeting shell already applies SafeArea for the status bar.
     return Material(
       color: scheme.surface,
       elevation: 1,
-      child: SafeArea(
-        bottom: false,
-        child: SizedBox(
-          height: 48,
-          child: Row(
-            children: [
-              GestureDetector(
-                onTap: onBack,
-                behavior: HitTestBehavior.opaque,
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Icon(
-                    Icons.arrow_back_rounded,
-                    color: iconColor,
-                  ),
+      child: SizedBox(
+        height: 48,
+        child: Row(
+          children: [
+            GestureDetector(
+              onTap: onBack,
+              behavior: HitTestBehavior.opaque,
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Icon(
+                  Icons.arrow_back_rounded,
+                  color: iconColor,
                 ),
               ),
-              Expanded(
-                child: Text(
-                  title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: iconColor,
-                    fontWeight: FontWeight.w700,
-                  ),
+            ),
+            Expanded(
+              child: Text(
+                title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: iconColor,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

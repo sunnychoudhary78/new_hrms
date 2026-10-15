@@ -313,10 +313,10 @@ class ScreenShareService : Service() {
         private const val TAG = "ScreenShareService"
         private const val CHANNEL_ID = "meeting_screen_share"
         private const val NOTIFICATION_ID = 890
-        private const val MAX_CAPTURE_EDGE = 720
-        private const val TARGET_JPEG_WIDTH = 640
-        private const val JPEG_QUALITY = 40
-        private const val FRAME_INTERVAL_MS = 200L
+        private const val MAX_CAPTURE_EDGE = 900
+        private const val TARGET_JPEG_WIDTH = 960
+        private const val JPEG_QUALITY = 55
+        private const val FRAME_INTERVAL_MS = 120L
 
         fun start(context: Context, code: Int, data: Intent) {
             ScreenShareHub.resultCode = code

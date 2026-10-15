@@ -1,24 +1,66 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lms/features/meetings/data/models/meeting_model.dart';
 import 'package:lms/features/meetings/presentation/meeting_join.dart';
 import 'package:lms/features/meetings/presentation/meetings_access.dart';
 import 'package:lms/features/meetings/presentation/providers/meetings_providers.dart';
 import 'package:lms/features/meetings/presentation/widgets/employee_picker.dart';
 import 'package:lms/shared/utils/app_snackbar.dart';
 
+class CreatedMeetingResult {
+  const CreatedMeetingResult({
+    required this.meeting,
+    required this.type,
+    required this.invitedCount,
+  });
+
+  final Meeting meeting;
+  final String type;
+  final int invitedCount;
+}
+
 Future<void> showCreateMeetingSheet(
   BuildContext context,
   WidgetRef ref, {
   String type = 'one_time',
-}) {
-  return showModalBottomSheet<void>(
+}) async {
+  final result = await showModalBottomSheet<CreatedMeetingResult>(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,
     showDragHandle: defaultTargetPlatform == TargetPlatform.iOS,
     builder: (_) => CreateMeetingSheet(initialType: type),
   );
+
+  if (result == null || !context.mounted) return;
+
+  ref.invalidate(meetingsListProvider);
+
+  AppSnackbar.success(
+    context,
+    result.invitedCount > 0
+        ? 'Meeting created — invites will be emailed shortly'
+        : 'Meeting created',
+  );
+
+  if (result.type == 'instant' && result.meeting.id.isNotEmpty) {
+    await joinMeetingById(
+      context,
+      ref,
+      meetingId: result.meeting.id,
+      title: result.meeting.title,
+    );
+    return;
+  }
+
+  if (result.meeting.id.isNotEmpty) {
+    Navigator.pushNamed(
+      context,
+      '/meetings/detail',
+      arguments: result.meeting.id,
+    );
+  }
 }
 
 class CreateMeetingSheet extends ConsumerStatefulWidget {
@@ -42,11 +84,28 @@ class _CreateMeetingSheetState extends ConsumerState<CreateMeetingSheet> {
   String _employeeFilter = '';
   bool _saving = false;
   bool _autoTranscribe = false;
+  String? _formError;
 
   @override
   void initState() {
     super.initState();
     _type = widget.initialType;
+    // Default start so Create works without an easy-to-miss date tap.
+    if (_type == 'one_time') {
+      _startsAt = _defaultStartsAt();
+    }
+  }
+
+  DateTime _defaultStartsAt() {
+    final now = DateTime.now();
+    final rounded = now.add(const Duration(minutes: 15));
+    return DateTime(
+      rounded.year,
+      rounded.month,
+      rounded.day,
+      rounded.hour,
+      rounded.minute,
+    );
   }
 
   @override
@@ -55,6 +114,10 @@ class _CreateMeetingSheetState extends ConsumerState<CreateMeetingSheet> {
     _description.dispose();
     _duration.dispose();
     super.dispose();
+  }
+
+  void _clearFormError() {
+    if (_formError != null) setState(() => _formError = null);
   }
 
   Future<void> _pickStartsAt() async {
@@ -74,7 +137,14 @@ class _CreateMeetingSheetState extends ConsumerState<CreateMeetingSheet> {
     );
     if (time == null || !mounted) return;
     setState(() {
-      _startsAt = DateTime(date.year, date.month, date.day, time.hour, time.minute);
+      _startsAt = DateTime(
+        date.year,
+        date.month,
+        date.day,
+        time.hour,
+        time.minute,
+      );
+      _formError = null;
     });
   }
 
@@ -84,7 +154,10 @@ class _CreateMeetingSheetState extends ConsumerState<CreateMeetingSheet> {
       initialTime: _recurrenceTime,
     );
     if (time == null || !mounted) return;
-    setState(() => _recurrenceTime = time);
+    setState(() {
+      _recurrenceTime = time;
+      _formError = null;
+    });
   }
 
   void _toggleDay(int day) {
@@ -112,29 +185,40 @@ class _CreateMeetingSheetState extends ConsumerState<CreateMeetingSheet> {
 
   Future<void> _submit() async {
     if (_saving) return;
+    FocusScope.of(context).unfocus();
+
     final title = _title.text.trim();
     if (title.isEmpty) {
-      AppSnackbar.error(context, 'Title is required');
+      setState(() => _formError = 'Title is required');
       return;
     }
     if (_type == 'one_time' && _startsAt == null) {
-      AppSnackbar.error(context, 'Start date/time is required');
+      setState(() => _formError = 'Start date/time is required');
+      return;
+    }
+    if (_type == 'recurring' && _recurrenceDays.isEmpty) {
+      setState(() => _formError = 'Select at least one weekday');
       return;
     }
 
-    setState(() => _saving = true);
+    setState(() {
+      _saving = true;
+      _formError = null;
+    });
+
     try {
       final duration = int.tryParse(_duration.text.trim()) ?? 30;
       final payload = <String, dynamic>{
         'title': title,
-        'description': _description.text.trim().isEmpty
-            ? null
-            : _description.text.trim(),
         'type': _type == 'instant' ? 'instant' : _type,
         'duration_minutes': duration < 5 ? 5 : (duration > 480 ? 480 : duration),
         'participant_ids': List<String>.from(_participantIds),
         'start_now': _type == 'instant',
       };
+      final description = _description.text.trim();
+      if (description.isNotEmpty) {
+        payload['description'] = description;
+      }
       final autoAvailable = ref
           .read(meetingsListProvider)
           .asData
@@ -158,32 +242,20 @@ class _CreateMeetingSheetState extends ConsumerState<CreateMeetingSheet> {
           .createMeeting(payload);
 
       if (!mounted) return;
-      AppSnackbar.success(
+      Navigator.pop(
         context,
-        _participantIds.isNotEmpty
-            ? 'Meeting created — invites will be emailed shortly'
-            : 'Meeting created',
+        CreatedMeetingResult(
+          meeting: created,
+          type: _type,
+          invitedCount: _participantIds.length,
+        ),
       );
-
-      if (_type == 'instant' && created.id.isNotEmpty) {
-        await joinMeetingById(
-          context,
-          ref,
-          meetingId: created.id,
-          title: created.title,
-        );
-      }
-
-      if (!mounted) return;
-      Navigator.pop(context);
-      ref.invalidate(meetingsListProvider);
-      if (created.id.isNotEmpty) {
-        Navigator.pushNamed(context, '/meetings/detail', arguments: created.id);
-      }
     } catch (e) {
-      if (mounted) AppSnackbar.error(context, cleanApiError(e));
-    } finally {
-      if (mounted) setState(() => _saving = false);
+      if (!mounted) return;
+      setState(() {
+        _saving = false;
+        _formError = cleanApiError(e);
+      });
     }
   }
 
@@ -192,7 +264,7 @@ class _CreateMeetingSheetState extends ConsumerState<CreateMeetingSheet> {
     final employeesAsync = ref.watch(meetingEmployeesProvider);
     final autoAvailable =
         ref.watch(meetingsListProvider).asData?.value.autoTranscribeAvailable ??
-        false;
+            false;
     final isInstant = _type == 'instant';
     final scheme = Theme.of(context).colorScheme;
     final viewInsets = MediaQuery.of(context).viewInsets.bottom;
@@ -207,15 +279,16 @@ class _CreateMeetingSheetState extends ConsumerState<CreateMeetingSheet> {
             Text(
               isInstant ? 'Start meeting now' : 'Schedule meeting',
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.w800,
-              ),
+                    fontWeight: FontWeight.w800,
+                  ),
             ),
             const SizedBox(height: 16),
             TextField(
               controller: _title,
               textInputAction: TextInputAction.next,
+              onChanged: (_) => _clearFormError(),
               decoration: const InputDecoration(
-                labelText: 'Title',
+                labelText: 'Title *',
                 hintText: 'Daily standup',
               ),
             ),
@@ -224,6 +297,7 @@ class _CreateMeetingSheetState extends ConsumerState<CreateMeetingSheet> {
               controller: _description,
               minLines: 2,
               maxLines: 4,
+              onChanged: (_) => _clearFormError(),
               decoration: const InputDecoration(
                 labelText: 'Agenda / notes',
               ),
@@ -231,6 +305,7 @@ class _CreateMeetingSheetState extends ConsumerState<CreateMeetingSheet> {
             if (!isInstant) ...[
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
+                key: ValueKey('meeting-type-$_type'),
                 initialValue: _type,
                 decoration: const InputDecoration(labelText: 'Type'),
                 items: const [
@@ -242,7 +317,13 @@ class _CreateMeetingSheetState extends ConsumerState<CreateMeetingSheet> {
                 ],
                 onChanged: (v) {
                   if (v == null) return;
-                  setState(() => _type = v);
+                  setState(() {
+                    _type = v;
+                    _formError = null;
+                    if (v == 'one_time' && _startsAt == null) {
+                      _startsAt = _defaultStartsAt();
+                    }
+                  });
                 },
               ),
             ],
@@ -250,11 +331,16 @@ class _CreateMeetingSheetState extends ConsumerState<CreateMeetingSheet> {
               const SizedBox(height: 12),
               ListTile(
                 contentPadding: EdgeInsets.zero,
-                title: const Text('Starts at'),
+                title: const Text('Starts at *'),
                 subtitle: Text(
                   _startsAt == null
                       ? 'Select date and time'
                       : localDateTimeLabel(_startsAt),
+                  style: TextStyle(
+                    color: _startsAt == null ? scheme.error : null,
+                    fontWeight:
+                        _startsAt == null ? FontWeight.w600 : FontWeight.w500,
+                  ),
                 ),
                 trailing: Icon(Icons.event, color: scheme.primary),
                 onTap: _pickStartsAt,
@@ -281,6 +367,7 @@ class _CreateMeetingSheetState extends ConsumerState<CreateMeetingSheet> {
             TextField(
               controller: _duration,
               keyboardType: TextInputType.number,
+              onChanged: (_) => _clearFormError(),
               decoration: const InputDecoration(
                 labelText: 'Duration (minutes)',
               ),
@@ -315,6 +402,34 @@ class _CreateMeetingSheetState extends ConsumerState<CreateMeetingSheet> {
                 onToggle: _toggleParticipant,
               ),
             ),
+            if (_formError != null) ...[
+              const SizedBox(height: 12),
+              Material(
+                color: scheme.errorContainer,
+                borderRadius: BorderRadius.circular(12),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.error_outline, color: scheme.onErrorContainer),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          _formError!,
+                          style: TextStyle(
+                            color: scheme.onErrorContainer,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
             const SizedBox(height: 20),
             Row(
               children: [
@@ -332,8 +447,8 @@ class _CreateMeetingSheetState extends ConsumerState<CreateMeetingSheet> {
                       _saving
                           ? 'Saving…'
                           : isInstant
-                          ? 'Create & open'
-                          : 'Create',
+                              ? 'Create & open'
+                              : 'Create',
                     ),
                   ),
                 ),
