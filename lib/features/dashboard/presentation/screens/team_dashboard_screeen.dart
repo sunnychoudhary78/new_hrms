@@ -45,15 +45,22 @@ class _TeamDashboardScreenState extends ConsumerState<TeamDashboardScreen> {
             slivers: [
               SliverToBoxAdapter(
                 child: Padding(
-                  padding: const EdgeInsets.all(AppSpacing.lg),
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.lg,
+                    AppSpacing.md,
+                    AppSpacing.lg,
+                    AppSpacing.lg,
+                  ),
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       const PremiumFeatureHeader(
-                        icon: Icons.groups_outlined,
+                        icon: Icons.groups_rounded,
                         title: "Team Dashboard",
                         subtitle:
                             "Monitor attendance health, productivity trends and your direct reports.",
+                        // Parent already pads the page — avoid double inset.
+                        margin: EdgeInsets.zero,
                       ),
                       const SizedBox(height: AppSpacing.md),
                       _searchBar(),
@@ -69,11 +76,11 @@ class _TeamDashboardScreenState extends ConsumerState<TeamDashboardScreen> {
 
                       PremiumSectionTitle(
                         title: "Team Members (${filtered.length})",
-                        subtitle: "Tap a member to open their attendance calendar.",
+                        subtitle:
+                            "Tap a member to open their attendance calendar.",
                       ),
                       const SizedBox(height: AppSpacing.md),
 
-                      /// 👤 Team Members List
                       ...filtered.map(
                         (e) => Padding(
                           padding: const EdgeInsets.only(bottom: 14),

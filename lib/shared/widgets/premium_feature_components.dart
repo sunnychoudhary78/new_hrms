@@ -8,6 +8,12 @@ class PremiumFeatureHeader extends StatelessWidget {
     required this.title,
     required this.subtitle,
     this.trailing,
+    this.margin = const EdgeInsets.fromLTRB(
+      AppSpacing.md,
+      AppSpacing.md,
+      AppSpacing.md,
+      AppSpacing.sm,
+    ),
   });
 
   final IconData icon;
@@ -15,49 +21,58 @@ class PremiumFeatureHeader extends StatelessWidget {
   final String subtitle;
   final Widget? trailing;
 
+  /// Outer margin. Use [EdgeInsets.zero] when the parent already pads the page.
+  final EdgeInsetsGeometry margin;
+
   @override
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      margin: const EdgeInsets.fromLTRB(
-        AppSpacing.md,
-        AppSpacing.md,
-        AppSpacing.md,
-        AppSpacing.sm,
+      margin: margin,
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.lg,
+        vertical: 20,
       ),
-      padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: AppColors.heroDecoration(radius: AppRadius.lg),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Container(
-            width: 48,
-            height: 48,
+            width: 52,
+            height: 52,
+            alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.2),
+              color: Colors.white.withValues(alpha: 0.18),
               borderRadius: BorderRadius.circular(AppRadius.md),
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.22),
+              ),
             ),
-            child: Icon(icon, color: Colors.white),
+            child: Icon(icon, color: Colors.white, size: 26),
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
                   title,
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w800,
-                    color: Colors.white,
-                  ),
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                        letterSpacing: 0.2,
+                        height: 1.2,
+                      ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 6),
                 Text(
                   subtitle,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Colors.white.withValues(alpha: 0.88),
-                    height: 1.35,
-                  ),
+                        color: Colors.white.withValues(alpha: 0.9),
+                        height: 1.4,
+                        fontWeight: FontWeight.w500,
+                      ),
                 ),
               ],
             ),
