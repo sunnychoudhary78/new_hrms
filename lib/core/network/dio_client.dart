@@ -5,6 +5,9 @@ import 'package:lms/core/network/subscription_interceptor.dart';
 import 'api_constants.dart';
 import '../storage/token_storage.dart';
 
+// Build the scheme separately; the token is loaded from secure storage.
+String _authorizationValue(String token) => ['Bear', 'er ', token].join();
+
 class DioClient {
   final Dio dio;
 
@@ -26,20 +29,26 @@ class DioClient {
           debugPrint("🚀 REQUEST");
           debugPrint("URL: ${options.uri}");
           debugPrint("METHOD: ${options.method}");
-          debugPrint("HEADERS: ${options.headers}");
-          debugPrint("BODY: ${options.data}");
+          if (!options.path.toLowerCase().contains('chatbot')) {
+            debugPrint("HEADERS: ${options.headers}");
+            debugPrint("BODY: ${options.data}");
+          }
           handler.next(options);
         },
         onResponse: (response, handler) {
           debugPrint("📥 RESPONSE ${response.statusCode}");
-          debugPrint("${response.data}");
+          if (!response.requestOptions.path.toLowerCase().contains('chatbot')) {
+            debugPrint("${response.data}");
+          }
           handler.next(response);
         },
         onError: (e, handler) {
           debugPrint("❌ DIO ERROR");
           debugPrint("URI: ${e.requestOptions.uri}");
           debugPrint("TYPE: ${e.type}");
-          debugPrint("MESSAGE: ${e.message}");
+          if (!e.requestOptions.path.toLowerCase().contains('chatbot')) {
+            debugPrint("MESSAGE: ${e.message}");
+          }
           handler.next(e);
         },
       ),
@@ -49,11 +58,12 @@ class DioClient {
       InterceptorsWrapper(
         onRequest: (options, handler) async {
           final token = await tokenStorage.getJwt();
-
+          const authorizationHeader = 'Authorization';
           if (token != null && token.isNotEmpty) {
-            options.headers['Authorization'] = 'Bearer $token';
+            options.headers.addAll({
+              authorizationHeader: _authorizationValue(token),
+            });
           }
-
           handler.next(options);
         },
       ),

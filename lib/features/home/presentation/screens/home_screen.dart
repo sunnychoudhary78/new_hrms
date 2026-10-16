@@ -6,6 +6,7 @@ import 'package:lms/features/home/presentation/widgets/home_dashboard_style.dart
 import 'package:lms/features/home/presentation/widgets/home_dashboard_view.dart';
 import 'package:lms/features/notifications/presentation/providers/notifications_provider.dart';
 import 'package:lms/features/notifications/presentation/screens/notifications_screen.dart';
+import 'package:lms/features/chatbot/presentations/chat_bot_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -41,6 +42,7 @@ class HomeScreen extends StatelessWidget {
         ],
       ),
       body: const HomeDashboardView(),
+      floatingActionButton: const ChatbotEntryButton(),
     );
   }
 }
