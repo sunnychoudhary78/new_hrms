@@ -42,7 +42,17 @@ class HomeScreen extends StatelessWidget {
         ],
       ),
       body: const HomeDashboardView(),
-      floatingActionButton: const ChatbotEntryButton(),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const ChatBotScreen()),
+          );
+        },
+        backgroundColor: const Color.fromARGB(255, 42, 120, 246), // Deep navy blue
+        foregroundColor: Colors.white, // Icon color
+        child: const Icon(Icons.chat_bubble_outline_rounded),
+      ),
     );
   }
 }
