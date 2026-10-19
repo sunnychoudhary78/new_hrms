@@ -43,7 +43,7 @@ class AttendanceSummaryGrid extends StatelessWidget {
         value: _formatNumber(summary.absentDays),
         icon: Icons.cancel_rounded,
         accent: HomeDashColors.accentRed,
-        soft: HomeDashColors.accentRed.withValues(alpha: dash.isDark ? 0.22 : 0.12),
+        soft: HomeDashColors.accentRed.withValues(alpha: dash.isDark ? 0.28 : 0.12),
       ),
       _StatItem(
         keyName: 'leave',
@@ -67,7 +67,7 @@ class AttendanceSummaryGrid extends StatelessWidget {
         value: '${summary.totalWeekoffs}',
         icon: Icons.weekend_rounded,
         accent: const Color(0xFF6366F1),
-        soft: const Color(0xFF6366F1).withValues(alpha: dash.isDark ? 0.22 : 0.12),
+        soft: const Color(0xFF6366F1).withValues(alpha: dash.isDark ? 0.28 : 0.12),
       ),
     ];
 

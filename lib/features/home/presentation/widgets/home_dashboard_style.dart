@@ -66,27 +66,27 @@ class HomeDashColors {
       muted: scheme.onSurfaceVariant,
       accentBlue: primary,
       softBlue: dark
-          ? primary.withValues(alpha: 0.22)
+          ? primary.withValues(alpha: 0.30)
           : Color.lerp(const Color(0xFFDBEAFE), primary, 0.12)!,
       softGreen: dark
-          ? accentGreen.withValues(alpha: 0.22)
+          ? accentGreen.withValues(alpha: 0.28)
           : const Color(0xFFDCFCE7),
       softPurple: dark
-          ? accentPurple.withValues(alpha: 0.22)
+          ? accentPurple.withValues(alpha: 0.28)
           : const Color(0xFFEDE9FE),
       softOrange: dark
-          ? accentOrange.withValues(alpha: 0.22)
+          ? accentOrange.withValues(alpha: 0.28)
           : const Color(0xFFFEF3C7),
       expected: dark
-          ? primary.withValues(alpha: 0.45)
+          ? primary.withValues(alpha: 0.55)
           : const Color(0xFF93C5FD),
       worked: primary,
       cardShadow: [
         BoxShadow(
-          color: (dark ? Colors.black : const Color(0xFF0F172A))
-              .withValues(alpha: dark ? 0.35 : 0.06),
-          blurRadius: 18,
-          offset: const Offset(0, 8),
+          color: (dark ? const Color(0xFF020617) : const Color(0xFF0F172A))
+              .withValues(alpha: dark ? 0.20 : 0.06),
+          blurRadius: dark ? 14 : 18,
+          offset: Offset(0, dark ? 6 : 8),
         ),
       ],
       isDark: dark,
@@ -100,19 +100,19 @@ class HomeDashColors {
   static Color get muted => AppColors.muted;
   static Color get accentBlue => AppColors.primary;
   static Color get softBlue => AppColors.isDark
-      ? AppColors.primary.withValues(alpha: 0.22)
+      ? AppColors.primary.withValues(alpha: 0.30)
       : Color.lerp(const Color(0xFFDBEAFE), AppColors.primary, 0.12)!;
   static Color get softGreen => AppColors.isDark
-      ? accentGreen.withValues(alpha: 0.22)
+      ? accentGreen.withValues(alpha: 0.28)
       : const Color(0xFFDCFCE7);
   static Color get softPurple => AppColors.isDark
-      ? accentPurple.withValues(alpha: 0.22)
+      ? accentPurple.withValues(alpha: 0.28)
       : const Color(0xFFEDE9FE);
   static Color get softOrange => AppColors.isDark
-      ? accentOrange.withValues(alpha: 0.22)
+      ? accentOrange.withValues(alpha: 0.28)
       : const Color(0xFFFEF3C7);
   static Color get expected => AppColors.isDark
-      ? AppColors.primary.withValues(alpha: 0.45)
+      ? AppColors.primary.withValues(alpha: 0.55)
       : const Color(0xFF93C5FD);
   static Color get worked => AppColors.primary;
   static List<BoxShadow> get cardShadow => AppColors.cardShadow;
@@ -140,7 +140,9 @@ class HomeDashCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: color ?? dash.card,
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: scheme.outline.withValues(alpha: 0.45)),
+        border: Border.all(
+          color: scheme.outline.withValues(alpha: dash.isDark ? 0.75 : 0.45),
+        ),
         boxShadow: dash.cardShadow,
       ),
       child: child,

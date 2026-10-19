@@ -461,12 +461,14 @@ class _AppDrawerState extends ConsumerState<AppDrawer> {
       decoration: BoxDecoration(
         color: colors.surface,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: colors.outline.withValues(alpha: 0.55)),
+        border: Border.all(
+          color: colors.outline.withValues(alpha: isDark ? 0.8 : 0.55),
+        ),
         boxShadow: [
           BoxShadow(
-            color: (isDark ? Colors.black : const Color(0xFF0F172A))
-                .withValues(alpha: isDark ? 0.28 : 0.04),
-            blurRadius: 14,
+            color: (isDark ? const Color(0xFF020617) : const Color(0xFF0F172A))
+                .withValues(alpha: isDark ? 0.18 : 0.04),
+            blurRadius: isDark ? 10 : 14,
             offset: const Offset(0, 4),
           ),
         ],

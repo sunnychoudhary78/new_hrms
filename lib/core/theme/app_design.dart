@@ -31,14 +31,14 @@ class AppColors {
   static const lightSoftFill = Color(0xFFF8FAFC);
   static const lightIconBg = Color(0xFFEEF2FF);
 
-  // Dark surfaces
-  static const darkBg = Color(0xFF0B1220);
-  static const darkCard = Color(0xFF1E293B);
-  static const darkTitle = Color(0xFFF1F5F9);
-  static const darkMuted = Color(0xFF94A3B8);
-  static const darkBorder = Color(0xFF334155);
-  static const darkSoftFill = Color(0xFF162032);
-  static const darkIconBg = Color(0xFF243044);
+  // Dark surfaces — soft elevated slate (readable, not near-black)
+  static const darkBg = Color(0xFF1A2232);
+  static const darkCard = Color(0xFF2A3447);
+  static const darkTitle = Color(0xFFF8FAFC);
+  static const darkMuted = Color(0xFFB4C0D0);
+  static const darkBorder = Color(0xFF3E4B61);
+  static const darkSoftFill = Color(0xFF232D40);
+  static const darkIconBg = Color(0xFF354358);
 
   static Brightness _brightness = Brightness.light;
   static ColorScheme? _scheme;
@@ -67,10 +67,10 @@ class AppColors {
 
   static List<BoxShadow> get cardShadow => [
         BoxShadow(
-          color: (isDark ? Colors.black : const Color(0xFF0F172A))
-              .withValues(alpha: isDark ? 0.35 : 0.06),
-          blurRadius: 18,
-          offset: const Offset(0, 8),
+          color: (isDark ? const Color(0xFF020617) : const Color(0xFF0F172A))
+              .withValues(alpha: isDark ? 0.22 : 0.06),
+          blurRadius: isDark ? 14 : 18,
+          offset: Offset(0, isDark ? 6 : 8),
         ),
       ];
 
@@ -85,8 +85,8 @@ class AppColors {
         end: Alignment.bottomRight,
         colors: isDark
             ? [
-                primary.withValues(alpha: 0.30),
-                primary.withValues(alpha: 0.14),
+                primary.withValues(alpha: 0.38),
+                primary.withValues(alpha: 0.20),
               ]
             : [
                 Color.lerp(softBlueStart, primary, 0.15)!,
@@ -186,20 +186,41 @@ class AppTheme {
   }
 
   static ThemeData dark(Color seed) {
+    // Keep brand primary vivid; lift surfaces so UI never feels "ink black".
+    final vividPrimary = Color.lerp(seed, Colors.white, 0.08) ?? seed;
     final scheme = ColorScheme.fromSeed(
       seedColor: seed,
       brightness: Brightness.dark,
-      primary: seed,
+      primary: vividPrimary,
       surface: AppColors.darkCard,
     ).copyWith(
-      surfaceContainerLowest: AppColors.darkBg,
-      surfaceContainerLow: AppColors.darkSoftFill,
-      outline: AppColors.darkBorder,
+      primary: vividPrimary,
+      onPrimary: Colors.white,
+      primaryContainer: Color.lerp(vividPrimary, AppColors.darkCard, 0.55)!,
+      onPrimaryContainer: const Color(0xFFE8EEFF),
+      secondary: Color.lerp(vividPrimary, const Color(0xFF94A3B8), 0.35)!,
+      onSecondary: Colors.white,
+      surface: AppColors.darkCard,
       onSurface: AppColors.darkTitle,
       onSurfaceVariant: AppColors.darkMuted,
+      surfaceContainerLowest: AppColors.darkBg,
+      surfaceContainerLow: AppColors.darkSoftFill,
+      surfaceContainer: AppColors.darkCard,
+      surfaceContainerHigh: AppColors.darkIconBg,
+      surfaceContainerHighest: Color.lerp(
+        AppColors.darkIconBg,
+        Colors.white,
+        0.06,
+      )!,
+      outline: AppColors.darkBorder,
+      outlineVariant: AppColors.darkBorder.withValues(alpha: 0.75),
+      scrim: const Color(0xFF020617).withValues(alpha: 0.45),
+      shadow: const Color(0xFF020617),
+      inverseSurface: const Color(0xFFE2E8F0),
+      onInverseSurface: const Color(0xFF1A2232),
     );
 
-    return _base(scheme, seed, Brightness.dark);
+    return _base(scheme, vividPrimary, Brightness.dark);
   }
 
   static ThemeData _base(ColorScheme scheme, Color seed, Brightness brightness) {
@@ -210,13 +231,17 @@ class AppTheme {
     final muted = isDark ? AppColors.darkMuted : AppColors.lightMuted;
     final border = isDark ? AppColors.darkBorder : AppColors.lightBorder;
     final softFill = isDark ? AppColors.darkSoftFill : AppColors.lightSoftFill;
+    final divider = isDark ? border.withValues(alpha: 0.85) : border;
 
     return ThemeData(
       useMaterial3: true,
       brightness: brightness,
       colorScheme: scheme,
       scaffoldBackgroundColor: bg,
-      dividerColor: border,
+      canvasColor: bg,
+      dividerColor: divider,
+      splashFactory:
+          isDark ? InkRipple.splashFactory : InkSplash.splashFactory,
       appBarTheme: AppBarTheme(
         elevation: 0,
         scrolledUnderElevation: 0,
@@ -232,8 +257,11 @@ class AppTheme {
         iconTheme: IconThemeData(color: title, size: 24),
       ),
       drawerTheme: DrawerThemeData(
-        backgroundColor: bg,
+        backgroundColor: isDark ? AppColors.darkSoftFill : bg,
         surfaceTintColor: Colors.transparent,
+        scrimColor: isDark
+            ? const Color(0xFF020617).withValues(alpha: 0.45)
+            : null,
       ),
       cardTheme: CardThemeData(
         elevation: 0,
@@ -241,7 +269,9 @@ class AppTheme {
         surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadius.lg),
-          side: BorderSide(color: border),
+          side: BorderSide(
+            color: isDark ? border.withValues(alpha: 0.9) : border,
+          ),
         ),
         margin: EdgeInsets.zero,
       ),
@@ -264,6 +294,8 @@ class AppTheme {
         ),
         labelStyle: TextStyle(color: muted, fontWeight: FontWeight.w500),
         hintStyle: TextStyle(color: muted),
+        prefixIconColor: muted,
+        suffixIconColor: muted,
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
@@ -281,17 +313,25 @@ class AppTheme {
         style: OutlinedButton.styleFrom(
           foregroundColor: scheme.primary,
           minimumSize: const Size(double.infinity, 50),
-          side: BorderSide(color: scheme.primary),
+          side: BorderSide(
+            color: isDark
+                ? scheme.primary.withValues(alpha: 0.85)
+                : scheme.primary,
+          ),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppRadius.md),
           ),
         ),
       ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(foregroundColor: scheme.primary),
+      ),
       chipTheme: ChipThemeData(
         backgroundColor: softFill,
-        selectedColor: scheme.primary.withValues(alpha: isDark ? 0.22 : 0.12),
+        selectedColor: scheme.primary.withValues(alpha: isDark ? 0.28 : 0.12),
         side: BorderSide(color: border),
         labelStyle: TextStyle(color: title),
+        secondaryLabelStyle: TextStyle(color: title),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadius.sm),
         ),
@@ -306,10 +346,97 @@ class AppTheme {
       bottomSheetTheme: BottomSheetThemeData(
         backgroundColor: card,
         surfaceTintColor: Colors.transparent,
+        modalBackgroundColor: card,
+        dragHandleColor: muted.withValues(alpha: 0.55),
+      ),
+      bottomNavigationBarTheme: BottomNavigationBarThemeData(
+        backgroundColor: card,
+        selectedItemColor: scheme.primary,
+        unselectedItemColor: muted,
+        type: BottomNavigationBarType.fixed,
+        elevation: 0,
+      ),
+      navigationBarTheme: NavigationBarThemeData(
+        backgroundColor: card,
+        indicatorColor: scheme.primary.withValues(alpha: isDark ? 0.28 : 0.14),
+        surfaceTintColor: Colors.transparent,
+        labelTextStyle: WidgetStatePropertyAll(
+          TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: title,
+          ),
+        ),
+        iconTheme: WidgetStateProperty.resolveWith((states) {
+          final selected = states.contains(WidgetState.selected);
+          return IconThemeData(
+            color: selected ? scheme.primary : muted,
+            size: 24,
+          );
+        }),
+      ),
+      popupMenuTheme: PopupMenuThemeData(
+        color: card,
+        surfaceTintColor: Colors.transparent,
+        textStyle: TextStyle(color: title, fontSize: 14),
+      ),
+      snackBarTheme: SnackBarThemeData(
+        backgroundColor: isDark ? AppColors.darkIconBg : const Color(0xFF0F172A),
+        contentTextStyle: TextStyle(
+          color: isDark ? AppColors.darkTitle : Colors.white,
+          fontWeight: FontWeight.w600,
+        ),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.md),
+        ),
+      ),
+      dividerTheme: DividerThemeData(
+        color: divider,
+        thickness: 1,
+        space: 1,
       ),
       listTileTheme: ListTileThemeData(
         iconColor: muted,
         textColor: title,
+        tileColor: Colors.transparent,
+        selectedTileColor: scheme.primary.withValues(alpha: isDark ? 0.18 : 0.08),
+      ),
+      switchTheme: SwitchThemeData(
+        thumbColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) return scheme.primary;
+          return isDark ? AppColors.darkMuted : null;
+        }),
+        trackColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return scheme.primary.withValues(alpha: isDark ? 0.45 : 0.35);
+          }
+          return isDark ? AppColors.darkBorder : null;
+        }),
+      ),
+      checkboxTheme: CheckboxThemeData(
+        fillColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) return scheme.primary;
+          return Colors.transparent;
+        }),
+        checkColor: const WidgetStatePropertyAll(Colors.white),
+        side: BorderSide(color: muted, width: 1.6),
+      ),
+      floatingActionButtonTheme: FloatingActionButtonThemeData(
+        backgroundColor: scheme.primary,
+        foregroundColor: scheme.onPrimary,
+        elevation: isDark ? 2 : 4,
+      ),
+      tabBarTheme: TabBarThemeData(
+        labelColor: scheme.primary,
+        unselectedLabelColor: muted,
+        indicatorColor: scheme.primary,
+        dividerColor: divider,
+      ),
+      progressIndicatorTheme: ProgressIndicatorThemeData(
+        color: scheme.primary,
+        linearTrackColor: softFill,
+        circularTrackColor: softFill,
       ),
       iconTheme: IconThemeData(color: title),
       // Keep seed available for widgets that read primary directly

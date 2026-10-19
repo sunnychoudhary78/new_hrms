@@ -159,16 +159,18 @@ class AppStatusPill extends StatelessWidget {
         vertical: 5,
       ),
       decoration: BoxDecoration(
-        color: isDark ? color : color.withValues(alpha: 0.12),
+        color: color.withValues(alpha: isDark ? 0.22 : 0.12),
         borderRadius: BorderRadius.circular(AppRadius.pill),
         border: Border.all(
-          color: color.withValues(alpha: isDark ? 0.0 : 0.35),
+          color: color.withValues(alpha: isDark ? 0.45 : 0.35),
         ),
       ),
       child: Text(
         label.toUpperCase(),
         style: TextStyle(
-          color: isDark ? Colors.white : color,
+          color: isDark
+              ? Color.lerp(color, Colors.white, 0.35) ?? color
+              : color,
           fontSize: 11,
           fontWeight: FontWeight.w700,
           letterSpacing: 0.3,

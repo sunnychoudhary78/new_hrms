@@ -24,6 +24,7 @@ class NotificationTile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
     final outerRadius = BorderRadius.circular(isIOS ? 14 : 18);
     final iconBoxRadius = BorderRadius.circular(isIOS ? 12 : 14);
@@ -52,8 +53,9 @@ class NotificationTile extends ConsumerWidget {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: isIOS ? 0.03 : 0.04),
-            blurRadius: isIOS ? 8 : 14,
+            color: (isDark ? const Color(0xFF020617) : Colors.black)
+                .withValues(alpha: isDark ? 0.16 : (isIOS ? 0.03 : 0.04)),
+            blurRadius: isDark ? 10 : (isIOS ? 8 : 14),
             offset: const Offset(0, 6),
           ),
         ],
