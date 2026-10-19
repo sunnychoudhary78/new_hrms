@@ -184,19 +184,17 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
       await _kickMedia();
       return;
     }
-    final inGrace = _inPipRestoreGrace;
-    await _setJsBackgrounded(false);
-    await _setJsPipState(inPip: false, restoreGrace: inGrace);
-    await _kickMedia();
-    if (_pendingBackgroundLeave) {
-      _pendingBackgroundLeave = false;
-      // After PiP restore, never hang up on a stale leave — ICE may still be
-      // reconnecting even though the user only tapped the floating window.
-      if (inGrace) return;
-      await _controller?.runJavaScript(
-        'window.__hrmsCheckStillInCallAfterResume&&window.__hrmsCheckStillInCallAfterResume()',
-      );
+    // Always arm grace on resume while a call is active — covers OEMs that
+    // skip PiP mode callbacks and only fire lifecycle resumed.
+    if (ref.read(meetingSessionProvider).isActive && _seenInCall) {
+      _armPipRestoreGrace();
+      ref.read(meetingSessionProvider.notifier).expand();
     }
+    _pendingBackgroundLeave = false;
+    await _setJsBackgrounded(false);
+    await _setJsPipState(inPip: false, restoreGrace: true);
+    await _kickMedia();
+    // Never auto-end after resume. Explicit Leave / hang-up only.
   }
 
   Future<void> _setJsBackgrounded(bool backgrounded) async {
@@ -238,11 +236,22 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
   Future<void> _ensureController(String url) async {
     _leaving = false;
     if (_controller != null && _loadedUrl == url) return;
-    _seenInCall = false;
-    _joinedAt = null;
-    _exitReloads = 0;
+
+    // Mid-call join-url refresh (JWT): keep in-call flags. Resetting them made
+    // PiP restore / rejoin look like the meeting had ended.
+    final midCall = _controller != null && _seenInCall;
+    if (!midCall) {
+      _seenInCall = false;
+      _joinedAt = null;
+      _exitReloads = 0;
+    }
 
     if (_controller != null) {
+      // Avoid full reload while restoring from PiP — WebView is still on the room.
+      if (midCall && (_pipMode || _inPipRestoreGrace || _appBackgrounded)) {
+        if (mounted) setState(() => _loadedUrl = url);
+        return;
+      }
       await _controller!.loadRequest(Uri.parse(url));
       if (!mounted) return;
       setState(() => _loadedUrl = url);
@@ -275,19 +284,25 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
       ..addJavaScriptChannel(
         'HrmsMeeting',
         onMessageReceived: (message) {
-          if (message.message == 'joined') {
+          final raw = message.message.trim();
+          if (raw == 'joined') {
             _seenInCall = true;
             _joinedAt ??= DateTime.now();
             _joinRefreshes = 0;
             _pendingBackgroundLeave = false;
-          } else if (message.message == 'left') {
-            // Minimizing / PiP / restore briefly drops WebRTC. Never hang up
-            // from those blips — only an explicit Leave should end the call.
-            if (_appBackgrounded || _pipMode || _inPipRestoreGrace || _sharing) {
-              _pendingBackgroundLeave = true;
-              return;
-            }
-            _leaveMeeting();
+            _exitReloads = 0;
+            return;
+          }
+          // Explicit hang-up from Meet toolbar / confirm dialog only.
+          if (raw == 'left:hangup') {
+            _leaveMeeting(userInitiated: true);
+            return;
+          }
+          // Transient CONFERENCE_LEFT / close-page blips (PiP, minimize, ICE).
+          // Never end the HRMS session — user must tap Leave.
+          if (raw == 'left' || raw == 'left:transient') {
+            _pendingBackgroundLeave = true;
+            return;
           }
         },
       )
@@ -425,6 +440,11 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
   /// in, so mint a fresh join-url and stay in the same room as host/attendee.
   bool _handleNavigation(String url) {
     if (_isAuthRejoinUrl(url)) {
+      // PiP / minimize / restore often hits /meetings or rejoin URLs as a blip.
+      // Rejoining then reloads the WebView and looks like the call ended.
+      if (_pipMode || _inPipRestoreGrace || _appBackgrounded) {
+        return true;
+      }
       _refreshAuthenticatedJoin();
       return true;
     }
@@ -450,7 +470,6 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
           .read(meetingsRepositoryProvider)
           .getJoinUrl(meetingId);
       if (!mounted || _leaving || info.url.isEmpty) {
-        if (mounted && !_leaving) _leaveMeeting();
         return;
       }
       final name = session.displayName ?? '';
@@ -462,7 +481,7 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
           );
     } catch (e) {
       debugPrint('Meeting rejoin failed: $e');
-      if (mounted) _leaveMeeting();
+      // Do not end the meeting — keep the existing WebView session alive.
     } finally {
       _refreshingJoin = false;
     }
@@ -476,30 +495,30 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
   bool _handleExitNavigation(String url) {
     final exit = _isJitsiExitUrl(url) || _roomWasCleared(url);
     if (!exit) return false;
-    // MediaProjection consent pauses the activity; Jitsi may briefly hit an
-    // exit URL. Never tear down the call while screen share is in flight.
-    if (_sharing) return true;
-    // Home minimize / Android PiP / restore from PiP — do not end the meeting.
-    if (_appBackgrounded || _pipMode || _inPipRestoreGrace) {
-      _reloadJoinUrl();
-      return true;
+    // Once the user is in the call (or PiP / restore / share / background),
+    // NEVER reload or end on close/welcome blips — that was killing PiP restore.
+    if (_seenInCall ||
+        _pipMode ||
+        _inPipRestoreGrace ||
+        _appBackgrounded ||
+        _sharing) {
+      return true; // cancel navigation only
     }
-    if (_seenInCall && !_inJoinGrace()) {
-      _leaveMeeting();
-      return true;
-    }
+    // Pre-join only: bounce back to the join URL.
     _reloadJoinUrl();
     return true;
   }
 
   void _reloadJoinUrl() {
-    if (_exitReloads >= 2 || _leaving) return;
+    // Reloading mid-call tears down WebRTC and looks like "meeting ended".
+    if (_seenInCall || _pipMode || _inPipRestoreGrace || _leaving) return;
+    if (_exitReloads >= 2) return;
     final join = _loadedUrl;
     final controller = _controller;
     if (join == null || join.isEmpty || controller == null) return;
     _exitReloads++;
     Future<void>.delayed(const Duration(milliseconds: 250), () {
-      if (!mounted || _leaving) return;
+      if (!mounted || _leaving || _seenInCall) return;
       controller.loadRequest(Uri.parse(join));
     });
   }
@@ -519,8 +538,14 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
     }
   }
 
-  void _leaveMeeting() {
+  /// Ends the meeting. Automatic paths must pass [userInitiated]: false and will
+  /// be ignored — only the in-app Leave button / Meet hang-up may end the call.
+  void _leaveMeeting({bool userInitiated = false}) {
     if (_leaving) return;
+    if (!userInitiated) {
+      // PiP tap / minimize / navigation must never tear down an active meeting.
+      return;
+    }
     _leaving = true;
     _dismissCustomView();
     _stopNativeShare();
@@ -1886,15 +1911,22 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
     } catch (e) {}
   }
 
-  function notifyLeft() {
-    if (window.__hrmsLeftSent || !window.__hrmsJoinedSent) return;
-    window.__hrmsLeftSent = true;
+  function notifyLeft(fromHangup) {
+    if (!window.__hrmsJoinedSent) return;
     if (window.__hrmsLeftTimer) {
       clearTimeout(window.__hrmsLeftTimer);
       window.__hrmsLeftTimer = null;
     }
-    hideMeetingUi();
-    try { if (window.HrmsMeeting) HrmsMeeting.postMessage('left'); } catch (e) {}
+    if (fromHangup) {
+      if (window.__hrmsLeftSent) return;
+      window.__hrmsLeftSent = true;
+      hideMeetingUi();
+      try { if (window.HrmsMeeting) HrmsMeeting.postMessage('left:hangup'); } catch (e) {}
+      return;
+    }
+    // Transient disconnect — do NOT mark left permanently or blank the UI.
+    // Flutter keeps the session; Meet may rejoin on its own.
+    try { if (window.HrmsMeeting) HrmsMeeting.postMessage('left:transient'); } catch (e) {}
   }
 
   function stillInCall() {
@@ -1932,38 +1964,28 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
   function scheduleLeft(fromHangup) {
     if (!window.__hrmsJoinedSent || window.__hrmsLeftSent) return;
     if (window.__hrmsLeftTimer) clearTimeout(window.__hrmsLeftTimer);
-    if (!fromHangup && shouldIgnoreTransientLeave()) {
-      // Stay in the meeting while HRMS is minimized / in PiP / restoring.
+    // Non-hangup leaves are always treated as transient for HRMS session
+    // lifetime — PiP restore / minimize must never end the meeting.
+    if (!fromHangup) {
+      if (shouldIgnoreTransientLeave() || stillInCall()) return;
+      notifyLeft(false);
       return;
     }
-    var shareBusy = !fromHangup && (window.__hrmsShareStarting || window.__hrmsSharing);
-    var delay = shareBusy ? 12000 : 2500;
+    var delay = 400;
     window.__hrmsLeftTimer = setTimeout(function () {
       window.__hrmsLeftTimer = null;
       if (stillInCall()) return;
-      if (!fromHangup && shouldIgnoreTransientLeave()) return;
-      if (!fromHangup && window.__hrmsShareStarting) {
-        scheduleLeft(false);
-        return;
-      }
-      notifyLeft();
+      notifyLeft(true);
     }, delay);
   }
 
   window.__hrmsCheckStillInCallAfterResume = function () {
+    // Never auto-end after resume/PiP — only explicit Leave / hangup may.
     if (window.__hrmsLeftSent) return;
-    if (shouldIgnoreTransientLeave()) return;
     if (stillInCall()) {
       window.__hrmsJoinedSent = true;
-      return;
+      window.__hrmsJoinedPosted = true;
     }
-    // Give ICE a moment to recover after the activity resumes.
-    if (window.__hrmsLeftTimer) clearTimeout(window.__hrmsLeftTimer);
-    window.__hrmsLeftTimer = setTimeout(function () {
-      window.__hrmsLeftTimer = null;
-      if (stillInCall() || shouldIgnoreTransientLeave()) return;
-      notifyLeft();
-    }, 8000);
   };
 
   function wrapHangup() {
@@ -2078,7 +2100,7 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
       el.addEventListener('click', function () {
         var inToolbar = !!(this.closest('#new-toolbox') || this.closest('.new-toolbox') || this.closest('.toolbox-content-items'));
         if (!inToolbar) {
-          notifyLeft();
+          notifyLeft(true);
           return;
         }
         scheduleLeft(true);
@@ -2517,7 +2539,7 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
                 ref.read(meetingSessionProvider.notifier).expand();
               },
               onLeavePressed: () => setState(() => _confirmingLeave = true),
-              onLeaveConfirm: _leaveMeeting,
+              onLeaveConfirm: () => _leaveMeeting(userInitiated: true),
               onLeaveCancel: () => setState(() => _confirmingLeave = false),
             ),
           ),
