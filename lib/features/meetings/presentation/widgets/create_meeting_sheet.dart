@@ -213,8 +213,11 @@ class _CreateMeetingSheetState extends ConsumerState<CreateMeetingSheet> {
         'type': _type == 'instant' ? 'instant' : _type,
         'duration_minutes': duration < 5 ? 5 : (duration > 480 ? 480 : duration),
         'participant_ids': List<String>.from(_participantIds),
-        'start_now': _type == 'instant',
       };
+      // Mirror web: only send start_now for instant meetings.
+      if (_type == 'instant') {
+        payload['start_now'] = true;
+      }
       final description = _description.text.trim();
       if (description.isNotEmpty) {
         payload['description'] = description;

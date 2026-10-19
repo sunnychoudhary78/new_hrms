@@ -40,6 +40,13 @@ class MeetingsApiService {
     return api.post('${ApiEndpoints.meetings}/$id/guest-invite', body);
   }
 
+  /// Public short-link resolve (no auth) — same as web `/j/:code`.
+  Future<dynamic> resolveShortLink(String code) {
+    return api.get(
+      '${ApiEndpoints.meetings}/j/${Uri.encodeComponent(code)}',
+    );
+  }
+
   Future<dynamic> getMinimalEmployees() {
     return api.get(ApiEndpoints.employeesMinimal);
   }

@@ -176,9 +176,25 @@ bool canCreateMeetings(List<String> permissions, {bool? metaCanCreate}) {
   return metaCanCreate == true;
 }
 
+/// Global permission hint only — update/cancel/guest-invite also require
+/// being the meeting host unless the user has [meetingManagePermission].
+/// Prefer [canManageThisMeeting] on detail screens.
 bool canEditMeetings(List<String> permissions) {
-  return permissions.contains(meetingCreatePermission) ||
-      permissions.contains(meetingManagePermission);
+  return permissions.contains(meetingManagePermission) ||
+      permissions.contains(meetingCreatePermission);
+}
+
+bool hasMeetingManagePermission(List<String> permissions) {
+  return permissions.contains(meetingManagePermission);
+}
+
+/// Matches backend `canManageMeeting`: host of that meeting, or `meeting.manage`.
+bool canManageThisMeeting({
+  required List<String> permissions,
+  required bool isHost,
+}) {
+  if (hasMeetingManagePermission(permissions)) return true;
+  return isHost;
 }
 
 bool canViewMeetingRecordings(List<String> permissions) {

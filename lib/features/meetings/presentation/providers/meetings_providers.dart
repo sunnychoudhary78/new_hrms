@@ -77,8 +77,14 @@ final canCreateMeetingsProvider = Provider<bool>((ref) {
   return canCreateMeetings(permissions, metaCanCreate: list?.canCreate);
 });
 
+/// True when the user has create or manage permission (menu/create hints).
+/// Detail edit/cancel/guest-invite must also check host via [canManageThisMeeting].
 final canEditMeetingsProvider = Provider<bool>((ref) {
   return canEditMeetings(ref.watch(authProvider).permissions);
+});
+
+final hasMeetingManagePermissionProvider = Provider<bool>((ref) {
+  return hasMeetingManagePermission(ref.watch(authProvider).permissions);
 });
 
 final canViewMeetingRecordingsProvider = Provider<bool>((ref) {

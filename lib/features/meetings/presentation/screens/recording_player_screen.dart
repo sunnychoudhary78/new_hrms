@@ -57,19 +57,26 @@ class _RecordingPlayerScreenState extends ConsumerState<RecordingPlayerScreen> {
           .getRecordingPlayUrl(widget.recordingId);
       final video = VideoPlayerController.networkUrl(Uri.parse(links.streamUrl));
       await video.initialize();
+      if (!mounted) {
+        await video.dispose();
+        return;
+      }
       if (widget.audioOnly) {
         video.addListener(() {
           if (mounted) setState(() {});
         });
-      }
-      if (!mounted) {
-        await video.dispose();
+        await video.play();
+        setState(() {
+          _video = video;
+          _chewie = null;
+          _loading = false;
+        });
         return;
       }
       final chewie = ChewieController(
         videoPlayerController: video,
         autoPlay: true,
-        allowFullScreen: !widget.audioOnly,
+        allowFullScreen: true,
         showControls: true,
       );
       setState(() {

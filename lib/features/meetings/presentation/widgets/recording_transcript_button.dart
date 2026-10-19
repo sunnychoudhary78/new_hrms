@@ -32,6 +32,7 @@ class RecordingTranscriptButton extends ConsumerStatefulWidget {
 class _RecordingTranscriptButtonState
     extends ConsumerState<RecordingTranscriptButton> {
   late String _status;
+  String? _error;
   Timer? _poll;
   bool _starting = false;
 
@@ -39,6 +40,7 @@ class _RecordingTranscriptButtonState
   void initState() {
     super.initState();
     _status = widget.status;
+    _error = widget.error;
     _syncPoll();
   }
 
@@ -48,6 +50,9 @@ class _RecordingTranscriptButtonState
     if (oldWidget.status != widget.status && !_starting) {
       _status = widget.status;
       _syncPoll();
+    }
+    if (oldWidget.error != widget.error) {
+      _error = widget.error;
     }
   }
 
@@ -69,7 +74,10 @@ class _RecordingTranscriptButtonState
           .read(meetingsRepositoryProvider)
           .getRecording(widget.recordingId);
       if (!mounted || rec.transcriptStatus == 'processing') return;
-      setState(() => _status = rec.transcriptStatus);
+      setState(() {
+        _status = rec.transcriptStatus;
+        _error = rec.transcriptError;
+      });
       _syncPoll();
       if (rec.transcriptStatus == 'ready') {
         AppSnackbar.success(context, 'Transcription ready');
@@ -147,7 +155,8 @@ class _RecordingTranscriptButtonState
     }
 
     final failed = _status == 'failed';
-    return OutlinedButton.icon(
+    final errorText = (_error ?? widget.error)?.trim();
+    final button = OutlinedButton.icon(
       style: style,
       onPressed: (_starting || !widget.enabled) ? null : _start,
       icon: Icon(
@@ -161,6 +170,22 @@ class _RecordingTranscriptButtonState
             ? 'Retry transcription'
             : 'Get transcription',
       ),
+    );
+    if (!failed || errorText == null || errorText.isEmpty) return button;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        button,
+        const SizedBox(height: 4),
+        Text(
+          errorText,
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.error,
+            fontSize: 11,
+          ),
+        ),
+      ],
     );
   }
 }

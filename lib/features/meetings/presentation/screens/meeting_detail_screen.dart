@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lms/features/auth/presentation/providers/auth_provider.dart';
 import 'package:lms/features/meetings/data/models/meet_recording_model.dart';
 import 'package:lms/features/meetings/data/models/meeting_model.dart';
 import 'package:lms/features/meetings/presentation/meeting_join.dart';
@@ -33,7 +34,7 @@ class _MeetingDetailScreenState extends ConsumerState<MeetingDetailScreen> {
   List<int> _recDays = [1, 2, 3, 4, 5];
   List<String> _selectedIds = [];
   String _employeeFilter = '';
-  bool _hydrated = false;
+  String? _hydratedMeetingId;
   bool _joining = false;
   bool _saving = false;
   bool _autoTranscribe = false;
@@ -76,7 +77,7 @@ class _MeetingDetailScreenState extends ConsumerState<MeetingDetailScreen> {
         : [1, 2, 3, 4, 5];
     _selectedIds = meeting.attendeeUserIds;
     _autoTranscribe = meeting.autoTranscribe;
-    _hydrated = true;
+    _hydratedMeetingId = meeting.id;
   }
 
   Future<void> _pickStartsAt() async {
@@ -128,11 +129,24 @@ class _MeetingDetailScreenState extends ConsumerState<MeetingDetailScreen> {
 
   Future<void> _save(Meeting meeting) async {
     if (_saving) return;
+    final title = _title.text.trim();
+    if (title.isEmpty) {
+      AppSnackbar.error(context, 'Title is required');
+      return;
+    }
+    if (meeting.isRecurring && _recDays.isEmpty) {
+      AppSnackbar.error(context, 'Select at least one weekday');
+      return;
+    }
+    if ((meeting.isOneTime || meeting.isInstant) && _startsAt == null) {
+      AppSnackbar.error(context, 'Start date/time is required');
+      return;
+    }
     setState(() => _saving = true);
     try {
       final n = int.tryParse(_duration.text.trim()) ?? 30;
       final payload = <String, dynamic>{
-        'title': _title.text.trim(),
+        'title': title,
         'description': _description.text.trim().isEmpty
             ? null
             : _description.text.trim(),
@@ -148,9 +162,12 @@ class _MeetingDetailScreenState extends ConsumerState<MeetingDetailScreen> {
       } else if (_startsAt != null) {
         payload['starts_at'] = _startsAt!.toUtc().toIso8601String();
       }
-      await ref
+      final updated = await ref
           .read(meetingsRepositoryProvider)
           .updateMeeting(meeting.id, payload);
+      if (mounted) {
+        setState(() => _hydrate(updated));
+      }
       ref.invalidate(meetingDetailProvider(meeting.id));
       ref.invalidate(meetingsListProvider);
       if (mounted) AppSnackbar.success(context, 'Meeting updated');
@@ -202,7 +219,7 @@ class _MeetingDetailScreenState extends ConsumerState<MeetingDetailScreen> {
 
     final meetingAsync = ref.watch(meetingDetailProvider(id));
     final session = ref.watch(meetingSessionProvider);
-    final canEdit = ref.watch(canEditMeetingsProvider);
+    final permissions = ref.watch(authProvider).permissions;
     final canViewRecordings = ref.watch(canViewMeetingRecordingsProvider);
     final listMeta = ref.watch(meetingsListProvider).asData?.value;
     final recordings = canViewRecordings
@@ -223,7 +240,7 @@ class _MeetingDetailScreenState extends ConsumerState<MeetingDetailScreen> {
           ),
         ),
         data: (meeting) {
-          if (!_hydrated) {
+          if (_hydratedMeetingId != meeting.id) {
             WidgetsBinding.instance.addPostFrameCallback((_) {
               if (!mounted) return;
               setState(() => _hydrate(meeting));
@@ -232,15 +249,25 @@ class _MeetingDetailScreenState extends ConsumerState<MeetingDetailScreen> {
 
           final cancelled = meeting.isCancelled;
           final isHost = meeting.isHostOf(userId);
-          final canInviteGuests = !cancelled && (isHost || canEdit);
+          // Backend canManageMeeting: host OR meeting.manage (not create alone).
+          final canManageThis = canManageThisMeeting(
+            permissions: permissions,
+            isHost: isHost,
+          );
+          final canInviteGuests = !cancelled && canManageThis;
+          final canEditThis = !cancelled && canManageThis;
+          final inCall = session.isFor(meeting.id);
+          final showJoin = !cancelled && (meeting.canShowJoin || inCall);
           final autoAvailable =
               (listMeta?.autoTranscribeAvailable ?? false) ||
               meeting.autoTranscribe;
           final transcriptionEnabled = listMeta?.transcription ?? false;
           final statusColor = cancelled
               ? scheme.error
-              : meeting.isEnded
+              : (meeting.isEnded || meeting.isOver)
               ? scheme.outline
+              : meeting.isLive
+              ? const Color(0xFFDC2626)
               : const Color(0xFF059669);
 
           return ListView(
@@ -263,7 +290,7 @@ class _MeetingDetailScreenState extends ConsumerState<MeetingDetailScreen> {
                           ),
                         ),
                         PremiumStatusPill(
-                          label: meeting.statusLabel,
+                          label: meeting.displayStatusLabel,
                           color: statusColor,
                         ),
                       ],
@@ -317,7 +344,7 @@ class _MeetingDetailScreenState extends ConsumerState<MeetingDetailScreen> {
                               ),
                             ),
                             Text(
-                              p.role,
+                              p.roleLabel,
                               style: TextStyle(
                                 color: scheme.onSurfaceVariant,
                                 fontSize: 12,
@@ -328,63 +355,73 @@ class _MeetingDetailScreenState extends ConsumerState<MeetingDetailScreen> {
                       ),
                     ),
                     if (!cancelled) ...[
-                      const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          if (canViewRecordings)
-                            Expanded(
-                              child: OutlinedButton.icon(
-                                onPressed: () => Navigator.pushNamed(
-                                  context,
-                                  '/meetings/recordings',
-                                  arguments: meeting.id,
+                      if (canViewRecordings || canInviteGuests) ...[
+                        const SizedBox(height: 16),
+                        Row(
+                          children: [
+                            if (canViewRecordings)
+                              Expanded(
+                                child: OutlinedButton.icon(
+                                  onPressed: () => Navigator.pushNamed(
+                                    context,
+                                    '/meetings/recordings',
+                                    arguments: meeting.id,
+                                  ),
+                                  icon: const Icon(
+                                    Icons.video_library_outlined,
+                                  ),
+                                  label: const Text('Recordings'),
                                 ),
-                                icon: const Icon(Icons.video_library_outlined),
-                                label: const Text('Recordings'),
                               ),
-                            ),
-                          if (canViewRecordings) const SizedBox(width: 8),
-                          if (canInviteGuests)
-                            Expanded(
-                              child: OutlinedButton.icon(
-                                onPressed: () => showGuestInviteSheet(
-                                  context,
-                                  ref,
-                                  meeting.id,
+                            if (canViewRecordings && canInviteGuests)
+                              const SizedBox(width: 8),
+                            if (canInviteGuests)
+                              Expanded(
+                                child: OutlinedButton.icon(
+                                  onPressed: () => showGuestInviteSheet(
+                                    context,
+                                    ref,
+                                    meeting.id,
+                                  ),
+                                  icon: const Icon(Icons.link_rounded),
+                                  label: const Text('Meeting link'),
                                 ),
-                                icon: const Icon(Icons.link_rounded),
-                                label: const Text('Meeting link'),
                               ),
-                            ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      FilledButton.icon(
-                        onPressed: _joining
-                            ? null
-                            : () => _join(
-                                meeting.id,
-                                title: meeting.title,
-                              ),
-                        icon: const Icon(Icons.videocam_rounded),
-                        label: Text(
-                          _joining
-                              ? 'Opening…'
-                              : session.isFor(meeting.id)
-                              ? 'Return to meeting'
-                              : isHost
-                              ? 'Join as host'
-                              : 'Join meeting',
+                          ],
                         ),
-                      ),
-                      if (_joinNote != null && _joinNote!.isNotEmpty) ...[
-                        const SizedBox(height: 8),
-                        Text(
-                          _joinNote!,
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: scheme.onSurfaceVariant,
+                      ],
+                      if (showJoin) ...[
+                        SizedBox(
+                          height: (canViewRecordings || canInviteGuests)
+                              ? 8
+                              : 16,
+                        ),
+                        FilledButton.icon(
+                          onPressed: _joining
+                              ? null
+                              : () => _join(
+                                    meeting.id,
+                                    title: meeting.title,
+                                  ),
+                          icon: const Icon(Icons.videocam_rounded),
+                          label: Text(
+                            _joining
+                                ? 'Opening…'
+                                : inCall
+                                ? 'Return to meeting'
+                                : isHost
+                                ? 'Join as host'
+                                : 'Join meeting',
                           ),
                         ),
+                        if (_joinNote != null && _joinNote!.isNotEmpty) ...[
+                          const SizedBox(height: 8),
+                          Text(
+                            _joinNote!,
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(color: scheme.onSurfaceVariant),
+                          ),
+                        ],
                       ],
                     ],
                   ],
@@ -475,7 +512,7 @@ class _MeetingDetailScreenState extends ConsumerState<MeetingDetailScreen> {
                   },
                 ),
               ],
-              if (!cancelled && canEdit) ...[
+              if (canEditThis) ...[
                 const SizedBox(height: 16),
                 PremiumCard(
                   child: Column(
@@ -514,7 +551,7 @@ class _MeetingDetailScreenState extends ConsumerState<MeetingDetailScreen> {
                           subtitle: const Text(
                             'Audio is captured when you join as host. No video is kept. The transcript is ready a few minutes after the call.',
                           ),
-                          value: _hydrated
+                          value: _hydratedMeetingId == meeting.id
                               ? _autoTranscribe
                               : meeting.autoTranscribe,
                           onChanged: _saving

@@ -85,6 +85,24 @@ class MeetingsRepository {
     return invite;
   }
 
+  /// Resolves a public guest short code to a fresh Meet JWT URL.
+  Future<MeetingJoinInfo> resolveShortLink(String code) async {
+    final trimmed = code.trim();
+    if (trimmed.isEmpty) {
+      throw Exception('Meeting link is invalid');
+    }
+    final res = await api.resolveShortLink(trimmed);
+    final map = meetingResponseMap(res);
+    final data = map['data'] is Map
+        ? Map<String, dynamic>.from(map['data'] as Map)
+        : map;
+    final info = MeetingJoinInfo.fromJson(data);
+    if (info.url.isEmpty) {
+      throw Exception('Could not open meeting link');
+    }
+    return info;
+  }
+
   Future<List<MeetingEmployee>> getMinimalEmployees() async {
     final res = await api.getMinimalEmployees();
     return employeesFromMinimalResponse(res);

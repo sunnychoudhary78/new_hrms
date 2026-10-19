@@ -71,9 +71,10 @@ class _MeetingsListScreenState extends ConsumerState<MeetingsListScreen>
     }
   }
 
-  Color _statusColor(String status, ColorScheme scheme) {
-    if (status == 'cancelled') return scheme.error;
-    if (status == 'ended') return scheme.outline;
+  Color _statusColor(Meeting meeting, ColorScheme scheme) {
+    if (meeting.isCancelled) return scheme.error;
+    if (meeting.isEnded || meeting.isOver) return scheme.outline;
+    if (meeting.isLive) return const Color(0xFFDC2626);
     return const Color(0xFF059669);
   }
 
@@ -206,11 +207,12 @@ class _MeetingsListScreenState extends ConsumerState<MeetingsListScreen>
                     separatorBuilder: (_, __) => const SizedBox(height: 8),
                     itemBuilder: (_, i) {
                       final meeting = meetings[i];
+                      final inCall = session.isFor(meeting.id);
                       return _MeetingTile(
                         meeting: meeting,
                         joining: _joiningId == meeting.id,
-                        inCall: session.isFor(meeting.id),
-                        statusColor: _statusColor(meeting.status, scheme),
+                        inCall: inCall,
+                        statusColor: _statusColor(meeting, scheme),
                         onOpen: () async {
                           await Navigator.pushNamed(
                             context,
@@ -219,7 +221,7 @@ class _MeetingsListScreenState extends ConsumerState<MeetingsListScreen>
                           );
                           if (mounted) _refresh();
                         },
-                        onJoin: meeting.isScheduled
+                        onJoin: (meeting.canShowJoin || inCall)
                             ? () => _join(meeting.id, title: meeting.title)
                             : null,
                         showRecordings: canViewRecordings,
@@ -351,10 +353,8 @@ class _MeetingTile extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 PremiumStatusPill(
-                  label: meeting.isLive ? 'Live now' : meeting.statusLabel,
-                  color: meeting.isLive
-                      ? const Color(0xFFDC2626)
-                      : statusColor,
+                  label: meeting.displayStatusLabel,
+                  color: statusColor,
                 ),
                 if (onJoin != null) ...[
                   const SizedBox(height: 8),

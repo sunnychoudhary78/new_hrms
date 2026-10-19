@@ -58,6 +58,18 @@ class MeetingParticipant {
     final n = user?.name.trim() ?? '';
     return n.isNotEmpty ? n : userId;
   }
+
+  String get roleLabel {
+    switch (role.toLowerCase()) {
+      case 'host':
+        return 'Host';
+      case 'attendee':
+        return 'Attendee';
+      default:
+        if (role.isEmpty) return 'Attendee';
+        return '${role[0].toUpperCase()}${role.substring(1)}';
+    }
+  }
 }
 
 class MeetingEmployee {
@@ -202,6 +214,7 @@ class Meeting {
   final String? meetingProvider;
   final String? meetingId;
   final String? meetLink;
+  final String? shortCode;
   final String status;
   final bool isActive;
   final MeetingUser? creator;
@@ -224,6 +237,7 @@ class Meeting {
     this.meetingProvider,
     this.meetingId,
     this.meetLink,
+    this.shortCode,
     required this.status,
     this.isActive = true,
     this.creator,
@@ -256,6 +270,9 @@ class Meeting {
     return !now.isAfter(end);
   }
 
+  /// Join is allowed until cancelled (backend); UI mirrors web scheduled gate.
+  bool get canShowJoin => isScheduled || isLive;
+
   String get typeLabel {
     switch (type) {
       case 'recurring':
@@ -276,6 +293,14 @@ class Meeting {
       default:
         return 'Scheduled';
     }
+  }
+
+  /// List/detail badge: treat time-elapsed one-time meetings as Ended (web parity).
+  String get displayStatusLabel {
+    if (isLive) return 'Live now';
+    if (isCancelled) return 'Cancelled';
+    if (isEnded || isOver) return 'Ended';
+    return statusLabel;
   }
 
   bool isHostOf(String? userId) {
@@ -372,6 +397,7 @@ class Meeting {
       meetingProvider: json['meeting_provider']?.toString(),
       meetingId: json['meeting_id']?.toString(),
       meetLink: json['meet_link']?.toString(),
+      shortCode: json['short_code']?.toString(),
       status: json['status']?.toString() ?? 'scheduled',
       isActive: json['is_active'] != false,
       creator: json['creator'] is Map

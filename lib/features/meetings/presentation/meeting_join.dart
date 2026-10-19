@@ -17,6 +17,32 @@ String meetingUserDisplayName(WidgetRef ref) {
   return '';
 }
 
+/// Jitsi UI sound ids muted in the in-app WebView (join / leave / chat / etc.).
+/// Remote participant voice/video is unaffected — only bundled `/sounds/*` clips.
+const jitsiDisabledUiSounds = <String>[
+  'PARTICIPANT_JOINED_SOUND',
+  'PARTICIPANT_LEFT_SOUND',
+  'INCOMING_MSG_SOUND',
+  'OUTGOING_CALL_EXPIRED_SOUND',
+  'OUTGOING_CALL_REJECTED_SOUND',
+  'OUTGOING_CALL_RINGING_SOUND',
+  'OUTGOING_CALL_START_SOUND',
+  'RAISE_HAND_SOUND',
+  'REACTION_SOUND',
+  'TALK_WHILE_MUTED_SOUND',
+  'NO_AUDIO_SIGNAL_SOUND',
+  'E2EE_ON_SOUND',
+  'E2EE_OFF_SOUND',
+  'RECORDING_ON_SOUND',
+  'RECORDING_OFF_SOUND',
+  'TRANSCRIPTION_ON_SOUND',
+  'TRANSCRIPTION_OFF_SOUND',
+  'RECORDING_AND_TRANSCRIPTION_ON_SOUND',
+  'RECORDING_AND_TRANSCRIPTION_OFF_SOUND',
+  'LIVE_STREAMING_ON_SOUND',
+  'LIVE_STREAMING_OFF_SOUND',
+];
+
 /// Jitsi reads these from the URL hash before the app boots.
 ///
 /// They must be on the raw URL. [Uri.replace] percent-encodes the fragment
@@ -31,6 +57,14 @@ String withJitsiJoinOverrides(String url, String name) {
       'config.disableDeepLinking=true',
     if (!existing.contains('config.deeplinking.disabled'))
       'config.deeplinking.disabled=true',
+    // Mute Meet UI tones (join ding, chat, etc.) — not remote call audio.
+    if (!existing.contains('config.disableSounds'))
+      'config.disableSounds=true',
+    if (!existing.contains('config.disableRecordAudioNotification'))
+      'config.disableRecordAudioNotification=true',
+    // Raw JSON (not URI-encoded) — Jitsi parseURLParams JSON.parses `[` values.
+    if (!existing.contains('config.disabledSounds'))
+      'config.disabledSounds=[${jitsiDisabledUiSounds.map((s) => '"$s"').join(',')}]',
   ];
   final trimmed = name.trim();
   if (trimmed.isNotEmpty && !existing.contains('userInfo.displayName')) {

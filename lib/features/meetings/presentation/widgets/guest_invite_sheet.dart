@@ -34,7 +34,10 @@ class _GuestInviteSheetState extends ConsumerState<GuestInviteSheet> {
   final _name = TextEditingController();
   final _email = TextEditingController();
   String? _lastUrl;
+  String? _lobbyNote;
   bool _sending = false;
+
+  static final _emailPattern = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
 
   @override
   void dispose() {
@@ -62,12 +65,27 @@ class _GuestInviteSheetState extends ConsumerState<GuestInviteSheet> {
           sendEmail: emailToo,
         );
     if (!mounted) return null;
-    setState(() => _lastUrl = invite.inviteUrl);
+    setState(() {
+      _lastUrl = invite.inviteUrl;
+      final note = invite.note?.trim();
+      if (note != null && note.isNotEmpty) _lobbyNote = note;
+    });
     return invite.inviteUrl;
   }
 
   Future<void> _invite({required bool emailToo}) async {
     if (_sending) return;
+    if (emailToo) {
+      final email = _email.text.trim();
+      if (email.isEmpty) {
+        AppSnackbar.error(context, 'Guest email is required to send the link');
+        return;
+      }
+      if (!_emailPattern.hasMatch(email)) {
+        AppSnackbar.error(context, 'Enter a valid guest email');
+        return;
+      }
+    }
     setState(() => _sending = true);
     try {
       final url = await _ensureInviteUrl(emailToo: emailToo);
@@ -75,7 +93,7 @@ class _GuestInviteSheetState extends ConsumerState<GuestInviteSheet> {
       await _copy(url);
       if (!mounted) return;
       if (emailToo) {
-        AppSnackbar.success(context, 'Guest email will be sent shortly');
+        AppSnackbar.success(context, 'Meeting link will be emailed shortly');
       } else {
         AppSnackbar.success(
           context,
@@ -123,7 +141,8 @@ class _GuestInviteSheetState extends ConsumerState<GuestInviteSheet> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Guests open the link and wait in the Meet lobby. You must join as host and admit them — the link alone does not let them into the call.',
+              _lobbyNote ??
+                  'Anyone with this link waits in the lobby until the host admits them.',
               style: Theme.of(context).textTheme.bodySmall,
             ),
             const SizedBox(height: 16),
