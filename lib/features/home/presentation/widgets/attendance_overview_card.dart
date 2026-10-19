@@ -184,36 +184,55 @@ class _AttendancePieChart extends StatelessWidget {
 
   const _AttendancePieChart({required this.distribution});
 
+  static String _countLabel(double value) {
+    if (value <= 0) return '0';
+    if (value == value.roundToDouble()) return value.toStringAsFixed(0);
+    return value.toStringAsFixed(1);
+  }
+
   @override
   Widget build(BuildContext context) {
     final total = distribution.total;
-    final sections = <PieChartSectionData?>[
-      _section(
+    final labeled = <({double value, Color color, String label})>[
+      (
         value: distribution.leave,
         color: HomeDashColors.leave,
-        total: total,
+        label: 'Leave',
       ),
-      _section(
+      (
         value: distribution.absent,
         color: HomeDashColors.absent,
-        total: total,
+        label: 'Absent',
       ),
-      _section(
+      (
         value: distribution.weekOff,
         color: HomeDashColors.weekOff,
-        total: total,
+        label: 'Week Off',
       ),
-      _section(
+      (
         value: distribution.holiday,
         color: HomeDashColors.accentBlue,
-        total: total,
+        label: 'Holiday',
       ),
-      _section(
+      (
         value: distribution.worked,
         color: const Color(0xFF34D399),
-        total: total,
+        label: 'Working',
       ),
-    ].whereType<PieChartSectionData>().toList();
+    ];
+
+    final sections = labeled
+        .where((e) => e.value > 0 && total > 0)
+        .map(
+          (e) => PieChartSectionData(
+            value: e.value,
+            color: e.color,
+            radius: 28,
+            showTitle: false,
+            title: _countLabel(e.value),
+          ),
+        )
+        .toList();
 
     if (sections.isEmpty) {
       return const Center(
@@ -233,27 +252,18 @@ class _AttendancePieChart extends StatelessWidget {
       ),
     );
   }
-
-  PieChartSectionData? _section({
-    required double value,
-    required Color color,
-    required double total,
-  }) {
-    if (value <= 0 || total <= 0) return null;
-
-    return PieChartSectionData(
-      value: value,
-      color: color,
-      radius: 28,
-      showTitle: false,
-    );
-  }
 }
 
 class _PieLegend extends StatelessWidget {
   final AttendanceDistribution distribution;
 
   const _PieLegend({required this.distribution});
+
+  static String countLabel(double value) {
+    if (value <= 0) return '0';
+    if (value == value.roundToDouble()) return value.toStringAsFixed(0);
+    return value.toStringAsFixed(1);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -265,31 +275,31 @@ class _PieLegend extends StatelessWidget {
           color: const Color(0xFF34D399),
           label: 'Working',
           value: distribution.worked,
-          percent: distribution.percent(distribution.worked),
+          countText: countLabel(distribution.worked),
         ),
         _LegendItem(
           color: HomeDashColors.leave,
           label: 'Leave',
           value: distribution.leave,
-          percent: distribution.percent(distribution.leave),
+          countText: countLabel(distribution.leave),
         ),
         _LegendItem(
           color: HomeDashColors.absent,
           label: 'Absent',
           value: distribution.absent,
-          percent: distribution.percent(distribution.absent),
+          countText: countLabel(distribution.absent),
         ),
         _LegendItem(
           color: HomeDashColors.weekOff,
           label: 'Week Off',
           value: distribution.weekOff,
-          percent: distribution.percent(distribution.weekOff),
+          countText: countLabel(distribution.weekOff),
         ),
         _LegendItem(
           color: HomeDashColors.accentBlue,
           label: 'Holiday',
           value: distribution.holiday,
-          percent: distribution.percent(distribution.holiday),
+          countText: countLabel(distribution.holiday),
         ),
       ],
     );
@@ -300,13 +310,13 @@ class _LegendItem extends StatelessWidget {
   final Color color;
   final String label;
   final double value;
-  final double percent;
+  final String countText;
 
   const _LegendItem({
     required this.color,
     required this.label,
     required this.value,
-    required this.percent,
+    required this.countText,
   });
 
   @override
@@ -322,7 +332,7 @@ class _LegendItem extends StatelessWidget {
             height: 10,
             decoration: BoxDecoration(color: color, shape: BoxShape.circle),
           ),
-          SizedBox(width: 8),
+          const SizedBox(width: 8),
           Expanded(
             child: Text(
               label,
@@ -334,7 +344,7 @@ class _LegendItem extends StatelessWidget {
             ),
           ),
           Text(
-            '${percent.toStringAsFixed(0)}%',
+            countText,
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w700,

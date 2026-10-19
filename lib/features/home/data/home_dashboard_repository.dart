@@ -292,9 +292,9 @@ class HomeDashboardRepository {
   }
 
   // ─────────────────────────────────────────────
-  // ALL WORKING DAYS OF CURRENT MONTH (SKIP SUNDAY)
+  // ALL CALENDAR DAYS OF MONTH (Sun–Sat weeks)
   // ─────────────────────────────────────────────
-  List<DateTime> _allWorkingDaysOfMonth(DateTime month) {
+  List<DateTime> _allDaysOfMonth(DateTime month) {
     final firstDay = DateTime(month.year, month.month, 1);
     final lastDay = DateTime(month.year, month.month + 1, 0);
 
@@ -302,13 +302,18 @@ class HomeDashboardRepository {
     var cursor = firstDay;
 
     while (!cursor.isAfter(lastDay)) {
-      if (cursor.weekday != DateTime.sunday) {
-        days.add(DateTime(cursor.year, cursor.month, cursor.day));
-      }
+      days.add(DateTime(cursor.year, cursor.month, cursor.day));
       cursor = cursor.add(const Duration(days: 1));
     }
 
     return days;
+  }
+
+  /// Working-day baseline when office hours are missing (skips typical Sunday off).
+  List<DateTime> _allWorkingDaysOfMonth(DateTime month) {
+    return _allDaysOfMonth(month)
+        .where((d) => d.weekday != DateTime.sunday)
+        .toList();
   }
 
   List<WeeklyAttendanceBar> _loadLastFiveDaysBars(
@@ -331,11 +336,11 @@ class HomeDashboardRepository {
     }
 
     final sessionsByDate = groupSessionsByDate(sessions);
-    final workingDays = _allWorkingDaysOfMonth(month);
+    final calendarDays = _allDaysOfMonth(month);
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
 
-    return workingDays.map((day) {
+    return calendarDays.map((day) {
       final key = dateKeyFromDateTime(day);
       final dayOnly = DateTime(day.year, day.month, day.day);
       final isFuture = dayOnly.isAfter(today);
@@ -350,10 +355,14 @@ class HomeDashboardRepository {
       }
 
       final dayStatus = statusByDate[key] ?? '';
+      // No backend row: treat Sunday as week-off; other days as working.
+      final effectiveStatus = dayStatus.isNotEmpty
+          ? dayStatus
+          : (day.weekday == DateTime.sunday ? 'week_off' : 'present');
       final daySessions = sessionsByDate[key] ?? [];
 
       final expectedForDate = expectedMinutesForDate(
-        dayStatus: dayStatus.isEmpty ? 'present' : dayStatus,
+        dayStatus: effectiveStatus,
         expectedMinsPerDay: expectedMinsPerDay,
       );
 
