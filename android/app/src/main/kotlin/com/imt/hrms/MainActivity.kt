@@ -41,7 +41,8 @@ class MainActivity : FlutterActivity() {
                     result.success(enterMeetingPip())
                 }
                 "setPipEnabled" -> {
-                    meetingActive = call.argument<Boolean>("enabled") == true
+                    // Floating PiP is permanently off. Do not clear meetingActive
+                    // (that flag tracks the keep-alive FGS, not PiP).
                     updatePipParams()
                     result.success(true)
                 }
@@ -65,6 +66,8 @@ class MainActivity : FlutterActivity() {
                     startActivityForResult(manager.createScreenCaptureIntent(), SCREEN_REQUEST)
                 }
                 "stop" -> {
+                    // Stop capture + emit __stopped__ before answering so JS
+                    // can remove the desktop track in the same turn.
                     ScreenShareService.stop(this)
                     result.success(true)
                 }
@@ -122,12 +125,13 @@ class MainActivity : FlutterActivity() {
         })
     }
 
-    /** Home / Recents — show a floating meeting window while the call stays live. */
+    /**
+     * Home / Recents / Back: keep the meeting alive in the task (Recent Apps)
+     * via [MeetingCallService]. Do NOT enter a floating Picture-in-Picture window.
+     */
     override fun onUserLeaveHint() {
         super.onUserLeaveHint()
-        if (meetingActive) {
-            enterMeetingPip()
-        }
+        // Intentionally no enterMeetingPip() — users return from Recents / notification.
     }
 
     override fun onPictureInPictureModeChanged(
@@ -148,17 +152,8 @@ class MainActivity : FlutterActivity() {
         pipSink?.success(isInPictureInPictureMode)
     }
 
-    private fun enterMeetingPip(): Boolean {
-        if (!meetingActive) return false
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return false
-        if (isInPictureInPictureMode) return true
-        return try {
-            enterPictureInPictureMode(buildPipParams())
-            true
-        } catch (t: Throwable) {
-            false
-        }
-    }
+    /** PiP is disabled — always no-op so Flutter/Home never get a floating call window. */
+    private fun enterMeetingPip(): Boolean = false
 
     private fun updatePipParams() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
@@ -172,9 +167,9 @@ class MainActivity : FlutterActivity() {
         val builder = PictureInPictureParams.Builder()
             .setAspectRatio(Rational(9, 16))
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            // Auto-enter on gesture Home so the floating window appears reliably.
-            builder.setAutoEnterEnabled(meetingActive)
-            builder.setSeamlessResizeEnabled(true)
+            // Never auto-enter PiP on Home / gesture leave (screen share or Back).
+            builder.setAutoEnterEnabled(false)
+            builder.setSeamlessResizeEnabled(false)
         }
         return builder.build()
     }

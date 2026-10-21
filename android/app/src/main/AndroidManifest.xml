@@ -46,7 +46,7 @@
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
             android:hardwareAccelerated="true"
             android:resizeableActivity="true"
-            android:supportsPictureInPicture="true"
+            android:supportsPictureInPicture="false"
             android:windowSoftInputMode="adjustResize">
 
             <meta-data

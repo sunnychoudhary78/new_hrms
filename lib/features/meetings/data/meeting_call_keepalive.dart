@@ -4,7 +4,10 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
 
-/// Keeps mic/camera alive in the background and drives Android PiP for meetings.
+/// Keeps mic/camera alive in the background during meetings.
+///
+/// Android Picture-in-Picture is disabled — the call stays in Recent Apps /
+/// the meeting notification instead of a floating pop-up.
 class MeetingCallKeepAlive {
   static const _channel = MethodChannel('hrms/meeting_keepalive');
   static const _pipEvents = EventChannel('hrms/meeting_pip');
@@ -12,7 +15,7 @@ class MeetingCallKeepAlive {
   static StreamSubscription<dynamic>? _pipSub;
   static final _pipController = StreamController<bool>.broadcast();
 
-  /// Whether the activity is currently in Android Picture-in-Picture.
+  /// Whether the activity is currently in Android Picture-in-Picture (unused).
   static Stream<bool> get pipModeChanges => _pipController.stream;
 
   static Future<void> start({String? title}) async {
@@ -28,6 +31,8 @@ class MeetingCallKeepAlive {
             ? 'Meeting in progress'
             : title.trim(),
       });
+      // Keep floating PiP off even though the meeting FGS is running.
+      await setPipEnabled(false);
     } catch (e) {
       debugPrint('Meeting keep-alive start failed: $e');
     }
@@ -43,25 +48,15 @@ class MeetingCallKeepAlive {
     }
   }
 
-  /// Ask Android to enter Picture-in-Picture (no-op on iOS / unsupported).
-  static Future<bool> enterPip() async {
-    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
-      return false;
-    }
-    try {
-      final ok = await _channel.invokeMethod<bool>('enterPip');
-      return ok == true;
-    } catch (e) {
-      debugPrint('Meeting PiP enter failed: $e');
-      return false;
-    }
-  }
+  /// Picture-in-Picture is disabled — always returns false.
+  static Future<bool> enterPip() async => false;
 
-  /// Temporarily disable auto/home PiP (e.g. while the screen-share consent runs).
+  /// Keeps native PiP auto-enter off (floating meeting window is not used).
   static Future<void> setPipEnabled(bool enabled) async {
     if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) return;
     try {
-      await _channel.invokeMethod<void>('setPipEnabled', {'enabled': enabled});
+      // Always pass false so Home / Recents never spawn a floating call window.
+      await _channel.invokeMethod<void>('setPipEnabled', {'enabled': false});
     } catch (e) {
       debugPrint('Meeting PiP enable failed: $e');
     }

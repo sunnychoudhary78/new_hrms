@@ -143,7 +143,8 @@ class ScreenShareService : Service() {
         val density = metrics.densityDpi
         val (width, height) = scaledCaptureSize(srcW, srcH)
 
-        val reader = ImageReader.newInstance(width, height, PixelFormat.RGBA_8888, 2)
+        // Extra buffers so the producer does not block while we encode JPEG.
+        val reader = ImageReader.newInstance(width, height, PixelFormat.RGBA_8888, 3)
         imageReader = reader
         reader.setOnImageAvailableListener({ source ->
             if (stopping.get()) return@setOnImageAvailableListener
@@ -313,12 +314,12 @@ class ScreenShareService : Service() {
         private const val TAG = "ScreenShareService"
         private const val CHANNEL_ID = "meeting_screen_share"
         private const val NOTIFICATION_ID = 890
-        // Keep payloads small enough for the Flutter↔WebView bridge so remotes
-        // get a steady stream instead of long black stalls between frames.
+        // Tuned for low latency over the Flutter↔WebView bridge: slightly
+        // smaller JPEGs at a higher frame rate feel snappier than large 10fps tiles.
         private const val MAX_CAPTURE_EDGE = 720
-        private const val TARGET_JPEG_WIDTH = 720
-        private const val JPEG_QUALITY = 50
-        private const val FRAME_INTERVAL_MS = 100L
+        private const val TARGET_JPEG_WIDTH = 640
+        private const val JPEG_QUALITY = 55
+        private const val FRAME_INTERVAL_MS = 50L
 
         fun start(context: Context, code: Int, data: Intent) {
             ScreenShareHub.resultCode = code
@@ -333,6 +334,9 @@ class ScreenShareService : Service() {
         }
 
         fun stop(context: Context) {
+            // Notify Flutter/JS immediately so remotes drop the desktop track
+            // without waiting for Service.onDestroy.
+            ScreenShareHub.emitStopped()
             context.stopService(Intent(context, ScreenShareService::class.java))
         }
     }
