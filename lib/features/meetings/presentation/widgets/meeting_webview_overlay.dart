@@ -41,6 +41,8 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
   bool _frameBusy = false;
   String? _pendingShareFrame;
   bool _leaving = false;
+  /// Full-screen “Meeting Ended Successfully” before returning to the dashboard.
+  bool _showEndedBanner = false;
   bool _seenInCall = false;
   bool _cookiesReady = false;
   bool _refreshingJoin = false;
@@ -364,18 +366,17 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
             _exitReloads = 0;
             return;
           }
-          // Explicit hang-up from Meet toolbar. Ignore while the call UI is
-          // hidden or while restoring from PiP — those synthesize false hangups
-          // that used to end the meeting and dump the user on the dashboard.
-          if (raw == 'left:hangup') {
+          // Explicit hang-up from Meet toolbar, or Jitsi “Meeting ended” page.
+          // Ignore only while the call UI is hidden / restoring — not while
+          // screen-sharing (that used to leave users stuck on the ended page).
+          if (raw == 'left:hangup' || raw == 'meeting-ended') {
             if (_pipMode ||
                 _appBackgrounded ||
                 _isMinimizedInApp ||
-                _sharing ||
                 _inPipRestoreGrace) {
               return;
             }
-            _leaveMeeting(userInitiated: true);
+            _completeMeetingExit();
             return;
           }
           // Transient CONFERENCE_LEFT / close-page blips (PiP, minimize, ICE).
@@ -568,10 +569,18 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
   bool _handleExitNavigation(String url) {
     final exit = _isJitsiExitUrl(url) || _roomWasCleared(url);
     if (!exit) return false;
-    // Once the user is in the call (or minimized chip / PiP / restore),
-    // NEVER reload or end on close/welcome blips.
+    // After a real join, close/welcome means the meeting finished — show the
+    // success banner and return to the dashboard (do not leave a stuck page).
+    if (_seenInCall &&
+        !_mustKeepCallAlive &&
+        !_leaving &&
+        !_showEndedBanner) {
+      _completeMeetingExit();
+      return true;
+    }
+    // Minimized / PiP / share-consent blips: cancel navigation only.
     if (_seenInCall || _mustKeepCallAlive) {
-      return true; // cancel navigation only
+      return true;
     }
     // Pre-join only: bounce back to the join URL.
     _reloadJoinUrl();
@@ -607,6 +616,32 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
     }
   }
 
+  /// Shows “Meeting Ended Successfully” for 1s, then returns to the dashboard.
+  /// Used for Meet hang-up, close page, and in-app Leave — never leave the user
+  /// on Jitsi’s “close this tab” screen (Back from there caused a red overlay).
+  void _completeMeetingExit() {
+    if (_leaving || _showEndedBanner) return;
+    _dismissCustomView();
+    _stopNativeShare();
+    MeetingCallKeepAlive.stop();
+    // Keep session active briefly so the banner covers the meeting shell.
+    if (mounted) {
+      setState(() {
+        _showEndedBanner = true;
+        _confirmingLeave = false;
+        _sharing = false;
+      });
+    }
+    final session = ref.read(meetingSessionProvider);
+    if (session.isActive && !session.expanded) {
+      ref.read(meetingSessionProvider.notifier).expand();
+    }
+    Future<void>.delayed(const Duration(seconds: 1), () {
+      if (!mounted) return;
+      _leaveMeeting(userInitiated: true);
+    });
+  }
+
   /// Ends the meeting. Automatic paths must pass [userInitiated]: false and will
   /// be ignored — only the in-app Leave button / Meet hang-up may end the call.
   void _leaveMeeting({bool userInitiated = false}) {
@@ -626,6 +661,7 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
       _cachedWebView = null;
       _loadedUrl = null;
       _confirmingLeave = false;
+      _showEndedBanner = false;
       _seenInCall = false;
       _joinedAt = null;
       _exitReloads = 0;
@@ -2223,13 +2259,13 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
   function shouldIgnoreHangup() {
     // Hidden / restoring call UI cannot produce a real hangup click.
     // __hrmsPipRestoreGrace covers Android PiP tap-to-expand blips.
+    // Do NOT include screen-share flags — that left users stuck on the
+    // “Meeting ended / close this tab” page after a real hang-up.
     return !!(window.__hrmsAppBackgrounded ||
       window.__hrmsPipMode ||
       window.__hrmsPipRestoreGrace ||
       window.__hrmsMeetingMinimized ||
-      window.__hrmsHangupIgnore ||
-      window.__hrmsShareStarting ||
-      window.__hrmsSharing);
+      window.__hrmsHangupIgnore);
   }
 
   function shouldIgnoreTransientLeave() {
@@ -2285,6 +2321,8 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
           try { if (window.HrmsMeeting) HrmsMeeting.postMessage('left:transient'); } catch (e) {}
           return;
         }
+        window.__hrmsSharing = false;
+        window.__hrmsShareStarting = false;
         scheduleLeft(true);
         return orig.apply(APP.conference, arguments);
       };
@@ -2400,9 +2438,32 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
   }
 
   function checkWelcomeAfterLeave() {
-    if (!window.__hrmsJoinedSent) return;
+    if (!window.__hrmsJoinedSent || window.__hrmsLeftSent) return;
     var path = (location.pathname || '').toLowerCase();
-    if (path.indexOf('close') !== -1) scheduleLeft(false);
+    if (path.indexOf('close') !== -1) {
+      // Close page after a real join = meeting finished (not a transient blip).
+      if (shouldIgnoreHangup()) return;
+      notifyLeft(true);
+    }
+  }
+
+  function checkMeetingEndedUi() {
+    if (!window.__hrmsJoinedSent || window.__hrmsLeftSent) return;
+    if (shouldIgnoreHangup()) return;
+    var text = '';
+    try {
+      text = ((document.body && document.body.innerText) || '').toLowerCase();
+    } catch (e) {
+      return;
+    }
+    if (!text) return;
+    if (text.indexOf('meeting ended') === -1) return;
+    if (text.indexOf('left the meeting') === -1 &&
+        text.indexOf('close this tab') === -1) return;
+    window.__hrmsLeftSent = true;
+    try {
+      if (window.HrmsMeeting) HrmsMeeting.postMessage('meeting-ended');
+    } catch (e) {}
   }
 
   window.__hrmsArmLeaveHook = function () {
@@ -2412,6 +2473,7 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
     notifyJoined();
     hookConfirmButtons();
     checkWelcomeAfterLeave();
+    checkMeetingEndedUi();
   };
 
   window.__hrmsArmLeaveHook();
@@ -2758,12 +2820,14 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
           _appBackgrounded = false;
           _pipMode = false;
           _pipRestoreGraceUntil = null;
+          _showEndedBanner = false;
         });
       });
     }
 
     // Show the call full-bleed in PiP or when expanded in-app.
-    final showMeeting = session.isActive && (expanded || _pipMode);
+    final showMeeting =
+        session.isActive && (expanded || _pipMode || _showEndedBanner);
 
     return Stack(
       fit: StackFit.expand,
@@ -2778,9 +2842,9 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
             width: stage.width,
             height: stage.height,
             child: IgnorePointer(
-              ignoring: !showMeeting,
+              ignoring: !showMeeting || _showEndedBanner,
               child: Opacity(
-                opacity: showMeeting ? 1 : 0.01,
+                opacity: showMeeting && !_showEndedBanner ? 1 : 0.01,
                 child: Material(
                   color: Colors.black,
                   // Keep Jitsi subject/timer below the system status bar in
@@ -2792,17 +2856,22 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
                       children: [
                         Column(
                           children: [
-                            if (!_pipMode)
+                            if (!_pipMode && !_showEndedBanner)
                               _MeetingChrome(
                                 title: session.title ?? 'Meeting',
-                                onBack: () => ref
-                                    .read(meetingSessionProvider.notifier)
-                                    .minimize(),
+                                onBack: () {
+                                  // Never minimize onto a dead “Meeting ended”
+                                  // WebView (that path produced the red overlay).
+                                  if (_showEndedBanner) return;
+                                  ref
+                                      .read(meetingSessionProvider.notifier)
+                                      .minimize();
+                                },
                               ),
                             Expanded(child: _buildWebView()),
                           ],
                         ),
-                        if (_customView != null && !_pipMode)
+                        if (_customView != null && !_pipMode && !_showEndedBanner)
                           Positioned.fill(
                             child: ColoredBox(
                               color: Colors.black,
@@ -2816,11 +2885,16 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
               ),
             ),
           ),
+        if (_showEndedBanner)
+          const Positioned.fill(
+            child: _MeetingEndedBanner(),
+          ),
         if (!_pipMode)
           PopScope(
-            canPop: !expanded,
+            canPop: !expanded && !_showEndedBanner,
             onPopInvokedWithResult: (didPop, _) {
               if (didPop) return;
+              if (_showEndedBanner) return;
               if (_customView != null) {
                 _dismissCustomView();
                 return;
@@ -2837,7 +2911,7 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
               child: widget.child,
             ),
           ),
-        if (session.isActive && !expanded && !_pipMode)
+        if (session.isActive && !expanded && !_pipMode && !_showEndedBanner)
           Positioned(
             right: 12,
             bottom: 24 + media.padding.bottom,
@@ -2846,11 +2920,58 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
               confirmingLeave: _confirmingLeave,
               onReturn: _returnToMeeting,
               onLeavePressed: () => setState(() => _confirmingLeave = true),
-              onLeaveConfirm: () => _leaveMeeting(userInitiated: true),
+              onLeaveConfirm: _completeMeetingExit,
               onLeaveCancel: () => setState(() => _confirmingLeave = false),
             ),
           ),
       ],
+    );
+  }
+}
+
+class _MeetingEndedBanner extends StatelessWidget {
+  const _MeetingEndedBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Material(
+      color: Color(0xFF0F172A),
+      child: SafeArea(
+        child: Center(
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: 32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.check_circle_rounded,
+                  color: Color(0xFF34D399),
+                  size: 56,
+                ),
+                SizedBox(height: 16),
+                Text(
+                  'Meeting Ended Successfully',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  'Returning to dashboard…',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Color(0xFF94A3B8),
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
