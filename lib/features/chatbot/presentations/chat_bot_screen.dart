@@ -26,7 +26,7 @@ class _ChatBotScreenState extends ConsumerState<ChatBotScreen> {
   final _scrollController = ScrollController();
 
   static const _linkRoutes = <String, String>{
-    '/leaves': '/leave-status',
+    '/leaves': '/leave-balance',
     '/attendance': '/view-attendance',
     '/corrections': '/view-corrections',
     '/my-payslips': '/payslip',
@@ -596,24 +596,37 @@ class _ChatBotScreenState extends ConsumerState<ChatBotScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   MarkdownBody(
-                    data: message.content,
-                    selectable: true,
-                    styleSheet: MarkdownStyleSheet.fromTheme(theme).copyWith(
-                      p: theme.textTheme.bodyMedium?.copyWith(
-                        height: 1.5,
-                        fontSize: 14.5,
-                      ),
-                      tableBorder: TableBorder.all(
-                        color: scheme.outlineVariant,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      tableCellsPadding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 6,
-                      ),
-                      tableHead: const TextStyle(fontWeight: FontWeight.w700),
-                    ),
-                  ),
+  data: message.content,
+  selectable: true,
+  styleSheet: MarkdownStyleSheet.fromTheme(theme).copyWith(
+    p: theme.textTheme.bodyMedium?.copyWith(
+      height: 1.5,
+      fontSize: 14.5,
+    ),
+    // Column content ke hisaab se, max 96px, phir word-boundary par wrap
+    tableColumnWidth: const MinColumnWidth(
+      IntrinsicColumnWidth(),
+      FixedColumnWidth(96),
+    ),
+    tableBorder: TableBorder.all(
+      color: scheme.outlineVariant,
+      borderRadius: BorderRadius.circular(8),
+    ),
+    tableCellsPadding: const EdgeInsets.symmetric(
+      horizontal: 8,
+      vertical: 6,
+    ),
+    tableHead: const TextStyle(
+      fontWeight: FontWeight.w700,
+      fontSize: 12.5,
+    ),
+    tableBody: theme.textTheme.bodyMedium?.copyWith(
+      fontSize: 12.5,
+      height: 1.3,
+    ),
+    tableHeadAlign: TextAlign.center,
+  ),
+),
                   if (availableLinks.isNotEmpty) ...[
                     const SizedBox(height: 12),
                     Wrap(
