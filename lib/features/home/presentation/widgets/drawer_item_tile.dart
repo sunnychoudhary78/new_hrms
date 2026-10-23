@@ -1,6 +1,5 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 
 class DrawerTile extends StatelessWidget {
   final IconData icon;
@@ -9,6 +8,9 @@ class DrawerTile extends StatelessWidget {
   final bool isActive;
   final int index;
   final Widget? trailing;
+  final Color? accent;
+  final bool showChevron;
+  final String? subtitle;
 
   const DrawerTile({
     super.key,
@@ -18,61 +20,83 @@ class DrawerTile extends StatelessWidget {
     required this.index,
     this.isActive = false,
     this.trailing,
+    this.accent,
+    this.showChevron = true,
+    this.subtitle,
   });
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
-    final tileRadius = BorderRadius.circular(isIOS ? 12 : 14);
-
-    final bgColor = isActive
-        ? scheme.primary.withValues(alpha: 0.10)
-        : Colors.transparent;
-
-    final iconColor = isActive ? scheme.primary : scheme.onSurfaceVariant;
-
-    final textColor = isActive ? scheme.primary : scheme.onSurface;
+    final scheme = Theme.of(context).colorScheme;
+    final tileRadius = BorderRadius.circular(14);
+    final color = accent ?? scheme.primary;
+    final idleIconBg = scheme.surfaceContainerLow;
+    final idleIconFg = scheme.onSurfaceVariant;
 
     return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
-          child: Material(
-            color: bgColor,
-            borderRadius: tileRadius,
-            child: InkWell(
-              borderRadius: tileRadius,
-              splashFactory: isIOS
-                  ? NoSplash.splashFactory
-                  : InkSplash.splashFactory,
-              onTap: onTap,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
+      padding: const EdgeInsets.symmetric(vertical: 1),
+      child: Material(
+        color: isActive ? color.withValues(alpha: 0.08) : Colors.transparent,
+        borderRadius: tileRadius,
+        child: InkWell(
+          borderRadius: tileRadius,
+          splashFactory:
+              isIOS ? NoSplash.splashFactory : InkSplash.splashFactory,
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(8, 10, 10, 10),
+            child: Row(
+              children: [
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  width: 3.5,
+                  height: 28,
+                  margin: const EdgeInsets.only(right: 8),
+                  decoration: BoxDecoration(
+                    color: isActive ? color : Colors.transparent,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
                 ),
-                child: Row(
-                  children: [
-                    Icon(icon, size: 20, color: iconColor),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Text(
-                        title,
-                        style: TextStyle(
-                          fontSize: 15.5,
-                          fontWeight: FontWeight.w500,
-                          color: textColor,
-                        ),
-                      ),
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: isActive ? color : idleIconBg,
+                    borderRadius: BorderRadius.circular(11),
+                  ),
+                  child: Icon(
+                    icon,
+                    size: 20,
+                    color: isActive ? Colors.white : idleIconFg,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 14.5,
+                      fontWeight: isActive ? FontWeight.w800 : FontWeight.w600,
+                      color: isActive ? color : scheme.onSurface,
                     ),
-                    if (trailing != null) trailing!,
-                  ],
+                  ),
                 ),
-              ),
+                if (trailing != null)
+                  trailing!
+                else if (showChevron)
+                  Icon(
+                    Icons.chevron_right_rounded,
+                    size: 20,
+                    color: isActive
+                        ? color.withValues(alpha: 0.75)
+                        : scheme.onSurfaceVariant.withValues(alpha: 0.45),
+                  ),
+              ],
             ),
           ),
-        )
-        .animate(delay: (index * 50).ms)
-        .fade(duration: 300.ms)
-        .slideX(begin: -.12, end: 0, curve: Curves.easeOutCubic);
+        ),
+      ),
+    );
   }
 }

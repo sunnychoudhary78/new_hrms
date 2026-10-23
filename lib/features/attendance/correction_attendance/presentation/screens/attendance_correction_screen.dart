@@ -6,6 +6,7 @@ import 'package:lms/features/attendance/correction_attendance/presentation/provi
 import 'package:lms/features/home/presentation/widgets/app_drawer.dart';
 import 'package:lms/shared/widgets/app_bar.dart';
 import 'package:lms/shared/widgets/attendance_filter_tabs.dart';
+import 'package:lms/shared/widgets/premium_feature_components.dart';
 import '../widgets/correction_stats.dart';
 import '../widgets/correction_section.dart';
 
@@ -30,15 +31,16 @@ class _AttendanceCorrectionScreenState
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     final stateAsync = ref.watch(attendanceRequestsProvider);
 
     return Scaffold(
-      backgroundColor: scheme.surfaceContainerLowest,
-      appBar: AppAppBar(title: "Correct Attendance"),
+      backgroundColor: AppColors.bg,
+      appBar: AppAppBar(title: "Correct Attendance", showBack: false),
       drawer: const AppDrawer(),
       body: stateAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const Center(
+          child: CircularProgressIndicator(color: AppColors.heroStart),
+        ),
         error: (e, _) => Center(child: Text(e.toString())),
         data: (state) {
           final filtered = state.statusFilter == "ALL"
@@ -49,6 +51,7 @@ class _AttendanceCorrectionScreenState
           final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
 
           return RefreshIndicator(
+            color: AppColors.heroStart,
             onRefresh: () async {
               await ref
                   .read(attendanceRequestsProvider.notifier)
@@ -67,53 +70,26 @@ class _AttendanceCorrectionScreenState
                 AppSpacing.xl,
               ),
               children: [
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(isIOS ? 14 : 18),
-                    gradient: LinearGradient(
-                      colors: [
-                        scheme.primaryContainer,
-                        scheme.secondaryContainer,
-                      ],
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      CircleAvatar(
-                        backgroundColor: scheme.primary,
-                        child: Icon(
-                          Icons.fact_check_outlined,
-                          color: scheme.onPrimary,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          "Attendance correction requests",
-                          style: TextStyle(
-                            fontWeight: FontWeight.w700,
-                            color: scheme.onSurface,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+                PremiumFeatureHeader(
+                  icon: Icons.fact_check_outlined,
+                  title: 'Attendance correction requests',
+                  subtitle:
+                      'Review pending corrections and remote work requests from your team.',
                 ),
-                const SizedBox(height: AppSpacing.md),
 
                 CorrectionStats(requests: state.requests),
 
-                const SizedBox(height: AppSpacing.lg),
+                SizedBox(height: AppSpacing.lg),
 
                 const AttendanceFilterTabs(),
 
-                const SizedBox(height: AppSpacing.md),
+                SizedBox(height: AppSpacing.md),
 
                 Text(
                   "${filtered.length} requests",
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: scheme.onSurfaceVariant,
+                    color: AppColors.muted,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
 
@@ -139,9 +115,6 @@ class _EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
-
     String message;
 
     switch (status) {
@@ -159,28 +132,11 @@ class _EmptyState extends StatelessWidget {
     }
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 40),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(isIOS ? 12 : 16),
-          color: scheme.surfaceContainerLow,
-          border: Border.all(color: scheme.outlineVariant),
-        ),
-        child: Column(
-          children: [
-            Icon(Icons.inbox_rounded, size: 44, color: scheme.primary),
-            const SizedBox(height: 12),
-            Text(
-              message,
-              textAlign: TextAlign.center,
-              style: Theme.of(
-                context,
-              ).textTheme.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
-            ),
-          ],
-        ),
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
+      child: PremiumEmptyState(
+        icon: Icons.inbox_rounded,
+        title: 'No requests',
+        subtitle: message,
       ),
     );
   }

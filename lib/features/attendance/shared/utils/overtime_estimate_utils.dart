@@ -70,6 +70,22 @@ int expectedMinutesForDate({
   return expectedMinsPerDay;
 }
 
+/// Effective minutes for a session. Open sessions use live elapsed time
+/// because backend `durationMinutes` is often 0 until check-out.
+int sessionWorkedMinutes(AttendanceSession session) {
+  if (session.checkOutTime != null) {
+    if (session.durationMinutes > 0) return session.durationMinutes;
+    return session.checkOutTime!
+        .difference(session.checkInTime)
+        .inMinutes
+        .clamp(0, 24 * 60);
+  }
+  return DateTime.now()
+      .difference(session.checkInTime)
+      .inMinutes
+      .clamp(0, 24 * 60);
+}
+
 /// Sum capped session minutes and derive estimated OT for one calendar day.
 DayWorkedResult computeDayWorked({
   required List<AttendanceSession> daySessions,
@@ -81,7 +97,7 @@ DayWorkedResult computeDayWorked({
   var isCapped = false;
 
   for (final session in daySessions) {
-    var mins = session.durationMinutes;
+    var mins = sessionWorkedMinutes(session);
     if (mins < 0) mins = 0;
 
     final capped = capMinutesForOt(

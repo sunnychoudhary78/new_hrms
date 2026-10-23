@@ -63,6 +63,10 @@ class HomeDashboardModel {
         lateDays: 0,
         absentDays: 0,
         totalLeaves: 0,
+        leavesRemaining: 0,
+        leavesTotal: 0,
+        weekWorkedHours: 0,
+        autoCloseCapHours: 0,
       ),
       distribution: const AttendanceDistribution(
         worked: 0,
@@ -137,11 +141,27 @@ class HomeStats {
   final int absentDays;
   final num totalLeaves;
 
+  /// Sum of available leave balance across leave types.
+  final double leavesRemaining;
+
+  /// Remaining + leaves taken (for progress display like 6 / 7).
+  final double leavesTotal;
+
+  /// Worked hours in the current calendar week (Mon–Sun).
+  final double weekWorkedHours;
+
+  /// Hours counted under auto-close cap this month.
+  final double autoCloseCapHours;
+
   const HomeStats({
     required this.payableDays,
     required this.lateDays,
     required this.absentDays,
     required this.totalLeaves,
+    this.leavesRemaining = 0,
+    this.leavesTotal = 0,
+    this.weekWorkedHours = 0,
+    this.autoCloseCapHours = 0,
   });
 }
 

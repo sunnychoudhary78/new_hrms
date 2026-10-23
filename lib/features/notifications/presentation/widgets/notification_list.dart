@@ -50,9 +50,9 @@ class NotificationList extends ConsumerWidget {
 
     return ListView.separated(
       physics: scrollPhysics,
-      padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
       itemCount: notifications.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 12),
+      separatorBuilder: (_, __) => const SizedBox(height: 10),
       itemBuilder: (context, index) {
         final n = notifications[index];
 
@@ -128,17 +128,10 @@ class NotificationList extends ConsumerWidget {
           },
 
           child: NotificationTile(
-            icon: _iconForType(n["type"]),
-
             title: n["title"] ?? "Notification",
-
             subtitle: n["message"] ?? "",
-
             time: _formatTime(createdAt),
-
             isUnread: isUnread,
-
-            /// ✅ TAP HANDLER WITH FULL DEBUG
             onTap: () {
               /// MARK AS READ
               if (isUnread) {
@@ -382,43 +375,6 @@ class NotificationList extends ConsumerWidget {
     );
   }
 
-  IconData _iconForType(String? type) {
-    final t = (type ?? '').toLowerCase();
-    if (t.contains('expense')) return Icons.receipt_long;
-    if (t.contains('resignation')) return Icons.assignment_return_outlined;
-    if (t.contains('kra') || t.contains('kpi')) return Icons.insights_rounded;
-    if (t.contains('meeting')) return Icons.videocam_rounded;
-
-    switch (t) {
-      case 'attendance_checkin':
-        return Icons.login;
-
-      case 'attendance_checkout':
-        return Icons.logout;
-
-      case 'attendance_auto_closed':
-        return Icons.timer_off;
-
-      case 'attendance_correction_requested':
-        return Icons.edit_calendar;
-
-      case 'leave_request':
-        return Icons.event_note;
-
-      case 'leave_status_update':
-        return Icons.check_circle;
-
-      case 'leave_revocation_request':
-        return Icons.warning;
-
-      case 'remote_work_requested':
-        return Icons.home_work;
-
-      default:
-        return Icons.notifications;
-    }
-  }
-
   String? _meetingIdFromNotificationData(dynamic data) {
     Map<String, dynamic>? payload;
     if (data is Map) {
@@ -440,18 +396,9 @@ class NotificationList extends ConsumerWidget {
     return RegExp(r'/meetings/([^/?#]+)').firstMatch(path)?.group(1);
   }
 
-  /// TIME FORMATTER
+  /// Date under subtitle — matches clean list layout (d/M/yyyy).
   String _formatTime(DateTime date) {
-    final diff = DateTime.now().difference(date);
-
-    if (diff.inMinutes < 1) return 'just now';
-
-    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
-
-    if (diff.inHours < 24) return '${diff.inHours}h ago';
-
-    if (diff.inDays == 1) return 'Yesterday';
-
-    return '${date.day}/${date.month}/${date.year}';
+    final local = date.toLocal();
+    return '${local.day}/${local.month}/${local.year}';
   }
 }

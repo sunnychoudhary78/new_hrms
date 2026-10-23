@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:lms/features/attendance/view_attendance/utils/calendar_type_style.dart';
+import 'package:lms/core/theme/app_design.dart';
 import 'package:lms/shared/widgets/app_bar.dart';
+import 'package:lms/shared/widgets/premium_feature_components.dart';
 import 'package:lms/shared/widgets/attendance_calender_widget.dart';
 import 'package:lms/shared/widgets/attendance_day_detail_bottom_sheet.dart';
 import 'package:lms/shared/widgets/attendance_month_summary.dart';
@@ -49,8 +51,6 @@ class _EmployeeAttendanceCalendarScreenState
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-
     final params = AttendanceParams(
       userId: widget.employee.userId,
       month: DateTime(_focusedDay.year, _focusedDay.month),
@@ -63,7 +63,7 @@ class _EmployeeAttendanceCalendarScreenState
 
     return Scaffold(
       appBar: AppAppBar(title: "View Attendance"),
-      backgroundColor: scheme.surfaceContainerLowest,
+      backgroundColor: AppColors.bg,
 
       body: attendanceAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
@@ -103,28 +103,34 @@ class _EmployeeAttendanceCalendarScreenState
             physics: defaultTargetPlatform == TargetPlatform.iOS
                 ? const BouncingScrollPhysics()
                 : const ClampingScrollPhysics(),
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(AppSpacing.lg),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _EmployeeHeader(employee: widget.employee),
 
-                const SizedBox(height: 24),
+                const SizedBox(height: AppSpacing.lg),
 
-                ////////////////////////////////////////////////////
-                /// ✅ SUMMARY (FIXED)
-                ////////////////////////////////////////////////////
                 summaryAsync.when(
                   loading: () =>
                       const Center(child: CircularProgressIndicator()),
                   error: (_, __) => const SizedBox(),
-                  data: (_) => Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      AttendanceMonthSummary(counts: counts),
-                      _LeaveTypeList(summary: summary),
-                      _HolidayNameList(attendanceMap: attendanceMap),
-                    ],
+                  data: (_) => PremiumCard(
+                    padding: const EdgeInsets.all(AppSpacing.md),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const PremiumSectionTitle(
+                          title: "Month summary",
+                          subtitle:
+                              "Counts for the selected month from attendance records.",
+                        ),
+                        const SizedBox(height: AppSpacing.md),
+                        AttendanceMonthSummary(counts: counts),
+                        _LeaveTypeList(summary: summary),
+                        _HolidayNameList(attendanceMap: attendanceMap),
+                      ],
+                    ),
                   ),
                 ),
 
@@ -350,41 +356,47 @@ class _EmployeeHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
-
     return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: scheme.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(isIOS ? 16 : 20),
-      ),
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      decoration: AppColors.heroDecoration(radius: AppRadius.lg),
       child: Row(
         children: [
           CircleAvatar(
-            radius: 24,
-            backgroundColor: scheme.primaryContainer,
+            radius: 26,
+            backgroundColor: Colors.white.withValues(alpha: 0.22),
             child: Text(
               employee.name.isNotEmpty ? employee.name[0].toUpperCase() : "?",
-              style: TextStyle(
-                fontWeight: FontWeight.w600,
-                color: scheme.onPrimaryContainer,
+              style: const TextStyle(
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+                fontSize: 18,
               ),
             ),
           ),
           const SizedBox(width: 14),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                employee.name,
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                  color: scheme.onSurface,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  employee.name,
+                  style: const TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                  ),
                 ),
-              ),
-            ],
+                const SizedBox(height: 4),
+                Text(
+                  employee.employeeId,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.white.withValues(alpha: 0.88),
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),

@@ -5,9 +5,9 @@ import 'package:lms/core/theme/app_design.dart';
 import 'package:lms/features/attendance/correction_attendance/presentation/providers/my_corrections_provider.dart';
 import 'package:lms/features/home/presentation/widgets/app_drawer.dart';
 import 'package:lms/shared/widgets/app_bar.dart';
+import 'package:lms/shared/widgets/app_form_widgets.dart';
 
 import '../widgets/my_correction_card.dart';
-import '../widgets/section_header.dart';
 
 class MyCorrectionsScreen extends ConsumerStatefulWidget {
   const MyCorrectionsScreen({super.key});
@@ -21,8 +21,6 @@ class _MyCorrectionsScreenState extends ConsumerState<MyCorrectionsScreen> {
   @override
   void initState() {
     super.initState();
-
-    /// Always fetch latest corrections when screen opens
     Future.microtask(() {
       ref.read(myCorrectionsProvider.notifier).fetchCorrections();
     });
@@ -30,27 +28,24 @@ class _MyCorrectionsScreenState extends ConsumerState<MyCorrectionsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     final stateAsync = ref.watch(myCorrectionsProvider);
     final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
 
     return Scaffold(
-      backgroundColor: scheme.surfaceContainerLowest,
-      appBar: AppAppBar(title: "My Correction Requests"),
+      backgroundColor: AppColors.bg,
+      appBar: const AppAppBar(title: 'My Correction Requests'),
       drawer: const AppDrawer(),
       body: stateAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Padding(
-          padding: const EdgeInsets.all(16),
-          child: Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: scheme.errorContainer,
-              borderRadius: BorderRadius.circular(isIOS ? 12 : 14),
-            ),
+          padding: appScreenPadding,
+          child: AppSectionCard(
             child: Text(
-              "Unable to load correction requests.\n$e",
-              style: TextStyle(color: scheme.onErrorContainer),
+              'Unable to load correction requests.\n$e',
+              style: const TextStyle(
+                color: AppColors.danger,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ),
@@ -67,139 +62,129 @@ class _MyCorrectionsScreenState extends ConsumerState<MyCorrectionsScreen> {
                       parent: BouncingScrollPhysics(),
                     )
                   : const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.md,
-                AppSpacing.md,
-                AppSpacing.md,
-                AppSpacing.xl,
-              ),
+              padding: appScreenPadding,
               children: [
                 Container(
+                  width: double.infinity,
                   padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(isIOS ? 14 : 18),
-                    gradient: LinearGradient(
-                      colors: [
-                        scheme.primaryContainer,
-                        scheme.secondaryContainer,
-                      ],
-                    ),
-                  ),
-                  child: Row(
+                  decoration: AppColors.heroDecoration(radius: AppRadius.lg),
+                  child: const Row(
                     children: [
                       CircleAvatar(
-                        backgroundColor: scheme.primary,
+                        backgroundColor: Colors.white24,
                         child: Icon(
                           Icons.fact_check_outlined,
-                          color: scheme.onPrimary,
+                          color: Colors.white,
                         ),
                       ),
-                      const SizedBox(width: 10),
+                      SizedBox(width: 12),
                       Expanded(
                         child: Text(
-                          "Track all your correction requests and review their status updates.",
+                          'Track all your correction requests and review their status updates.',
                           style: TextStyle(
-                            color: scheme.onSurface,
+                            color: Colors.white,
                             fontWeight: FontWeight.w600,
+                            height: 1.35,
                           ),
                         ),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(height: AppSpacing.md),
-
+                SizedBox(height: 16),
                 Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    const Expanded(
-                      child: SectionHeader(
-                        title: "Filter by status",
-                        icon: Icons.filter_alt_rounded,
+                    Text(
+                      'Filter by status',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.muted,
                       ),
                     ),
-
+                    const Spacer(),
                     PopupMenuButton<String>(
-                      tooltip: "Filter: ${state.statusFilter}",
+                      tooltip: 'Filter: ${state.statusFilter}',
                       onSelected: (value) {
                         ref
                             .read(myCorrectionsProvider.notifier)
                             .changeStatus(value);
                       },
                       itemBuilder: (context) => const [
-                        PopupMenuItem(value: "PENDING", child: Text("Pending")),
+                        PopupMenuItem(value: 'PENDING', child: Text('Pending')),
                         PopupMenuItem(
-                          value: "APPROVED",
-                          child: Text("Approved"),
+                          value: 'APPROVED',
+                          child: Text('Approved'),
                         ),
                         PopupMenuItem(
-                          value: "REJECTED",
-                          child: Text("Rejected"),
+                          value: 'REJECTED',
+                          child: Text('Rejected'),
                         ),
-                        PopupMenuItem(value: "ALL", child: Text("All")),
+                        PopupMenuItem(value: 'ALL', child: Text('All')),
                       ],
-                      child: Container(
+                      child: Builder(
+                        builder: (context) {
+                          final scheme = Theme.of(context).colorScheme;
+                          return Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 12,
                           vertical: 8,
                         ),
                         decoration: BoxDecoration(
-                          color: scheme.surfaceContainerHighest,
+                          color: scheme.surface,
                           borderRadius: BorderRadius.circular(AppRadius.pill),
-                          border: Border.all(color: scheme.outlineVariant),
+                          border: Border.all(
+                            color: scheme.outline.withValues(alpha: 0.55),
+                          ),
+                          boxShadow: AppColors.cardShadow,
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(Icons.filter_list_rounded, size: 18),
+                            Icon(
+                              Icons.filter_list_rounded,
+                              size: 18,
+                              color: scheme.primary,
+                            ),
                             const SizedBox(width: 6),
                             Text(
-                              state.statusFilter,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w600,
+                              _prettyFilter(state.statusFilter),
+                              style: TextStyle(
+                                fontWeight: FontWeight.w700,
                                 fontSize: 12,
+                                color: scheme.onSurface,
                               ),
                             ),
                           ],
                         ),
+                      );
+                        },
                       ),
                     ),
                   ],
                 ),
-
-                const SizedBox(height: AppSpacing.lg),
-
+                SizedBox(height: 14),
                 if (requests.isEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 40),
-                    child: Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(isIOS ? 12 : 16),
-                        color: scheme.surfaceContainerLow,
-                        border: Border.all(color: scheme.outlineVariant),
-                      ),
-                      child: Column(
-                        children: [
-                          Icon(
-                            Icons.inbox_rounded,
-                            size: 44,
-                            color: scheme.primary,
+                  AppSectionCard(
+                    child: Column(
+                      children: [
+                        Icon(
+                          Icons.inbox_rounded,
+                          size: 40,
+                          color: AppColors.primary,
+                        ),
+                        SizedBox(height: 10),
+                        Text(
+                          'No correction requests found',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.title,
                           ),
-                          const SizedBox(height: 10),
-                          Text(
-                            "No correction requests found",
-                            style: TextStyle(
-                              fontSize: 15,
-                              color: scheme.onSurfaceVariant,
-                            ),
-                          ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                   ),
-
                 if (requests.isNotEmpty)
                   ...requests.map(
                     (req) => Padding(
@@ -216,5 +201,18 @@ class _MyCorrectionsScreenState extends ConsumerState<MyCorrectionsScreen> {
         },
       ),
     );
+  }
+
+  String _prettyFilter(String value) {
+    switch (value.toUpperCase()) {
+      case 'PENDING':
+        return 'Pending';
+      case 'APPROVED':
+        return 'Approved';
+      case 'REJECTED':
+        return 'Rejected';
+      default:
+        return 'All';
+    }
   }
 }

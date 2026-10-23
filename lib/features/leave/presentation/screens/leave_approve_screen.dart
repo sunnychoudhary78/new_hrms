@@ -1,8 +1,9 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
+import 'package:lms/core/theme/app_design.dart';
 import 'package:lms/features/home/presentation/widgets/app_drawer.dart';
+import 'package:lms/shared/widgets/app_form_widgets.dart';
 
 import '../providers/leave_approve_provider.dart';
 import '../widgets/leave_approve_appbar.dart';
@@ -32,14 +33,13 @@ class _LeaveApproveScreenState extends ConsumerState<LeaveApproveScreen>
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
-    final bannerRadius = isIOS ? 14.0 : 18.0;
-    final tabShellRadius = isIOS ? 12.0 : 14.0;
+    final tabShellRadius = isIOS ? AppRadius.md : AppRadius.md + 2;
     final errRadius = isIOS ? 12.0 : 14.0;
 
     final async = ref.watch(leaveApproveProvider);
 
     return Scaffold(
-      backgroundColor: scheme.surfaceContainerLowest,
+      backgroundColor: AppColors.bg,
 
       drawer: const AppDrawer(),
 
@@ -87,71 +87,68 @@ class _LeaveApproveScreenState extends ConsumerState<LeaveApproveScreen>
 
           return Column(
             children: [
-              Container(
-                width: double.infinity,
-                margin: const EdgeInsets.fromLTRB(16, 14, 16, 10),
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(bannerRadius),
-                  gradient: LinearGradient(
-                    colors: [
-                      scheme.primaryContainer,
-                      scheme.secondaryContainer,
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.md,
+                  AppSpacing.sm + 6,
+                  AppSpacing.md,
+                  AppSpacing.sm + 2,
+                ),
+                child: AppHeroBanner(
+                  icon: Icons.rule_folder_outlined,
+                  title: "Leave approval queue",
+                  message:
+                      "Review pending, approved and closed leave requests.",
+                  trailing: Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        "${pending.length}",
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.statusOrange,
+                        ),
+                      ),
+                      Text(
+                        "pending",
+                        style: TextStyle(fontSize: 11, color: AppColors.muted),
+                      ),
                     ],
                   ),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                child: Row(
                   children: [
-                    Text(
-                      "Leave approval queue",
-                      style: TextStyle(
-                        color: scheme.onSurface,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 16,
+                    Expanded(
+                      child: _MetricChip(label: "Pending", count: pending.length),
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      child: _MetricChip(
+                        label: "Approved",
+                        count: approved.length,
                       ),
                     ),
-                    const SizedBox(height: 6),
-                    Text(
-                      "Review pending, approved and closed leave requests.",
-                      style: TextStyle(color: scheme.onSurfaceVariant),
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _MetricChip(
-                            label: "Pending",
-                            count: pending.length,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: _MetricChip(
-                            label: "Approved",
-                            count: approved.length,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: _MetricChip(
-                            label: "Closed",
-                            count: closed.length,
-                          ),
-                        ),
-                      ],
+                    SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      child: _MetricChip(label: "Closed", count: closed.length),
                     ),
                   ],
                 ),
               ),
+              SizedBox(height: AppSpacing.sm),
 
               /// TAB BAR WITH COLORED BADGES
               Container(
-                margin: const EdgeInsets.symmetric(horizontal: 16),
+                margin: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
                 decoration: BoxDecoration(
-                  color: scheme.surfaceContainerLow,
+                  color: AppColors.card,
                   borderRadius: BorderRadius.circular(tabShellRadius),
-                  border: Border.all(color: scheme.outlineVariant),
+                  border: Border.all(color: AppColors.border),
+                  boxShadow: AppColors.cardShadow,
                 ),
 
                 child: TabBar(
@@ -298,13 +295,13 @@ class _MetricChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
-        color: scheme.surface.withValues(alpha: 0.65),
-        borderRadius: BorderRadius.circular(isIOS ? 10 : 12),
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(isIOS ? 10 : AppRadius.md),
+        border: Border.all(color: AppColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -312,16 +309,16 @@ class _MetricChip extends StatelessWidget {
           Text(
             label,
             style: TextStyle(
-              color: scheme.onSurfaceVariant,
+              color: AppColors.muted,
               fontSize: 12,
               fontWeight: FontWeight.w500,
             ),
           ),
-          const SizedBox(height: 2),
+          SizedBox(height: 2),
           Text(
             count.toString(),
             style: TextStyle(
-              color: scheme.primary,
+              color: AppColors.primary,
               fontSize: 16,
               fontWeight: FontWeight.w700,
             ),

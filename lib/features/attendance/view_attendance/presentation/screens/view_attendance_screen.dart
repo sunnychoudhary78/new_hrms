@@ -7,10 +7,11 @@ import 'package:lms/features/attendance/correction_attendance/presentation/dialo
 import 'package:lms/features/attendance/view_attendance/data/models/attendance_aggregate_model.dart';
 import 'package:lms/features/attendance/view_attendance/presentation/providers/view_attendance_provider.dart';
 import 'package:lms/features/attendance/view_attendance/presentation/widgets/view_attendance_header.dart';
+import 'package:lms/features/auth/presentation/providers/auth_provider.dart';
 import 'package:lms/features/dashboard/presentation/providers/team_attendance_provider.dart';
 import 'package:lms/features/home/presentation/widgets/app_drawer.dart';
+import 'package:lms/features/home/presentation/widgets/home_dashboard_style.dart';
 
-import 'package:lms/shared/widgets/app_bar.dart';
 import 'package:lms/shared/widgets/attendance_calender_widget.dart';
 import 'package:lms/shared/widgets/attendance_day_detail_bottom_sheet.dart';
 
@@ -19,9 +20,11 @@ import 'package:lms/features/attendance/mark_attendance/data/models/company_sett
 import 'package:lms/features/attendance/mark_attendance/presentation/providers/company_settings_provider.dart';
 import 'package:lms/features/attendance/shared/utils/overtime_estimate_utils.dart';
 import 'package:lms/features/attendance/view_attendance/utils/elapsed_month_summary.dart';
+import 'package:lms/features/notifications/presentation/providers/notifications_provider.dart';
+import 'package:lms/features/notifications/presentation/screens/notifications_screen.dart';
 
 import '../widgets/attendance_summary_grid.dart';
-import '../widgets/attendance_pie_chart.dart';
+import '../widgets/view_attendance_stats_row.dart';
 
 class ViewAttendanceScreen extends ConsumerStatefulWidget {
   const ViewAttendanceScreen({super.key});
@@ -73,16 +76,6 @@ class _ViewAttendanceScreenState extends ConsumerState<ViewAttendanceScreen> {
     }
 
     return null;
-  }
-
-  String? _holidaySummaryLabel(AttendanceAggregate day) {
-    final status = day.status.trim().toLowerCase();
-    if (status != 'holiday') return null;
-
-    final name = day.holidayName?.trim() ?? '';
-    final displayName =
-        (name.isEmpty || name.toLowerCase() == 'holiday') ? 'Holiday' : name;
-    return '${DateFormat('dd MMM').format(day.date)} · $displayName';
   }
 
   Map<String, AttendanceDayData> _buildAttendanceMap(
@@ -148,36 +141,47 @@ class _ViewAttendanceScreenState extends ConsumerState<ViewAttendanceScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-
     final async = ref.watch(viewAttendanceProvider);
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
+    final dash = HomeDashColors.of(context);
 
     return Scaffold(
-      appBar: const AppAppBar(title: "View Attendance"),
+      backgroundColor: dash.bg,
       drawer: const AppDrawer(),
-
-      backgroundColor: scheme.surfaceContainerLowest,
-
-      body: async.when(
-        loading: () =>
-            Center(child: CircularProgressIndicator(color: scheme.primary)),
-
-        error: (e, _) => Center(
-          child: Text(e.toString(), style: TextStyle(color: scheme.error)),
+      appBar: AppBar(
+        elevation: 0,
+        backgroundColor: dash.bg,
+        surfaceTintColor: Colors.transparent,
+        foregroundColor: dash.title,
+        centerTitle: false,
+        titleSpacing: 0,
+        title: Text(
+          'View Attendance',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w800,
+            color: dash.title,
+          ),
         ),
-
+        actions: [
+          const _NotificationIcon(),
+          const _ProfileAvatarButton(),
+          SizedBox(width: isIOS ? 4 : 8),
+        ],
+      ),
+      body: async.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, _) => Center(
+          child: Text(
+            e.toString(),
+            style: const TextStyle(color: HomeDashColors.accentRed),
+          ),
+        ),
         data: (state) {
           final summary = state.summary;
-
-          ////////////////////////////////////////////////////////////
-          /// BUILD MAP FOR CALENDAR
-          ////////////////////////////////////////////////////////////
           final sessionAsync = ref.watch(
             employeeAttendanceProvider(
-              AttendanceParams(
-                userId: "", // keep empty for employee
-                month: focused,
-              ),
+              AttendanceParams(userId: '', month: focused),
             ),
           );
 
@@ -193,22 +197,22 @@ class _ViewAttendanceScreenState extends ConsumerState<ViewAttendanceScreen> {
             attendanceMap: attendanceMap,
           );
 
-          ////////////////////////////////////////////////////////////
+          final daysInMonth = DateUtils.getDaysInMonth(
+            focused.year,
+            focused.month,
+          );
 
-          final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
           return RefreshIndicator(
             onRefresh: () async {
               await ref
                   .read(viewAttendanceProvider.notifier)
                   .changeMonth(focused);
-
               ref.invalidate(
                 employeeAttendanceProvider(
-                  AttendanceParams(userId: "", month: focused),
+                  AttendanceParams(userId: '', month: focused),
                 ),
               );
             },
-
             child: SingleChildScrollView(
               keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
               physics: isIOS
@@ -216,172 +220,112 @@ class _ViewAttendanceScreenState extends ConsumerState<ViewAttendanceScreen> {
                       parent: BouncingScrollPhysics(),
                     )
                   : const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
-
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-
                 children: [
                   const ViewAttendanceHeader(),
-
-                  const SizedBox(height: 24),
-
-                  ////////////////////////////////////////////////////////
-                  /// PREMIUM CALENDAR
-                  ////////////////////////////////////////////////////////
-                  _Section(
-                    title: "Attendance Calendar",
-
-                    child: AttendanceCalendarWidget(
-                      focusedDay: focused,
-
-                      selectedDay: selectedDay,
-
-                      ////////////////////////////////////////////////////
-                      /// STATUS RESOLVER
-                      ////////////////////////////////////////////////////
-                      statusResolver: (day) {
-                        final key = DateFormat('yyyy-MM-dd').format(day);
-                        return attendanceMap[key]?.calendarStatus;
-                      },
-
-                      typeLabelResolver: (day) {
-                        final key = DateFormat('yyyy-MM-dd').format(day);
-                        return attendanceMap[key]?.calendarCellLabel;
-                      },
-
-                      typeColorResolver: (day) {
-                        final key = DateFormat('yyyy-MM-dd').format(day);
-                        return attendanceMap[key]?.calendarCellColor;
-                      },
-
-                      hasSelfie: (day) {
-                        final key = DateFormat('yyyy-MM-dd').format(day);
-                        final data = attendanceMap[key];
-
-                        if (data == null) return false;
-
-                        return data.sessions.any(
-                          (s) =>
-                              s.checkInSelfie != null ||
-                              s.checkOutSelfie != null,
-                        );
-                      },
-
-                      hasLocation: (day) {
-                        final key = DateFormat('yyyy-MM-dd').format(day);
-                        final data = attendanceMap[key];
-
-                        if (data == null) return false;
-
-                        return data.sessions.any(
-                          (s) => s.lat != null && s.lng != null,
-                        );
-                      },
-                      ////////////////////////////////////////////////////
-                      /// DAY SELECTED
-                      ////////////////////////////////////////////////////
-                      onDaySelected: (selected, focusedDay) {
-                        setState(() {
-                          selectedDay = selected;
-                          focused = focusedDay;
-                        });
-
-                        final key = DateFormat('yyyy-MM-dd').format(selected);
-
-                        final dayData = attendanceMap[key];
-
-                        AttendanceDayDetailBottomSheet.show(
-                          context,
-
-                          date: selected,
-
-                          data: dayData,
-                        );
-                      },
-
-                      ////////////////////////////////////////////////////
-                      /// MONTH CHANGE
-                      ////////////////////////////////////////////////////
-                      onPageChanged: (d) {
-                        setState(() {
-                          focused = d;
-                        });
-
-                        ref
-                            .read(viewAttendanceProvider.notifier)
-                            .changeMonth(d);
-                      },
-                    ),
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  ////////////////////////////////////////////////////////
-                  /// CORRECTION BUTTON
-                  ////////////////////////////////////////////////////////
-                  SizedBox(
+                  SizedBox(height: 14),
+                  Builder(
+                    builder: (context) {
+                      final dash = HomeDashColors.of(context);
+                      final scheme = Theme.of(context).colorScheme;
+                      return Container(
                     width: double.infinity,
-
-                    child: ElevatedButton.icon(
-                      icon: const Icon(Icons.edit_calendar_rounded),
-
-                      label: const Text("Request Attendance Correction"),
-
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: scheme.primary,
-
-                        foregroundColor: scheme.onPrimary,
-
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(isIOS ? 12 : 14),
-                        ),
+                    padding: const EdgeInsets.fromLTRB(12, 14, 12, 12),
+                    decoration: BoxDecoration(
+                      color: dash.card,
+                      borderRadius: BorderRadius.circular(22),
+                      border: Border.all(
+                        color: scheme.outline.withValues(alpha: 0.45),
                       ),
-
-                      onPressed: () {
-                        showRequestCorrectionDialog(
-                          context: context,
-
-                          selectedDate: selectedDay ?? DateTime.now(),
-                        );
-                      },
+                      boxShadow: dash.cardShadow,
                     ),
-                  ),
-
-                  const SizedBox(height: 28),
-
-                  ////////////////////////////////////////////////////////
-                  /// SUMMARY GRID
-                  ////////////////////////////////////////////////////////
-                  _Section(
-                    title: "Monthly Summary",
-
-                    child: AttendanceSummaryGrid(
-                      summary: displaySummary,
-                      holidayLabels: state.days
-                          .map(_holidaySummaryLabel)
-                          .whereType<String>()
-                          .toList(),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
+                          child: Text(
+                            'Attendance Calendar',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800,
+                              color: dash.title,
+                            ),
+                          ),
+                        ),
+                        AttendanceCalendarWidget(
+                          focusedDay: focused,
+                          selectedDay: selectedDay,
+                          statusResolver: (day) {
+                            final key = DateFormat('yyyy-MM-dd').format(day);
+                            return attendanceMap[key]?.calendarStatus;
+                          },
+                          typeLabelResolver: (day) {
+                            final key = DateFormat('yyyy-MM-dd').format(day);
+                            return attendanceMap[key]?.calendarCellLabel;
+                          },
+                          typeColorResolver: (day) {
+                            final key = DateFormat('yyyy-MM-dd').format(day);
+                            return attendanceMap[key]?.calendarCellColor;
+                          },
+                          hasSelfie: (day) {
+                            final key = DateFormat('yyyy-MM-dd').format(day);
+                            final data = attendanceMap[key];
+                            if (data == null) return false;
+                            return data.sessions.any(
+                              (s) =>
+                                  s.checkInSelfie != null ||
+                                  s.checkOutSelfie != null,
+                            );
+                          },
+                          hasLocation: (day) {
+                            final key = DateFormat('yyyy-MM-dd').format(day);
+                            final data = attendanceMap[key];
+                            if (data == null) return false;
+                            return data.sessions.any(
+                              (s) => s.lat != null && s.lng != null,
+                            );
+                          },
+                          onDaySelected: (selected, focusedDay) {
+                            setState(() {
+                              selectedDay = selected;
+                              focused = focusedDay;
+                            });
+                            final key =
+                                DateFormat('yyyy-MM-dd').format(selected);
+                            AttendanceDayDetailBottomSheet.show(
+                              context,
+                              date: selected,
+                              data: attendanceMap[key],
+                            );
+                          },
+                          onPageChanged: (d) {
+                            setState(() => focused = d);
+                            ref
+                                .read(viewAttendanceProvider.notifier)
+                                .changeMonth(d);
+                          },
+                        ),
+                      ],
                     ),
+                      );
+                    },
                   ),
-
-                  const SizedBox(height: 28),
-
-                  ////////////////////////////////////////////////////////
-                  /// PIE CHART
-                  ////////////////////////////////////////////////////////
-                  _Section(
-                    title: "Attendance Breakdown",
-
-                    child: AttendancePieChart(
-                      present: displaySummary.workingDays,
-                      absent: displaySummary.absentDays,
-                      late: displaySummary.lateDays,
-                      leave: displaySummary.totalLeaves,
-                    ),
+                  const SizedBox(height: 14),
+                  ViewAttendanceStatsRow(
+                    workingDays: displaySummary.workingDays,
+                    daysInMonth: daysInMonth,
+                    onRequestCorrection: () {
+                      showRequestCorrectionDialog(
+                        context: context,
+                        selectedDate: selectedDay ?? DateTime.now(),
+                      );
+                    },
                   ),
+                  const SizedBox(height: 14),
+                  AttendanceSummaryGrid(summary: displaySummary),
                 ],
               ),
             ),
@@ -392,50 +336,114 @@ class _ViewAttendanceScreenState extends ConsumerState<ViewAttendanceScreen> {
   }
 }
 
-//////////////////////////////////////////////////////////////
-// SECTION CARD
-//////////////////////////////////////////////////////////////
-
-class _Section extends StatelessWidget {
-  final String title;
-  final Widget child;
-
-  const _Section({required this.title, required this.child});
+class _ProfileAvatarButton extends ConsumerWidget {
+  const _ProfileAvatarButton();
 
   @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
+  Widget build(BuildContext context, WidgetRef ref) {
+    final auth = ref.watch(authProvider);
+    final url = auth.profileUrl;
+    final name = auth.profile?.associatesName ?? 'U';
+    final parts = name.trim().split(' ');
+    final initials = parts.isEmpty || parts.first.isEmpty
+        ? 'U'
+        : (parts.length == 1
+            ? parts.first[0].toUpperCase()
+            : (parts.first[0] + parts.last[0]).toUpperCase());
 
-    return Card(
-      elevation: 0,
-
-      color: scheme.surface,
-
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(isIOS ? 14 : 18),
-      ),
-
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-
+    return Padding(
+      padding: const EdgeInsets.only(right: 4),
+      child: GestureDetector(
+        onTap: () => Navigator.pushNamed(context, '/profile'),
+        child: Stack(
+          clipBehavior: Clip.none,
           children: [
-            Text(
-              title,
-              style: Theme.of(
-                context,
-              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+            CircleAvatar(
+              radius: 16,
+              backgroundColor: HomeDashColors.softBlue,
+              backgroundImage: url.isNotEmpty ? NetworkImage(url) : null,
+              child: url.isEmpty
+                  ? Text(
+                      initials,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        color: HomeDashColors.accentBlue,
+                      ),
+                    )
+                  : null,
             ),
-
-            const SizedBox(height: 12),
-
-            child,
+            Positioned(
+              right: -1,
+              bottom: -1,
+              child: Container(
+                width: 10,
+                height: 10,
+                decoration: BoxDecoration(
+                  color: HomeDashColors.accentGreen,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 1.5),
+                ),
+              ),
+            ),
           ],
         ),
       ),
+    );
+  }
+}
+
+class _NotificationIcon extends ConsumerWidget {
+  const _NotificationIcon();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final unreadCount = ref.watch(unreadCountProvider);
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
+
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        IconButton(
+          iconSize: 24,
+          splashRadius: 24,
+          style: IconButton.styleFrom(
+            splashFactory:
+                isIOS ? NoSplash.splashFactory : InkSplash.splashFactory,
+          ),
+          icon: const Icon(Icons.notifications_none_rounded),
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const NotificationScreen()),
+            );
+          },
+        ),
+        if (unreadCount > 0)
+          Positioned(
+            right: 8,
+            top: 8,
+            child: IgnorePointer(
+              child: Container(
+                padding: const EdgeInsets.all(4),
+                decoration: const BoxDecoration(
+                  color: HomeDashColors.accentRed,
+                  shape: BoxShape.circle,
+                ),
+                constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                child: Text(
+                  unreadCount > 9 ? '9+' : unreadCount.toString(),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 9,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ),
+          ),
+      ],
     );
   }
 }

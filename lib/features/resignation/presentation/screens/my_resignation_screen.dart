@@ -4,8 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lms/core/providers/global_loading_provider.dart';
 import 'package:lms/features/resignation/data/models/resignation_model.dart';
 import 'package:lms/features/resignation/presentation/providers/resignation_providers.dart';
+import 'package:lms/core/theme/app_design.dart';
 import 'package:lms/shared/widgets/app_bar.dart';
-import 'package:lms/shared/widgets/premium_feature_components.dart';
+import 'package:lms/shared/widgets/app_form_widgets.dart';
 
 class MyResignationScreen extends ConsumerStatefulWidget {
   const MyResignationScreen({super.key});
@@ -118,7 +119,7 @@ class _MyResignationScreenState extends ConsumerState<MyResignationScreen> {
       isScrollControlled: true,
       useSafeArea: true,
       showDragHandle: isIOS,
-      backgroundColor: Theme.of(context).colorScheme.surface,
+      backgroundColor: AppColors.card,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(
           top: Radius.circular(isIOS ? 14 : 24),
@@ -152,6 +153,7 @@ class _MyResignationScreenState extends ConsumerState<MyResignationScreen> {
         : const AlwaysScrollableScrollPhysics();
 
     return Scaffold(
+      backgroundColor: AppColors.bg,
       appBar: AppAppBar(
         title: "My Resignation",
         actions: [
@@ -184,54 +186,37 @@ class _MyResignationScreenState extends ConsumerState<MyResignationScreen> {
                 data: (resignation) {
                   if (resignation == null) {
                     return Padding(
-                      padding: const EdgeInsets.all(18),
+                      padding: appScreenPadding,
                       child: Center(
-                        child: PremiumCard(
-                          padding: const EdgeInsets.all(22),
+                        child: AppSectionCard(
+                          padding: const EdgeInsets.all(AppSpacing.lg),
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              CircleAvatar(
-                                radius: 30,
-                                backgroundColor: Theme.of(
-                                  context,
-                                ).colorScheme.primary.withValues(alpha: 0.12),
-                                child: Icon(
-                                  Icons.assignment_outlined,
-                                  size: 32,
-                                  color: Theme.of(context).colorScheme.primary,
-                                ),
+                              AppIconBadge(
+                                icon: Icons.assignment_outlined,
+                                size: 56,
                               ),
-                              const SizedBox(height: 14),
-                              const Text(
+                              SizedBox(height: 14),
+                              Text(
                                 "No active resignation",
                                 style: TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.w800,
+                                  color: AppColors.title,
                                 ),
                               ),
-                              const SizedBox(height: 8),
+                              SizedBox(height: 8),
                               Text(
                                 "Create a resignation request only when you are ready to start the approval workflow.",
                                 textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color: Theme.of(
-                                    context,
-                                  ).colorScheme.onSurfaceVariant,
-                                ),
+                                style: TextStyle(color: AppColors.muted),
                               ),
                               const SizedBox(height: 16),
-                              FilledButton.icon(
-                                style: FilledButton.styleFrom(
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(
-                                      isIOS ? 12 : 14,
-                                    ),
-                                  ),
-                                ),
+                              AppPrimaryButton(
+                                label: "Apply Resignation",
+                                icon: Icons.edit_note_rounded,
                                 onPressed: openForm,
-                                icon: const Icon(Icons.edit_note_rounded),
-                                label: const Text("Apply Resignation"),
                               ),
                             ],
                           ),
@@ -253,11 +238,6 @@ class _MyResignationScreenState extends ConsumerState<MyResignationScreen> {
   /// ================= FORM =================
   Widget _buildForm() {
     final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
-    final fieldRadius = isIOS ? 12.0 : 16.0;
-    final btnShape = RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(isIOS ? 12 : 14),
-    );
-
     return SingleChildScrollView(
       keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
       physics: isIOS
@@ -267,86 +247,35 @@ class _MyResignationScreenState extends ConsumerState<MyResignationScreen> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SizedBox(height: 6),
+          SizedBox(height: 6),
           Container(
             width: 46,
             height: 5,
             margin: const EdgeInsets.only(bottom: 16),
             decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.outlineVariant,
+              color: AppColors.border,
               borderRadius: BorderRadius.circular(16),
             ),
           ),
-          Row(
-            children: [
-              CircleAvatar(
-                radius: 18,
-                backgroundColor: Theme.of(
-                  context,
-                ).colorScheme.primary.withValues(alpha: 0.12),
-                child: Icon(
-                  Icons.assignment_return_outlined,
-                  size: 18,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
-              ),
-              const SizedBox(width: 10),
-              const Text(
-                "Apply Resignation",
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
+          const AppSectionTitle("Apply Resignation"),
+          SizedBox(height: 6),
           Text(
             "This request will move to Manager, then HOD, then HR for final approval.",
-            style: TextStyle(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
+            style: TextStyle(color: AppColors.muted),
           ),
           const SizedBox(height: 12),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: BoxDecoration(
-              color: Theme.of(
-                context,
-              ).colorScheme.primaryContainer.withValues(alpha: 0.45),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.lock_outline_rounded,
-                  size: 18,
-                  color: Theme.of(context).colorScheme.onPrimaryContainer,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    "Reason and remarks become part of the official approval record.",
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.onPrimaryContainer,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-              ],
-            ),
+          AppHeroBanner(
+            icon: Icons.lock_outline_rounded,
+            message:
+                "Reason and remarks become part of the official approval record.",
           ),
           const SizedBox(height: 16),
-          PremiumCard(
-            padding: const EdgeInsets.all(14),
+          AppSectionCard(
+            margin: EdgeInsets.zero,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  "Request Details",
-                  style: TextStyle(
-                    fontWeight: FontWeight.w700,
-                    color: Theme.of(context).colorScheme.onSurface,
-                  ),
-                ),
+                const AppSectionTitle("Request Details"),
                 const SizedBox(height: 10),
                 TextField(
                   controller: reasonController,
@@ -354,36 +283,21 @@ class _MyResignationScreenState extends ConsumerState<MyResignationScreen> {
                   maxLines: 10,
                   textCapitalization: TextCapitalization.sentences,
                   textInputAction: TextInputAction.done,
-                  decoration: InputDecoration(
+                  decoration: appInputDecoration(
                     labelText: "Reason / remarks *",
-                    alignLabelWithHint: true,
                     hintText:
                         "Required — this text is part of the approval record",
-                    filled: true,
-                    fillColor: Theme.of(
-                      context,
-                    ).colorScheme.surfaceContainerLow,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(fieldRadius),
-                    ),
-                  ),
+                  ).copyWith(alignLabelWithHint: true),
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: dateController,
                   readOnly: true,
                   textInputAction: TextInputAction.done,
-                  decoration: InputDecoration(
+                  decoration: appInputDecoration(
                     labelText: "Last Working Date",
                     hintText: "Select expected last working day",
-                    suffixIcon: const Icon(Icons.calendar_today),
-                    filled: true,
-                    fillColor: Theme.of(
-                      context,
-                    ).colorScheme.surfaceContainerLow,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(fieldRadius),
-                    ),
+                    prefixIcon: Icons.calendar_today,
                   ),
                   onTap: pickDate,
                 ),
@@ -391,14 +305,11 @@ class _MyResignationScreenState extends ConsumerState<MyResignationScreen> {
             ),
           ),
           const SizedBox(height: 18),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton.icon(
-              style: FilledButton.styleFrom(shape: btnShape),
-              onPressed: _isSubmitting ? null : submit,
-              icon: const Icon(Icons.send_rounded),
-              label: const Text("Submit Request"),
-            ),
+          AppPrimaryButton(
+            label: "Submit Request",
+            icon: Icons.send_rounded,
+            isLoading: _isSubmitting,
+            onPressed: _isSubmitting ? null : submit,
           ),
         ],
       ),
@@ -408,26 +319,6 @@ class _MyResignationScreenState extends ConsumerState<MyResignationScreen> {
   Widget _buildStatus(ResignationModel resignation) {
     final status = resignation.status;
     bool canApplyAgain = status == "Rejected" || status == "Withdrawn";
-    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
-    final filledShape = RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(isIOS ? 12 : 14),
-    );
-
-    Color badgeColor() {
-      switch (status) {
-        case "Pending":
-          return Colors.orange;
-        case "Manager Approved":
-        case "HOD Approved":
-          return Colors.indigo;
-        case "Rejected":
-          return Colors.red;
-        case "HR Approved":
-          return Colors.green;
-        default:
-          return Theme.of(context).colorScheme.primary;
-      }
-    }
 
     String timelineText() {
       switch (status) {
@@ -449,91 +340,82 @@ class _MyResignationScreenState extends ConsumerState<MyResignationScreen> {
     }
 
     return Padding(
-      padding: const EdgeInsets.all(18),
+      padding: appScreenPadding,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const PremiumFeatureHeader(
+          const AppHeroBanner(
             icon: Icons.assignment_return_outlined,
-            title: "Resignation Workflow",
-            subtitle: "Employee -> Manager -> HOD -> HR",
+            title: "Resignation workflow",
+            message: "Employee → Manager → HOD → HR",
           ),
           const SizedBox(height: 14),
-          PremiumCard(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _WorkflowStepper(status: status),
-                  const SizedBox(height: 14),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      Chip(
-                        avatar: Icon(
-                          Icons.info_outline_rounded,
-                          size: 18,
-                          color: badgeColor(),
+          AppSectionCard(
+            margin: EdgeInsets.zero,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _WorkflowStepper(status: status),
+                SizedBox(height: 14),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    AppStatusPill(label: status),
+                    if (resignation.lastWorkingDate != null)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 6,
                         ),
-                        label: Text(status),
-                        side: BorderSide(color: badgeColor()),
+                        decoration: BoxDecoration(
+                          color: AppColors.softFill,
+                          borderRadius: BorderRadius.circular(AppRadius.pill),
+                          border: Border.all(color: AppColors.border),
+                        ),
+                        child: Text(
+                          "LWD: ${resignation.lastWorkingDate}",
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.title,
+                          ),
+                        ),
                       ),
-                      if (resignation.lastWorkingDate != null)
-                        Chip(
-                          label: Text("LWD: ${resignation.lastWorkingDate}"),
-                        ),
-                    ],
+                  ],
+                ),
+                SizedBox(height: 12),
+                const AppSectionTitle("Reason / remarks"),
+                SizedBox(height: 6),
+                Text(
+                  resignation.reason,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 15,
+                    color: AppColors.title,
                   ),
-                  const SizedBox(height: 12),
-                  Text(
-                    "Reason / remarks",
-                    style: TextStyle(
-                      fontWeight: FontWeight.w700,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    resignation.reason,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 15,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    timelineText(),
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  timelineText(),
+                  style: TextStyle(color: AppColors.muted),
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 14),
           if (_canWithdrawResignation(status))
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton.tonalIcon(
-                style: FilledButton.styleFrom(shape: filledShape),
-                onPressed: () => withdraw(resignation.id),
-                icon: const Icon(Icons.undo_rounded),
-                label: const Text("Withdraw Request"),
-              ),
+            AppSecondaryButton(
+              label: "Withdraw Request",
+              icon: Icons.undo_rounded,
+              onPressed: () => withdraw(resignation.id),
             ),
           if (_canWithdrawResignation(status)) const SizedBox(height: 10),
           if (canApplyAgain)
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton.icon(
-                style: FilledButton.styleFrom(shape: filledShape),
-                onPressed: openForm,
-                icon: const Icon(Icons.refresh_rounded),
-                label: const Text("Apply Again"),
-              ),
+            AppPrimaryButton(
+              label: "Apply Again",
+              icon: Icons.refresh_rounded,
+              onPressed: openForm,
             ),
         ],
       ),
@@ -574,21 +456,19 @@ class _WorkflowStepper extends StatelessWidget {
     final isClosed = status == "Rejected" || status == "Withdrawn";
 
     if (isClosed) {
-      final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
       return Container(
         width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
-          color: Theme.of(
-            context,
-          ).colorScheme.errorContainer.withValues(alpha: 0.6),
-          borderRadius: BorderRadius.circular(isIOS ? 10 : 12),
+          color: AppColors.danger.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          border: Border.all(color: AppColors.danger.withValues(alpha: 0.35)),
         ),
         child: Row(
           children: [
             Icon(
               status == "Rejected" ? Icons.close_rounded : Icons.undo_rounded,
-              color: Theme.of(context).colorScheme.onErrorContainer,
+              color: AppColors.danger,
             ),
             const SizedBox(width: 8),
             Expanded(
@@ -596,8 +476,8 @@ class _WorkflowStepper extends StatelessWidget {
                 status == "Rejected"
                     ? "Workflow closed as rejected"
                     : "Workflow closed as withdrawn",
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.onErrorContainer,
+                style: const TextStyle(
+                  color: AppColors.danger,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -622,18 +502,15 @@ class _WorkflowStepper extends StatelessWidget {
                     height: 26,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: done
-                          ? Theme.of(context).colorScheme.primary
-                          : Theme.of(
-                              context,
-                            ).colorScheme.surfaceContainerHighest,
+                      color: done ? AppColors.primary : AppColors.softFill,
+                      border: done
+                          ? null
+                          : Border.all(color: AppColors.border),
                     ),
                     child: Icon(
                       done ? Icons.check_rounded : Icons.circle_outlined,
                       size: 15,
-                      color: done
-                          ? Theme.of(context).colorScheme.onPrimary
-                          : Theme.of(context).colorScheme.onSurfaceVariant,
+                      color: done ? Colors.white : AppColors.muted,
                     ),
                   ),
                   if (!isLast)
@@ -643,10 +520,8 @@ class _WorkflowStepper extends StatelessWidget {
                         margin: const EdgeInsets.symmetric(horizontal: 6),
                         decoration: BoxDecoration(
                           color: index < step
-                              ? Theme.of(context).colorScheme.primary
-                              : Theme.of(
-                                  context,
-                                ).colorScheme.surfaceContainerHighest,
+                              ? AppColors.primary
+                              : AppColors.border,
                           borderRadius: BorderRadius.circular(8),
                         ),
                       ),
@@ -656,7 +531,7 @@ class _WorkflowStepper extends StatelessWidget {
             );
           }),
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: steps
@@ -665,7 +540,7 @@ class _WorkflowStepper extends StatelessWidget {
                   label,
                   style: TextStyle(
                     fontSize: 11,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    color: AppColors.muted,
                     fontWeight: FontWeight.w600,
                   ),
                 ),

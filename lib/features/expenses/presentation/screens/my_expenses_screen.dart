@@ -1,7 +1,9 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lms/core/theme/app_design.dart';
 import 'package:lms/shared/widgets/app_bar.dart';
+import 'package:lms/shared/widgets/app_form_widgets.dart';
 import 'package:lms/shared/widgets/premium_feature_components.dart';
 import '../../data/models/expense_model.dart';
 import '../providers/expense_provider.dart';
@@ -25,7 +27,6 @@ class _MyExpensesScreenState extends ConsumerState<MyExpensesScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     final expensesAsync = ref.watch(myExpensesProvider);
     final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
     final scrollPhysics = isIOS
@@ -35,9 +36,13 @@ class _MyExpensesScreenState extends ConsumerState<MyExpensesScreen> {
         : const AlwaysScrollableScrollPhysics();
 
     return Scaffold(
+      backgroundColor: AppColors.bg,
       appBar: const AppAppBar(title: "My Expenses"),
 
       floatingActionButton: FloatingActionButton(
+        backgroundColor: AppColors.primary,
+        foregroundColor: Colors.white,
+        elevation: 2,
         onPressed: () async {
           await Navigator.pushNamed(context, "/expenses/create");
           ref.invalidate(myExpensesProvider);
@@ -47,11 +52,14 @@ class _MyExpensesScreenState extends ConsumerState<MyExpensesScreen> {
 
       body: Column(
         children: [
-          _buildHeader(scheme, expensesAsync),
+          _buildHeader(expensesAsync),
           SizedBox(
             height: 56,
             child: ListView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.md,
+                vertical: AppSpacing.sm,
+              ),
               scrollDirection: Axis.horizontal,
               physics: isIOS
                   ? const BouncingScrollPhysics()
@@ -61,22 +69,11 @@ class _MyExpensesScreenState extends ConsumerState<MyExpensesScreen> {
                 final tab = tabs[i];
                 final isSelected = tab == selectedTab;
                 return Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: ChoiceChip(
-                    label: Text(tab),
+                  padding: const EdgeInsets.only(right: AppSpacing.sm),
+                  child: AppFilterChip(
+                    label: tab,
                     selected: isSelected,
                     onSelected: (_) => setState(() => selectedTab = tab),
-                    labelStyle: TextStyle(
-                      color: isSelected
-                          ? scheme.onPrimary
-                          : scheme.onSurfaceVariant,
-                      fontWeight: FontWeight.w600,
-                    ),
-                    selectedColor: scheme.primary,
-                    backgroundColor: scheme.surfaceContainerHighest,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(isIOS ? 12 : 14),
-                    ),
                   ),
                 );
               },
@@ -154,10 +151,7 @@ class _MyExpensesScreenState extends ConsumerState<MyExpensesScreen> {
     );
   }
 
-  Widget _buildHeader(
-    ColorScheme scheme,
-    AsyncValue<List<ExpenseClaim>> expensesAsync,
-  ) {
+  Widget _buildHeader(AsyncValue<List<ExpenseClaim>> expensesAsync) {
     return expensesAsync.when(
       loading: () => const SizedBox.shrink(),
       error: (_, __) => const SizedBox.shrink(),
@@ -178,17 +172,17 @@ class _MyExpensesScreenState extends ConsumerState<MyExpensesScreen> {
               Text(
                 "Total",
                 style: TextStyle(
-                  color: scheme.onSurfaceVariant,
+                  color: Colors.white.withValues(alpha: 0.85),
                   fontWeight: FontWeight.w600,
                   fontSize: 12,
                 ),
               ),
               Text(
                 "₹${total.toStringAsFixed(0)}",
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w900,
-                  color: scheme.primary,
+                  color: Colors.white,
                 ),
               ),
             ],
@@ -199,9 +193,8 @@ class _MyExpensesScreenState extends ConsumerState<MyExpensesScreen> {
   }
 
   Widget _buildExpenseTile(ExpenseClaim exp) {
-    final scheme = Theme.of(context).colorScheme;
     final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
-    final tileRadius = isIOS ? 14.0 : 16.0;
+    final tileRadius = AppRadius.lg;
     return InkWell(
       borderRadius: BorderRadius.circular(tileRadius),
       onTap: () async {
@@ -215,12 +208,15 @@ class _MyExpensesScreenState extends ConsumerState<MyExpensesScreen> {
               width: 44,
               height: 44,
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(isIOS ? 10 : 12),
-                color: scheme.primaryContainer,
+                borderRadius: BorderRadius.circular(AppRadius.md),
+                color: AppColors.iconBg,
               ),
-              child: Icon(Icons.payments_outlined, color: scheme.primary),
+              child: Icon(
+                Icons.payments_outlined,
+                color: AppColors.primary,
+              ),
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -229,9 +225,10 @@ class _MyExpensesScreenState extends ConsumerState<MyExpensesScreen> {
                     exp.title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontWeight: FontWeight.w700,
                       fontSize: 15,
+                      color: AppColors.title,
                     ),
                   ),
                   const SizedBox(height: 6),
@@ -262,7 +259,7 @@ class _MyExpensesScreenState extends ConsumerState<MyExpensesScreen> {
               "₹${exp.totalAmount.toStringAsFixed(0)}",
               style: TextStyle(
                 fontWeight: FontWeight.w800,
-                color: scheme.primary,
+                color: AppColors.primary,
                 fontSize: 15,
               ),
             ),
@@ -273,27 +270,9 @@ class _MyExpensesScreenState extends ConsumerState<MyExpensesScreen> {
   }
 
   Widget _statusChip(String status) {
-    Color color;
-
-    switch (status) {
-      case "Draft":
-        color = Colors.grey;
-        break;
-      case "Pending":
-        color = Colors.orange;
-        break;
-      case "Rejected":
-        color = Colors.red;
-        break;
-      case "Manager Approved":
-      case "HOD Approved":
-      case "Processed":
-        color = Colors.green;
-        break;
-      default:
-        color = Colors.blue;
-    }
-
-    return PremiumStatusPill(label: status, color: color);
+    return PremiumStatusPill(
+      label: status,
+      color: AppColors.statusColor(status),
+    );
   }
 }

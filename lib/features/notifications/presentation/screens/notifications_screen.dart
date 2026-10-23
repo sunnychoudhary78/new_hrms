@@ -26,6 +26,7 @@ class _NotificationScreenState extends ConsumerState<NotificationScreen> {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final notificationsAsync = ref.watch(notificationProvider);
+    final unreadCount = ref.watch(unreadCountProvider);
     final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
     final listPhysics = isIOS
         ? const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics())
@@ -35,11 +36,35 @@ class _NotificationScreenState extends ConsumerState<NotificationScreen> {
       await ref.read(notificationProvider.notifier).refresh();
     }
 
+    Future<void> onMarkAllRead() async {
+      if (unreadCount <= 0) return;
+      try {
+        await ref.read(notificationProvider.notifier).markAllAsRead();
+      } catch (_) {
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not mark all as read')),
+        );
+      }
+    }
+
     return Scaffold(
       backgroundColor: scheme.surfaceContainerLowest,
-      appBar: const AppAppBar(
-        title: "Notifications",
-        showBack: false, // 👈 Root screen → no back button
+      appBar: AppAppBar(
+        title: 'Notifications',
+        showBack: true,
+        actions: [
+          IconButton(
+            tooltip: 'Mark all as read',
+            onPressed: unreadCount > 0 ? onMarkAllRead : null,
+            icon: Icon(
+              Icons.done_all_rounded,
+              color: unreadCount > 0
+                  ? scheme.onSurface
+                  : scheme.onSurface.withValues(alpha: 0.35),
+            ),
+          ),
+        ],
       ),
       body: notificationsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),

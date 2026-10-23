@@ -3,8 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lms/core/providers/network_providers.dart';
 import 'package:lms/core/services/pdf_service.dart';
+import 'package:lms/core/theme/app_design.dart';
 import 'package:lms/features/payslip/data/models/payslip_model.dart';
 import 'package:lms/shared/widgets/app_bar.dart';
+import 'package:lms/shared/widgets/app_form_widgets.dart';
 import 'package:pdfx/pdfx.dart';
 
 class PayslipDetailScreen extends ConsumerStatefulWidget {
@@ -86,12 +88,13 @@ class _PayslipDetailScreenState extends ConsumerState<PayslipDetailScreen> {
         'Payslip · ${_getMonthName(payslip.month)} ${payslip.year}';
 
     return Scaffold(
+      backgroundColor: AppColors.bg,
       appBar: AppAppBar(
         title: title,
         actions: [
           if (payslip.isDownloadable)
             IconButton(
-              icon: const Icon(Icons.download),
+              icon: const Icon(Icons.download_rounded),
               tooltip: 'Download payslip',
               onPressed: () async {
                 final dio = ref.read(dioClientProvider).dio;
@@ -106,33 +109,35 @@ class _PayslipDetailScreenState extends ConsumerState<PayslipDetailScreen> {
 
   Widget _buildBody() {
     if (_loading) {
-      return const Center(child: CircularProgressIndicator());
+      return Center(child: CircularProgressIndicator());
     }
 
     if (_error != null) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                _error!,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  height: 1.4,
+      return Padding(
+        padding: appScreenPadding,
+        child: Center(
+          child: AppSectionCard(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  _error!,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: AppColors.muted,
+                    height: 1.4,
+                  ),
                 ),
-              ),
-              if (widget.payslip.isDownloadable) ...[
-                const SizedBox(height: 16),
-                FilledButton.icon(
-                  onPressed: _load,
-                  icon: const Icon(Icons.refresh),
-                  label: const Text('Retry'),
-                ),
+                if (widget.payslip.isDownloadable) ...[
+                  const SizedBox(height: AppSpacing.md),
+                  AppPrimaryButton(
+                    label: 'Retry',
+                    icon: Icons.refresh_rounded,
+                    onPressed: _load,
+                  ),
+                ],
               ],
-            ],
+            ),
           ),
         ),
       );

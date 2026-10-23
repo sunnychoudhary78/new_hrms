@@ -8,16 +8,19 @@ import 'package:lms/features/attendance/mark_attendance/data/company_settings_re
 import 'package:lms/features/attendance/shared/utils/overtime_estimate_utils.dart';
 import 'package:lms/features/attendance/view_attendance/data/models/attendance_aggregate_model.dart';
 import 'package:lms/features/attendance/view_attendance/data/models/attendance_summary_model.dart';
+import 'package:lms/features/leave/data/leave_balance_api_service.dart';
 
 class HomeDashboardRepository {
   final AttendanceRepository attendanceRepo;
   final AuthApiService authApi;
   final CompanySettingsRepository companySettingsRepo;
+  final LeaveBalanceApiService leaveBalanceApi;
 
   HomeDashboardRepository({
     required this.attendanceRepo,
     required this.authApi,
     required this.companySettingsRepo,
+    required this.leaveBalanceApi,
   });
 
   // ─────────────────────────────────────────────
@@ -143,12 +146,6 @@ class HomeDashboardRepository {
       holiday: summary.totalHolidays.toDouble(),
     );
 
-    final stats = HomeStats(
-      payableDays: summary.payableDays.toDouble(),
-      lateDays: summary.lateDays,
-      absentDays: summary.absentDays.round(),
-      totalLeaves: summary.totalLeaves,
-    );
     final expectedMinutesPerDay = expectedMinutesFromOfficeHours(
       companySettings.officeStart,
       companySettings.officeEnd,
@@ -169,12 +166,80 @@ class HomeDashboardRepository {
       res.days,
     );
 
+    final leave = await _loadLeaveStats();
+    final weekWorkedHours = _weekWorkedHours(bars);
+    final autoCloseCapHours = _autoCloseCapHours(bars);
+
+    final stats = HomeStats(
+      payableDays: summary.payableDays.toDouble(),
+      lateDays: summary.lateDays,
+      absentDays: summary.absentDays.round(),
+      totalLeaves: summary.totalLeaves,
+      leavesRemaining: leave.remaining,
+      leavesTotal: leave.total,
+      weekWorkedHours: weekWorkedHours,
+      autoCloseCapHours: autoCloseCapHours,
+    );
+
     return (
       overview: overview,
       distribution: distribution,
       stats: stats,
       bars: bars,
     );
+  }
+
+  /// Remaining = available + carried. Total ≈ remaining + reserved (held) so
+  /// the progress bar reflects usable leave, not month-taken leave.
+  Future<({double remaining, double total})> _loadLeaveStats() async {
+    try {
+      final rows = await leaveBalanceApi.fetchLeaveBalance();
+      var remaining = 0.0;
+      var reserved = 0.0;
+      for (final row in rows) {
+        if (row is! Map) continue;
+        final available = (row['available'] as num?)?.toDouble() ?? 0;
+        final carried = (row['carried'] as num?)?.toDouble() ?? 0;
+        final pending =
+            (row['pending_reserved'] as num?)?.toDouble() ??
+            (row['pendingReserved'] as num?)?.toDouble() ??
+            0;
+        if (available > 0) remaining += available;
+        if (carried > 0) remaining += carried;
+        if (pending > 0) reserved += pending;
+      }
+      remaining = double.parse(remaining.toStringAsFixed(1));
+      final total = double.parse((remaining + reserved).toStringAsFixed(1));
+      return (remaining: remaining, total: total > 0 ? total : remaining);
+    } catch (_) {
+      return (remaining: 0.0, total: 0.0);
+    }
+  }
+
+  double _weekWorkedHours(List<WeeklyAttendanceBar> bars) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final weekStart = today.subtract(Duration(days: today.weekday - 1));
+    final weekEnd = weekStart.add(const Duration(days: 6));
+
+    var minutes = 0;
+    for (final bar in bars) {
+      final day = DateTime(bar.date.year, bar.date.month, bar.date.day);
+      if (!day.isBefore(weekStart) && !day.isAfter(weekEnd)) {
+        minutes += bar.workedMinutes;
+      }
+    }
+    return double.parse((minutes / 60).toStringAsFixed(1));
+  }
+
+  double _autoCloseCapHours(List<WeeklyAttendanceBar> bars) {
+    var minutes = 0;
+    for (final bar in bars) {
+      if (bar.isCapped) {
+        minutes += bar.estimatedOtMinutes;
+      }
+    }
+    return double.parse((minutes / 60).toStringAsFixed(1));
   }
 
   /// Days in [month] that the backend treats as working days, for the
@@ -227,9 +292,9 @@ class HomeDashboardRepository {
   }
 
   // ─────────────────────────────────────────────
-  // ALL WORKING DAYS OF CURRENT MONTH (SKIP SUNDAY)
+  // ALL CALENDAR DAYS OF MONTH (Sun–Sat weeks)
   // ─────────────────────────────────────────────
-  List<DateTime> _allWorkingDaysOfMonth(DateTime month) {
+  List<DateTime> _allDaysOfMonth(DateTime month) {
     final firstDay = DateTime(month.year, month.month, 1);
     final lastDay = DateTime(month.year, month.month + 1, 0);
 
@@ -237,13 +302,18 @@ class HomeDashboardRepository {
     var cursor = firstDay;
 
     while (!cursor.isAfter(lastDay)) {
-      if (cursor.weekday != DateTime.sunday) {
-        days.add(DateTime(cursor.year, cursor.month, cursor.day));
-      }
+      days.add(DateTime(cursor.year, cursor.month, cursor.day));
       cursor = cursor.add(const Duration(days: 1));
     }
 
     return days;
+  }
+
+  /// Working-day baseline when office hours are missing (skips typical Sunday off).
+  List<DateTime> _allWorkingDaysOfMonth(DateTime month) {
+    return _allDaysOfMonth(month)
+        .where((d) => d.weekday != DateTime.sunday)
+        .toList();
   }
 
   List<WeeklyAttendanceBar> _loadLastFiveDaysBars(
@@ -258,21 +328,41 @@ class HomeDashboardRepository {
     for (final day in summaryDays) {
       final key = dateKeyFromDateTime(day.date);
       statusByDate[key] = day.status;
-      if (day.fullWorked > 0) {
-        workedByDate[key] = day.fullWorked;
+      final backendMins =
+          day.fullWorked > 0 ? day.fullWorked : day.totalMinutes;
+      if (backendMins > 0) {
+        workedByDate[key] = backendMins;
       }
     }
 
     final sessionsByDate = groupSessionsByDate(sessions);
-    final workingDays = _allWorkingDaysOfMonth(month);
+    final calendarDays = _allDaysOfMonth(month);
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
 
-    return workingDays.map((day) {
+    return calendarDays.map((day) {
       final key = dateKeyFromDateTime(day);
+      final dayOnly = DateTime(day.year, day.month, day.day);
+      final isFuture = dayOnly.isAfter(today);
+
+      // Future days must not show expected/worked as if they already ran.
+      if (isFuture) {
+        return WeeklyAttendanceBar(
+          date: day,
+          workedMinutes: 0,
+          expectedMinutes: 0,
+        );
+      }
+
       final dayStatus = statusByDate[key] ?? '';
+      // No backend row: treat Sunday as week-off; other days as working.
+      final effectiveStatus = dayStatus.isNotEmpty
+          ? dayStatus
+          : (day.weekday == DateTime.sunday ? 'week_off' : 'present');
       final daySessions = sessionsByDate[key] ?? [];
 
       final expectedForDate = expectedMinutesForDate(
-        dayStatus: dayStatus.isEmpty ? 'present' : dayStatus,
+        dayStatus: effectiveStatus,
         expectedMinsPerDay: expectedMinsPerDay,
       );
 
@@ -283,9 +373,12 @@ class HomeDashboardRepository {
         autoCloseBufferMinutes: autoCloseBufferMinutes,
       );
 
-      // Prefer backend worked minutes (fullWorked / totalMinutes) when present.
-      final backendWorked = workedByDate[key];
-      final workedMinutes = backendWorked ?? result.workedMinutes;
+      // Take the higher of backend aggregate vs live session sum so open
+      // punches and closed-day totals both stay accurate.
+      final backendWorked = workedByDate[key] ?? 0;
+      final workedMinutes = backendWorked > result.workedMinutes
+          ? backendWorked
+          : result.workedMinutes;
 
       return WeeklyAttendanceBar(
         date: day,

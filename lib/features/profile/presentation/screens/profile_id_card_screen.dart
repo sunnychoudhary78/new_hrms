@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lms/features/auth/presentation/providers/auth_provider.dart';
 import 'package:lms/features/profile/data/models/user_details_model.dart';
+import 'package:lms/core/theme/app_design.dart';
 import 'package:lms/shared/widgets/app_bar.dart';
 
 class ProfileIdCardScreen extends ConsumerStatefulWidget {
@@ -47,19 +48,21 @@ class _ProfileIdCardScreenState extends ConsumerState<ProfileIdCardScreen>
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
-    final scheme = Theme.of(context).colorScheme;
 
     final Userdetails? profile = authState.profile;
 
     if (profile == null) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return Scaffold(
+        backgroundColor: AppColors.bg,
+        body: Center(child: CircularProgressIndicator()),
+      );
     }
 
     final profileImage = authState.profileUrl;
     final companyLogo = authState.companyLogoUrl;
 
     return Scaffold(
-      backgroundColor: scheme.surfaceContainerLowest,
+      backgroundColor: AppColors.bg,
       appBar: const AppAppBar(title: "Employee ID Card"),
       body: Center(
         child: GestureDetector(
@@ -105,21 +108,14 @@ class _ProfileIdCardScreenState extends ConsumerState<ProfileIdCardScreen>
     String profileImage,
     String companyLogo,
   ) {
-    final scheme = Theme.of(context).colorScheme;
-
     return Container(
       width: 340,
       height: 540,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        color: scheme.surface,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(.15),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        color: AppColors.card,
+        border: Border.all(color: AppColors.border),
+        boxShadow: AppColors.cardShadow,
       ),
       child: Column(
         children: [
@@ -128,9 +124,9 @@ class _ProfileIdCardScreenState extends ConsumerState<ProfileIdCardScreen>
             height: 90,
             padding: const EdgeInsets.symmetric(horizontal: 16),
             decoration: BoxDecoration(
-              color: scheme.primary,
+              gradient: AppColors.heroGradient,
               borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(20),
+                top: Radius.circular(AppRadius.lg),
               ),
             ),
             child: Row(
@@ -150,7 +146,7 @@ class _ProfileIdCardScreenState extends ConsumerState<ProfileIdCardScreen>
                 Expanded(
                   child: Text(
                     profile.companyName ?? "",
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
@@ -161,43 +157,43 @@ class _ProfileIdCardScreenState extends ConsumerState<ProfileIdCardScreen>
             ),
           ),
 
-          const SizedBox(height: 18),
+          SizedBox(height: 18),
 
           /// PHOTO + ID
           CircleAvatar(
             radius: 50,
-            backgroundColor: scheme.primary.withOpacity(.1),
+            backgroundColor: AppColors.iconBg,
             child: CircleAvatar(
               radius: 46,
               backgroundImage: profileImage.isNotEmpty
                   ? NetworkImage(profileImage)
                   : null,
               child: profileImage.isEmpty
-                  ? Icon(Icons.person, size: 40, color: scheme.primary)
+                  ? Icon(Icons.person, size: 40, color: AppColors.primary)
                   : null,
             ),
           ),
 
-          const SizedBox(height: 10),
+          SizedBox(height: 10),
 
           Text(
             profile.associatesName ?? "",
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
           ),
 
           Text(
             profile.designation ?? "",
             style: TextStyle(
-              color: scheme.primary,
+              color: AppColors.primary,
               fontWeight: FontWeight.w600,
             ),
           ),
 
-          const SizedBox(height: 4),
+          SizedBox(height: 4),
 
           Text(
             "ID: ${profile.payrollCode ?? "--"}",
-            style: const TextStyle(fontSize: 13, color: Colors.grey),
+            style: TextStyle(fontSize: 13, color: AppColors.muted),
           ),
 
           const SizedBox(height: 18),
@@ -224,9 +220,9 @@ class _ProfileIdCardScreenState extends ConsumerState<ProfileIdCardScreen>
           Container(
             height: 45,
             decoration: BoxDecoration(
-              color: scheme.primary,
+              gradient: AppColors.heroGradient,
               borderRadius: const BorderRadius.vertical(
-                bottom: Radius.circular(20),
+                bottom: Radius.circular(AppRadius.lg),
               ),
             ),
             child: const Center(
@@ -253,28 +249,21 @@ class _ProfileIdCardScreenState extends ConsumerState<ProfileIdCardScreen>
     Userdetails profile,
     String companyLogo,
   ) {
-    final scheme = Theme.of(context).colorScheme;
-
     return Container(
       width: 340,
       height: 540,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        color: scheme.surface,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(.15),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        color: AppColors.card,
+        border: Border.all(color: AppColors.border),
+        boxShadow: AppColors.cardShadow,
       ),
       child: Column(
         children: [
           if (companyLogo.isNotEmpty) Image.network(companyLogo, height: 50),
 
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
 
           _infoBlock("Employee ID", profile.payrollCode),
 
@@ -282,24 +271,24 @@ class _ProfileIdCardScreenState extends ConsumerState<ProfileIdCardScreen>
 
           _infoBlock("Emergency Contact", profile.emergencyContact),
 
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
 
           /// QR PLACEHOLDER
           Container(
             height: 100,
             width: 100,
             decoration: BoxDecoration(
-              border: Border.all(color: scheme.primary),
+              border: Border.all(color: AppColors.primary),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(Icons.qr_code, size: 60, color: scheme.primary),
+            child: Icon(Icons.qr_code, size: 60, color: AppColors.primary),
           ),
 
           const Spacer(),
 
-          const Text(
+          Text(
             "If found please return to company office.",
-            style: TextStyle(fontSize: 12, color: Colors.grey),
+            style: TextStyle(fontSize: 12, color: AppColors.muted),
           ),
         ],
       ),
@@ -311,7 +300,7 @@ class _ProfileIdCardScreenState extends ConsumerState<ProfileIdCardScreen>
   /////////////////////////////////////////////////////////////////
 
   Widget _infoTile(String title, String? value) {
-    if (value == null || value.isEmpty) return const SizedBox();
+    if (value == null || value.isEmpty) return SizedBox();
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
@@ -321,7 +310,7 @@ class _ProfileIdCardScreenState extends ConsumerState<ProfileIdCardScreen>
             width: 90,
             child: Text(
               title,
-              style: const TextStyle(color: Colors.grey, fontSize: 13),
+              style: TextStyle(color: AppColors.muted, fontSize: 13),
             ),
           ),
 
@@ -337,14 +326,17 @@ class _ProfileIdCardScreenState extends ConsumerState<ProfileIdCardScreen>
   }
 
   Widget _infoBlock(String title, String? value) {
-    if (value == null || value.isEmpty) return const SizedBox();
+    if (value == null || value.isEmpty) return SizedBox();
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+          Text(
+            title,
+            style: TextStyle(fontSize: 12, color: AppColors.muted),
+          ),
 
           const SizedBox(height: 4),
 

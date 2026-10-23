@@ -1,7 +1,9 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lms/core/theme/app_design.dart';
 import 'package:lms/shared/widgets/app_bar.dart';
+import 'package:lms/shared/widgets/app_form_widgets.dart';
 import 'package:lms/shared/widgets/premium_feature_components.dart';
 import '../../data/models/expense_model.dart';
 import '../providers/expense_provider.dart';
@@ -21,7 +23,7 @@ class _ExpensesDashboardScreenState
     await ref.read(expenseDashboardProvider.future);
   }
 
-  Widget _statusFilterChips(ExpenseDashboardRole role, ColorScheme scheme) {
+  Widget _statusFilterChips(ExpenseDashboardRole role) {
     final choices = expenseDashboardStatusChoices(role);
     if (choices.isEmpty) return const SizedBox.shrink();
 
@@ -35,7 +37,7 @@ class _ExpensesDashboardScreenState
           style: TextStyle(
             fontWeight: FontWeight.w700,
             fontSize: 13,
-            color: scheme.onSurfaceVariant,
+            color: AppColors.muted,
           ),
         ),
         const SizedBox(height: 8),
@@ -47,15 +49,14 @@ class _ExpensesDashboardScreenState
           child: Row(
             children: [
               for (final s in choices) ...[
-                FilterChip(
-                  label: Text(s),
+                AppFilterChip(
+                  label: s,
                   selected: selected == s,
                   onSelected: (_) {
                     ref
                         .read(expenseDashboardStatusFilterProvider.notifier)
                         .setFilter(s);
                   },
-                  showCheckmark: false,
                 ),
                 const SizedBox(width: 8),
               ],
@@ -86,6 +87,7 @@ class _ExpensesDashboardScreenState
     };
 
     return Scaffold(
+      backgroundColor: AppColors.bg,
       appBar: const AppAppBar(title: "Expenses Dashboard"),
       body: RefreshIndicator(
         onRefresh: _refreshDashboard,
@@ -146,7 +148,7 @@ class _ExpensesDashboardScreenState
                       "Review, approve and process claims from your action queue. Change status below to audit other stages.",
                 ),
                 const SizedBox(height: 14),
-                _statusFilterChips(role, scheme),
+                _statusFilterChips(role),
                 const SizedBox(height: 14),
                 Row(
                   children: [
@@ -156,7 +158,7 @@ class _ExpensesDashboardScreenState
                         value: claimCount.toString(),
                       ),
                     ),
-                    const SizedBox(width: 10),
+                    SizedBox(width: 10),
                     Expanded(
                       child: _MetricCard(
                         title: "Total amount",
@@ -165,12 +167,12 @@ class _ExpensesDashboardScreenState
                     ),
                   ],
                 ),
-                const SizedBox(height: 6),
+                SizedBox(height: 6),
                 Text(
                   'Showing: $statusFilter',
                   style: TextStyle(
                     fontSize: 12,
-                    color: scheme.onSurfaceVariant,
+                    color: AppColors.muted,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -193,12 +195,8 @@ class _ExpensesDashboardScreenState
   }
 
   Widget _buildExpenseTile(ExpenseClaim expense) {
-    final scheme = Theme.of(context).colorScheme;
-    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
-    final tileRadius = isIOS ? 14.0 : 16.0;
-
     return InkWell(
-      borderRadius: BorderRadius.circular(tileRadius),
+      borderRadius: BorderRadius.circular(AppRadius.lg),
       onTap: () async {
         await Navigator.pushNamed(
           context,
@@ -216,12 +214,15 @@ class _ExpensesDashboardScreenState
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(isIOS ? 10 : 12),
-                  color: scheme.primaryContainer,
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                  color: AppColors.iconBg,
                 ),
-                child: Icon(Icons.receipt_long_outlined, color: scheme.primary),
+                child: Icon(
+                  Icons.receipt_long_outlined,
+                  color: AppColors.primary,
+                ),
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -230,29 +231,30 @@ class _ExpensesDashboardScreenState
                       expense.title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontWeight: FontWeight.w700,
                         fontSize: 15,
+                        color: AppColors.title,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    SizedBox(height: 4),
                     Text(
                       expense.employeeName?.trim().isNotEmpty == true
                           ? expense.employeeName!
                           : "Employee",
-                      style: TextStyle(color: scheme.onSurfaceVariant),
+                      style: TextStyle(color: AppColors.muted),
                     ),
-                    const SizedBox(height: 6),
+                    SizedBox(height: 6),
                     _StatusChip(status: expense.status),
                   ],
                 ),
               ),
-              const SizedBox(width: 10),
+              SizedBox(width: 10),
               Text(
                 "₹${expense.totalAmount.toStringAsFixed(0)}",
                 style: TextStyle(
                   fontWeight: FontWeight.w800,
-                  color: scheme.primary,
+                  color: AppColors.primary,
                   fontSize: 15,
                 ),
               ),
@@ -272,25 +274,19 @@ class _MetricCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
     return Container(
       padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(isIOS ? 12 : 14),
-        color: scheme.surfaceContainerLow,
-        border: Border.all(color: scheme.outlineVariant),
-      ),
+      decoration: AppColors.cardDecoration(radius: AppRadius.md),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: TextStyle(color: scheme.onSurfaceVariant)),
-          const SizedBox(height: 6),
+          Text(title, style: TextStyle(color: AppColors.muted)),
+          SizedBox(height: 6),
           Text(
             value,
             style: TextStyle(
               fontWeight: FontWeight.w800,
-              color: scheme.primary,
+              color: AppColors.primary,
               fontSize: 18,
             ),
           ),
@@ -306,14 +302,9 @@ class _StatusChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = switch (status.toLowerCase()) {
-      "pending" => Colors.orange,
-      "draft" => Colors.grey,
-      "rejected" => Colors.red,
-      "manager approved" || "hod approved" || "processed" => Colors.green,
-      _ => Theme.of(context).colorScheme.primary,
-    };
-
-    return PremiumStatusPill(label: status, color: color);
+    return PremiumStatusPill(
+      label: status,
+      color: AppColors.statusColor(status),
+    );
   }
 }

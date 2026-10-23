@@ -1,7 +1,9 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:lms/core/theme/app_design.dart';
 import 'package:lms/features/attendance/correction_attendance/presentation/dialogs/review_request_dialog.dart';
 import 'package:lms/features/attendance/shared/utils/attendance_date_utils.dart';
+import 'package:lms/shared/widgets/premium_feature_components.dart';
 import '../../data/models/attendance_request_model.dart';
 import 'user_cell.dart';
 
@@ -12,19 +14,17 @@ class RequestCard extends StatelessWidget {
 
   String formatTime(String? iso) => formatIsoToLocalTime(iso);
 
-  /// 🔥 STATUS COLOR (controlled)
   Color _statusColor() {
     switch (item.status) {
       case "APPROVED":
-        return Colors.green;
+        return AppColors.success;
       case "REJECTED":
-        return Colors.red;
+        return AppColors.danger;
       default:
-        return Colors.amber;
+        return AppColors.warning;
     }
   }
 
-  /// 🔹 TYPE LABEL
   String _typeLabel() {
     if (item.isRemote) return "Remote";
     return "Correction";
@@ -32,67 +32,64 @@ class RequestCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     final statusColor = _statusColor();
     final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
-    final outerR = BorderRadius.circular(isIOS ? 14 : 18);
-    final innerR = BorderRadius.circular(isIOS ? 10 : 12);
+    final innerR = BorderRadius.circular(isIOS ? 10 : AppRadius.sm);
 
     return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: scheme.surface,
-        borderRadius: outerR,
-        border: Border.all(color: scheme.outline.withOpacity(.15)),
-      ),
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: AppColors.cardDecoration(radius: AppRadius.md),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          /// 🔝 TOP ROW (TYPE + STATUS)
           Row(
             children: [
-              _Chip(label: _typeLabel(), color: scheme.primary),
+              PremiumStatusPill(
+                label: _typeLabel(),
+                color: AppColors.heroStart,
+              ),
               const Spacer(),
-              _Chip(label: item.status, color: statusColor, isFilled: true),
+              PremiumStatusPill(
+                label: item.status,
+                color: statusColor,
+              ),
             ],
           ),
 
-          const SizedBox(height: 12),
+          SizedBox(height: AppSpacing.md),
 
-          /// 👤 USER
           UserCell(name: item.userName, image: item.userImage),
 
-          const SizedBox(height: 10),
+          SizedBox(height: AppSpacing.sm),
 
-          /// 📝 REASON
           Text(
             item.reason ?? "—",
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: Theme.of(
-              context,
-            ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.w500,
+              color: AppColors.title,
+            ),
           ),
 
-          const SizedBox(height: 14),
+          SizedBox(height: AppSpacing.md),
 
-          /// ⏱ TIME BLOCK (ONLY FOR ATTENDANCE TYPE)
           if (item.isCorrection || item.isRemote)
             Container(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(AppSpacing.md),
               decoration: BoxDecoration(
-                color: scheme.surfaceContainerHighest,
+                color: AppColors.bg,
                 borderRadius: innerR,
+                border: Border.all(color: AppColors.border),
               ),
               child: Column(
                 children: [
-                  /// ORIGINAL
                   Row(
                     children: [
                       Text(
                         "Original",
                         style: TextStyle(
-                          color: scheme.onSurfaceVariant,
+                          color: AppColors.muted,
                           fontSize: 12,
                         ),
                       ),
@@ -100,16 +97,13 @@ class RequestCard extends StatelessWidget {
                       Text(
                         "${formatTime(item.originalCheckIn)} → ${formatTime(item.originalCheckOut)}",
                         style: TextStyle(
-                          color: scheme.onSurfaceVariant,
+                          color: AppColors.muted,
                           decoration: TextDecoration.lineThrough,
                         ),
                       ),
                     ],
                   ),
-
-                  const SizedBox(height: 6),
-
-                  /// PROPOSED
+                  SizedBox(height: 6),
                   Row(
                     children: [
                       Text(
@@ -117,12 +111,16 @@ class RequestCard extends StatelessWidget {
                         style: TextStyle(
                           fontWeight: FontWeight.w600,
                           fontSize: 12,
+                          color: AppColors.title,
                         ),
                       ),
                       const Spacer(),
                       Text(
                         "${formatTime(item.proposedCheckIn)} → ${formatTime(item.proposedCheckOut)}",
-                        style: const TextStyle(fontWeight: FontWeight.w700),
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.title,
+                        ),
                       ),
                     ],
                   ),
@@ -130,17 +128,18 @@ class RequestCard extends StatelessWidget {
               ),
             ),
 
-          const SizedBox(height: 14),
+          const SizedBox(height: AppSpacing.md),
 
-          /// 🔘 ACTIONS
           if (item.status == "PENDING")
             Row(
               children: [
                 Expanded(
                   child: FilledButton.tonalIcon(
                     style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.danger.withValues(alpha: 0.1),
+                      foregroundColor: AppColors.danger,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(isIOS ? 12 : 20),
+                        borderRadius: BorderRadius.circular(AppRadius.md),
                       ),
                     ),
                     onPressed: () {
@@ -150,14 +149,14 @@ class RequestCard extends StatelessWidget {
                     label: const Text("Reject"),
                   ),
                 ),
-
-                const SizedBox(width: 10),
-
+                const SizedBox(width: AppSpacing.sm),
                 Expanded(
                   child: FilledButton.icon(
                     style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.heroStart,
+                      foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(isIOS ? 12 : 20),
+                        borderRadius: BorderRadius.circular(AppRadius.md),
                       ),
                     ),
                     onPressed: () {
@@ -180,45 +179,6 @@ class RequestCard extends StatelessWidget {
               ),
             ),
         ],
-      ),
-    );
-  }
-}
-
-/// 🔹 REUSABLE CHIP
-class _Chip extends StatelessWidget {
-  final String label;
-  final Color color;
-  final bool isFilled;
-
-  const _Chip({
-    required this.label,
-    required this.color,
-    this.isFilled = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: isFilled ? color.withValues(alpha: 0.15) : Colors.transparent,
-        borderRadius: BorderRadius.circular(isIOS ? 14 : 20),
-        border: Border.all(
-          color: isFilled
-              ? color.withValues(alpha: 0.45)
-              : scheme.outlineVariant,
-        ),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: color,
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-        ),
       ),
     );
   }

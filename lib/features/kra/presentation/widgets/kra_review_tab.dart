@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lms/core/network/api_constants.dart';
+import 'package:lms/core/theme/app_design.dart';
 import 'package:lms/core/providers/global_loading_provider.dart';
 import 'package:lms/features/auth/presentation/providers/auth_provider.dart';
 import 'package:lms/features/kra/data/models/kra_model.dart';
@@ -51,7 +52,12 @@ class KraReviewTab extends ConsumerWidget {
                           parent: BouncingScrollPhysics(),
                         )
                       : const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.fromLTRB(12, 8, 12, 100),
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.md,
+                    AppSpacing.sm,
+                    AppSpacing.md,
+                    100,
+                  ),
                   itemBuilder: (_, i) {
                     final evaluation = items[i];
                     return _EvaluationCard(
@@ -133,7 +139,6 @@ class _EvaluationCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
-    final cardRadius = BorderRadius.circular(isIOS ? 12 : 16);
     final assignedKrasAsync = mode == KraReviewMode.self && canSubmit
         ? ref.watch(myKrasProvider)
         : null;
@@ -148,12 +153,8 @@ class _EvaluationCard extends StatelessWidget {
         evaluation.ratings.isEmpty;
 
     return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: scheme.surfaceContainerLow,
-        borderRadius: cardRadius,
-        border: Border.all(color: scheme.outlineVariant),
-      ),
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: AppColors.cardDecoration(radius: AppRadius.md),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1176,7 +1177,12 @@ class KraMyKraUnifiedTab extends ConsumerWidget {
                       parent: BouncingScrollPhysics(),
                     )
                   : const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(12, 0, 12, 100),
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.md,
+                0,
+                AppSpacing.md,
+                100,
+              ),
               children: [
                 Text(
                   '1. Your assigned KRA & KPIs',

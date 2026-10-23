@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:lms/core/theme/app_design.dart';
 import 'package:lms/features/leave/data/models/leave_status_model.dart';
+import 'package:lms/shared/widgets/app_form_widgets.dart';
 import 'leave_status_card.dart';
 
 class LeaveStatusList extends StatefulWidget {
@@ -69,10 +71,15 @@ class _LeaveStatusListState extends State<LeaveStatusList> {
         onRefresh: widget.onRefresh,
         child: ListView(
           physics: scrollPhysics,
-          padding: const EdgeInsets.all(16),
-          children: const [
-            SizedBox(height: 120),
-            Center(child: Text("No leave requests found")),
+          padding: appScreenPadding,
+          children: [
+            SizedBox(height: 80),
+            Center(
+              child: Text(
+                "No leave requests found",
+                style: TextStyle(color: AppColors.muted),
+              ),
+            ),
           ],
         ),
       );
@@ -83,7 +90,7 @@ class _LeaveStatusListState extends State<LeaveStatusList> {
       child: ListView.builder(
         controller: _scrollController,
         physics: scrollPhysics,
-        padding: const EdgeInsets.all(16),
+        padding: appScreenPadding,
         itemCount: widget.leaves.length,
         itemBuilder: (context, index) {
           final leave = widget.leaves[index];

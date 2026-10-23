@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:lms/core/network/api_constants.dart';
+import 'package:lms/core/theme/app_design.dart';
 import 'package:lms/features/onboarding/data/day_one_route.dart';
 import 'package:lms/features/onboarding/presentation/providers/onboarding_providers.dart';
 import 'package:lms/features/onboarding/presentation/widgets/feature_tour_overlay.dart';
@@ -10,6 +11,7 @@ import 'package:lms/features/policy/data/models/policy_model.dart';
 import 'package:lms/features/policy/presentation/providers/policy_provider.dart';
 import 'package:lms/shared/utils/app_snackbar.dart';
 import 'package:lms/shared/widgets/app_bar.dart';
+import 'package:lms/shared/widgets/app_form_widgets.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class PolicyScreen extends ConsumerStatefulWidget {
@@ -80,7 +82,6 @@ class _PolicyScreenState extends ConsumerState<PolicyScreen> {
         policiesStep != null &&
         policiesStep.isNotEmpty &&
         !policiesStep.first.isCompleted;
-    final scheme = Theme.of(context).colorScheme;
     final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
 
     if (onboardingAsync.hasValue) {
@@ -88,19 +89,25 @@ class _PolicyScreenState extends ConsumerState<PolicyScreen> {
     }
 
     return Scaffold(
-      backgroundColor: scheme.surfaceContainerLowest,
+      backgroundColor: AppColors.bg,
       appBar: const AppAppBar(title: 'Policies'),
       bottomNavigationBar: showAck
           ? SafeArea(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.md,
+                  AppSpacing.sm,
+                  AppSpacing.md,
+                  AppSpacing.sm + 4,
+                ),
                 child: KeyedSubtree(
                   key: _ackKey,
-                  child: FilledButton(
+                  child: AppPrimaryButton(
+                    label: _acking
+                        ? 'Saving…'
+                        : "I've reviewed company policies",
                     onPressed: _acking ? null : _ackPolicies,
-                    child: Text(
-                      _acking ? 'Saving…' : "I've reviewed company policies",
-                    ),
+                    isLoading: _acking,
                   ),
                 ),
               ),
@@ -139,30 +146,17 @@ class _PolicyScreenState extends ConsumerState<PolicyScreen> {
                         parent: BouncingScrollPhysics(),
                       )
                     : const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
+                padding: appScreenPadding,
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(isIOS ? 14 : 18),
-                      gradient: LinearGradient(
-                        colors: [
-                          scheme.primaryContainer,
-                          scheme.secondaryContainer,
-                        ],
-                      ),
-                    ),
-                    child: Text(
-                      'View HR policies shared by your company. Tap a policy to open the PDF.',
-                      style: TextStyle(
-                        color: scheme.onSurface,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
+                  const AppHeroBanner(
+                    icon: Icons.policy_outlined,
+                    title: 'Company policies',
+                    message:
+                        'View HR policies shared by your company. Tap a policy to open the PDF.',
                   ),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: AppSpacing.sm + 4),
                   ...policies.map(
-                    (policy) => _PolicyCard(policy: policy, isIOS: isIOS),
+                    (policy) => _PolicyCard(policy: policy),
                   ),
                 ],
               ),
@@ -176,13 +170,11 @@ class _PolicyScreenState extends ConsumerState<PolicyScreen> {
 
 class _PolicyCard extends StatelessWidget {
   final PolicyModel policy;
-  final bool isIOS;
 
-  const _PolicyCard({required this.policy, required this.isIOS});
+  const _PolicyCard({required this.policy});
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     final created = policy.createdAt == null
         ? null
         : DateFormat('dd MMM yyyy').format(policy.createdAt!);
@@ -191,36 +183,37 @@ class _PolicyCard extends StatelessWidget {
       if (policy.fileSize != null) _formatFileSize(policy.fileSize!),
     ].join(' | ');
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: scheme.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(isIOS ? 12 : 16),
-        border: Border.all(color: scheme.outlineVariant),
-      ),
+    return AppSectionCard(
+      padding: EdgeInsets.zero,
       child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        leading: Container(
-          width: 44,
-          height: 44,
-          decoration: BoxDecoration(
-            color: scheme.primary.withValues(alpha: 0.10),
-            borderRadius: BorderRadius.circular(isIOS ? 10 : 12),
-          ),
-          child: Icon(Icons.picture_as_pdf_rounded, color: scheme.primary),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md,
+          vertical: AppSpacing.sm,
+        ),
+        leading: AppIconBadge(
+          icon: Icons.picture_as_pdf_rounded,
+          size: 44,
+          backgroundColor: AppColors.iconBg,
+          iconColor: AppColors.primary,
         ),
         title: Text(
           policy.title,
-          style: const TextStyle(fontWeight: FontWeight.w700),
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            color: AppColors.title,
+          ),
         ),
         subtitle: Padding(
           padding: const EdgeInsets.only(top: 4),
           child: Text(
             meta.isEmpty ? (policy.originalName ?? 'PDF document') : meta,
-            style: TextStyle(color: scheme.onSurfaceVariant),
+            style: TextStyle(color: AppColors.muted),
           ),
         ),
-        trailing: Icon(Icons.open_in_new_rounded, color: scheme.primary),
+        trailing: Icon(
+          Icons.open_in_new_rounded,
+          color: AppColors.primary,
+        ),
         onTap: () => _openPolicy(context, policy),
       ),
     );
@@ -275,41 +268,41 @@ class _StateCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
-
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: scheme.surfaceContainerLow,
-            borderRadius: BorderRadius.circular(isIOS ? 12 : 16),
-            border: Border.all(color: scheme.outlineVariant),
-          ),
+        padding: appScreenPadding,
+        child: AppSectionCard(
+          margin: EdgeInsets.zero,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, size: 42, color: scheme.primary),
-              const SizedBox(height: 12),
+              AppIconBadge(
+                icon: icon,
+                size: 52,
+                backgroundColor: AppColors.iconBg,
+                iconColor: AppColors.primary,
+              ),
+              SizedBox(height: 12),
               Text(
                 title,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
+                  color: AppColors.title,
                 ),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 6),
+              SizedBox(height: 6),
               Text(
                 message,
-                style: TextStyle(color: scheme.onSurfaceVariant),
+                style: TextStyle(color: AppColors.muted),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 14),
-              OutlinedButton(onPressed: onAction, child: Text(actionLabel)),
+              AppSecondaryButton(
+                label: actionLabel,
+                onPressed: onAction,
+              ),
             ],
           ),
         ),

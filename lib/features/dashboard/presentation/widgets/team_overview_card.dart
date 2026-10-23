@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:lms/core/theme/app_design.dart';
+import 'package:lms/shared/widgets/premium_feature_components.dart';
 import '../../data/models/team_dashboard_model.dart';
 
 class TeamOverviewCard extends StatelessWidget {
@@ -19,19 +21,8 @@ class TeamOverviewCard extends StatelessWidget {
     /// 🔥 MUCH SMALLER DONUT
     final donutSize = screenWidth < 380 ? 42.0 : 55.0;
 
-    return Container(
+    return PremiumCard(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 30),
-      decoration: BoxDecoration(
-        color: scheme.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: scheme.shadow.withOpacity(0.06),
-            blurRadius: 24,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -44,28 +35,29 @@ class TeamOverviewCard extends StatelessWidget {
                   "Team Health Overview",
                   style: TextStyle(
                     fontSize: 12,
-                    color: scheme.onSurfaceVariant,
+                    color: AppColors.muted,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
 
-                const SizedBox(height: 10),
+                SizedBox(height: 10),
 
                 Text(
                   "${attendancePercentage.toStringAsFixed(0)}%",
                   style: TextStyle(
                     fontSize: 30,
                     fontWeight: FontWeight.w700,
-                    color: scheme.onSurface,
+                    color: AppColors.title,
                   ),
                 ),
 
-                const SizedBox(height: 4),
+                SizedBox(height: 4),
 
                 Text(
                   "Attendance Rate",
                   style: TextStyle(
                     fontSize: 12,
-                    color: scheme.onSurfaceVariant,
+                    color: AppColors.muted,
                   ),
                 ),
 
@@ -79,24 +71,24 @@ class TeamOverviewCard extends StatelessWidget {
                       context,
                       label: "Present",
                       value: dashboard.present,
-                      color: scheme.tertiary,
+                      color: AppColors.success,
                     ),
                     _statChip(
                       context,
                       label: "Absent",
                       value: dashboard.absent,
-                      color: scheme.error,
+                      color: AppColors.danger,
                     ),
                   ],
                 ),
 
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
 
                 Text(
                   "Total Employees: ${dashboard.total}",
                   style: TextStyle(
                     fontSize: 11,
-                    color: scheme.onSurfaceVariant,
+                    color: AppColors.muted,
                   ),
                 ),
               ],
@@ -130,13 +122,13 @@ class TeamOverviewCard extends StatelessWidget {
                               sections: [
                                 PieChartSectionData(
                                   value: dashboard.present.toDouble(),
-                                  color: scheme.tertiary,
+                                  color: AppColors.success,
                                   showTitle: false,
                                   radius: donutSize * 0.42,
                                 ),
                                 PieChartSectionData(
                                   value: dashboard.absent.toDouble(),
-                                  color: scheme.error,
+                                  color: AppColors.danger,
                                   showTitle: false,
                                   radius: donutSize * 0.42,
                                 ),
@@ -181,7 +173,7 @@ class TeamOverviewCard extends StatelessWidget {
                             ),
                             isCurved: true,
                             barWidth: 2,
-                            color: scheme.primary,
+                            color: AppColors.primary,
                             dotData: const FlDotData(show: false),
                             belowBarData: BarAreaData(
                               show: true,

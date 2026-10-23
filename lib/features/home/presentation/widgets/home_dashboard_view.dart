@@ -5,6 +5,9 @@ import 'package:lms/features/attendance/mark_attendance/presentation/providers/m
 import 'package:lms/features/attendance/mark_attendance/presentation/providers/mobile_config_provider.dart';
 import 'package:lms/features/home/presentation/providers/home_dashboard_proovider.dart';
 import 'package:lms/features/home/presentation/widgets/attendance_overview_card.dart';
+import 'package:lms/features/home/presentation/widgets/home_dashboard_style.dart';
+import 'package:lms/features/home/presentation/widgets/home_quick_actions.dart';
+import 'package:lms/features/home/presentation/widgets/home_stats_cards.dart';
 import 'package:lms/features/home/presentation/widgets/home_welcome_attendance_card.dart';
 import 'package:lms/features/home/presentation/widgets/last_five_days_card.dart';
 import 'package:lms/features/onboarding/presentation/providers/onboarding_providers.dart';
@@ -28,11 +31,10 @@ class _HomeDashboardViewState extends ConsumerState<HomeDashboardView> {
     final current = DateTime(now.year, now.month);
     return selected.isBefore(current);
   }
+
   @override
   void initState() {
     super.initState();
-
-    /// 🔥 AUTO REFRESH WHEN SCREEN LOADS
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _refreshAll();
     });
@@ -48,69 +50,88 @@ class _HomeDashboardViewState extends ConsumerState<HomeDashboardView> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(homeDashboardProvider);
+    final dash = HomeDashColors.of(context);
 
-    return state.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
-
-      error: (e, _) => Center(child: Text('Error: $e')),
-
-      data: (dashboard) {
-        final scrollPhysics = defaultTargetPlatform == TargetPlatform.iOS
-            ? const AlwaysScrollableScrollPhysics(
-                parent: BouncingScrollPhysics(),
-              )
-            : const AlwaysScrollableScrollPhysics();
-
-        return RefreshIndicator(
-          onRefresh: () async {
-            _refreshAll();
-            await Future.delayed(const Duration(milliseconds: 300));
-          },
-          child: ListView(
-            physics: scrollPhysics,
-            padding: const EdgeInsets.all(16),
-            children: [
-              const DayOneBanner(),
-
-              HomeWelcomeAttendanceCard(
-                name: dashboard.userName,
-                role: dashboard.designation,
-                imageUrl: dashboard.profileImageUrl,
-              ),
-              const SizedBox(height: 16),
-
-              LastFiveDaysAttendanceCard(
-                days: dashboard.lastFiveDays,
-                month: dashboard.attendanceMonth,
-                canGoToPreviousMonth: _canGoToPreviousMonth(
-                  dashboard.attendanceMonth,
-                ),
-                canGoToNextMonth: _canGoToNextMonth(dashboard.attendanceMonth),
-                onPreviousMonth: () {
-                  final month = dashboard.attendanceMonth;
-                  ref
-                      .read(homeDashboardProvider.notifier)
-                      .selectAttendanceMonth(
-                        DateTime(month.year, month.month - 1),
-                      );
-                },
-                onNextMonth: () {
-                  final month = dashboard.attendanceMonth;
-                  ref
-                      .read(homeDashboardProvider.notifier)
-                      .selectAttendanceMonth(
-                        DateTime(month.year, month.month + 1),
-                      );
-                },
-              ),
-              const SizedBox(height: 16),
-
-              AttendanceOverviewCard(dashboard: dashboard),
-              const SizedBox(height: 100),
-            ],
+    return ColoredBox(
+      color: dash.bg,
+      child: state.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, _) => Center(
+          child: Text(
+            'Error: $e',
+            style: TextStyle(color: dash.title),
           ),
-        );
-      },
+        ),
+        data: (dashboard) {
+          final scrollPhysics = defaultTargetPlatform == TargetPlatform.iOS
+              ? const AlwaysScrollableScrollPhysics(
+                  parent: BouncingScrollPhysics(),
+                )
+              : const AlwaysScrollableScrollPhysics();
+
+          return RefreshIndicator(
+            onRefresh: () async {
+              _refreshAll();
+              await Future.delayed(const Duration(milliseconds: 300));
+            },
+            child: ListView(
+              physics: scrollPhysics,
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+              children: [
+                const DayOneBanner(),
+                Text(
+                  'Stay consistent, achieve more ✨',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: dash.muted,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                HomeWelcomeAttendanceCard(
+                  name: dashboard.userName,
+                  role: dashboard.designation,
+                  imageUrl: dashboard.profileImageUrl,
+                ),
+                const SizedBox(height: 14),
+                HomeStatsCards(dashboard: dashboard),
+                const SizedBox(height: 16),
+                const HomeQuickActions(),
+                const SizedBox(height: 14),
+                LastFiveDaysAttendanceCard(
+                  days: dashboard.lastFiveDays,
+                  month: dashboard.attendanceMonth,
+                  canGoToPreviousMonth: _canGoToPreviousMonth(
+                    dashboard.attendanceMonth,
+                  ),
+                  canGoToNextMonth: _canGoToNextMonth(
+                    dashboard.attendanceMonth,
+                  ),
+                  onPreviousMonth: () {
+                    final month = dashboard.attendanceMonth;
+                    ref
+                        .read(homeDashboardProvider.notifier)
+                        .selectAttendanceMonth(
+                          DateTime(month.year, month.month - 1),
+                        );
+                  },
+                  onNextMonth: () {
+                    final month = dashboard.attendanceMonth;
+                    ref
+                        .read(homeDashboardProvider.notifier)
+                        .selectAttendanceMonth(
+                          DateTime(month.year, month.month + 1),
+                        );
+                  },
+                ),
+                const SizedBox(height: 14),
+                AttendanceOverviewCard(dashboard: dashboard),
+                const SizedBox(height: 100),
+              ],
+            ),
+          );
+        },
+      ),
     );
   }
 }

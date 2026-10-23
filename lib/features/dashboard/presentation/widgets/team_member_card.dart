@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lms/core/network/api_constants.dart';
+import 'package:lms/core/theme/app_design.dart';
+import 'package:lms/shared/widgets/premium_feature_components.dart';
 import '../../data/models/team_dashboard_model.dart';
 
 class TeamMemberCard extends StatelessWidget {
@@ -14,27 +16,15 @@ class TeamMemberCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     final summary = employee.attendanceSummary;
 
     return Material(
-      color: scheme.surfaceContainerLow,
-      borderRadius: BorderRadius.circular(22),
+      color: Colors.transparent,
       child: InkWell(
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(AppRadius.lg),
         onTap: onTap,
-        child: Container(
+        child: PremiumCard(
           padding: const EdgeInsets.all(18),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(22),
-            boxShadow: [
-              BoxShadow(
-                color: scheme.shadow.withOpacity(0.06),
-                blurRadius: 18,
-                offset: const Offset(0, 6),
-              ),
-            ],
-          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -44,7 +34,7 @@ class TeamMemberCard extends StatelessWidget {
               Row(
                 children: [
                   _buildAvatar(context),
-                  const SizedBox(width: 14),
+                  SizedBox(width: 14),
 
                   Expanded(
                     child: Column(
@@ -55,15 +45,15 @@ class TeamMemberCard extends StatelessWidget {
                           style: TextStyle(
                             fontWeight: FontWeight.w600,
                             fontSize: 15,
-                            color: scheme.onSurface,
+                            color: AppColors.title,
                           ),
                         ),
-                        const SizedBox(height: 4),
+                        SizedBox(height: 4),
                         Text(
                           employee.employeeId,
                           style: TextStyle(
                             fontSize: 12,
-                            color: scheme.onSurfaceVariant,
+                            color: AppColors.muted,
                           ),
                         ),
                       ],
@@ -112,13 +102,12 @@ class TeamMemberCard extends StatelessWidget {
   // =====================================================
 
   Widget _buildAvatar(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     final imageName = employee.profilePicture;
 
     if (imageName != null && imageName.isNotEmpty) {
       return CircleAvatar(
         radius: 26,
-        backgroundColor: scheme.primaryContainer,
+        backgroundColor: AppColors.iconBg,
         child: ClipOval(
           child: Image.network(
             "${ApiConstants.imageBaseUrl}$imageName",
@@ -135,16 +124,14 @@ class TeamMemberCard extends StatelessWidget {
   }
 
   Widget _fallbackAvatar(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-
     return CircleAvatar(
       radius: 26,
-      backgroundColor: scheme.primaryContainer,
+      backgroundColor: AppColors.iconBg,
       child: Text(
         employee.name.isNotEmpty ? employee.name[0].toUpperCase() : "?",
         style: TextStyle(
           fontWeight: FontWeight.bold,
-          color: scheme.onPrimaryContainer,
+          color: AppColors.primary,
         ),
       ),
     );
@@ -182,7 +169,6 @@ class TeamMemberCard extends StatelessWidget {
   // =====================================================
 
   Widget _performanceBadge(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     final score = employee.attendanceRate;
 
     String grade;
@@ -191,20 +177,20 @@ class TeamMemberCard extends StatelessWidget {
 
     if (score >= 90) {
       grade = "A";
-      bg = scheme.tertiaryContainer;
-      text = scheme.onTertiaryContainer;
+      bg = AppColors.success.withValues(alpha: 0.14);
+      text = AppColors.success;
     } else if (score >= 70) {
       grade = "B";
-      bg = scheme.primaryContainer;
-      text = scheme.onPrimaryContainer;
+      bg = AppColors.iconBg;
+      text = AppColors.primary;
     } else if (score >= 50) {
       grade = "C";
-      bg = scheme.secondaryContainer;
-      text = scheme.onSecondaryContainer;
+      bg = AppColors.warning.withValues(alpha: 0.14);
+      text = AppColors.warning;
     } else {
       grade = "Critical";
-      bg = scheme.errorContainer;
-      text = scheme.onErrorContainer;
+      bg = AppColors.danger.withValues(alpha: 0.14);
+      text = AppColors.danger;
     }
 
     return Container(
@@ -241,14 +227,14 @@ class TeamMemberCard extends StatelessWidget {
           "Working Hours Completion",
           style: TextStyle(fontSize: 10, color: scheme.onSurfaceVariant),
         ),
-        const SizedBox(height: 6),
+        SizedBox(height: 6),
         ClipRRect(
           borderRadius: BorderRadius.circular(8),
           child: LinearProgressIndicator(
             value: percent / 100,
             minHeight: 6,
-            backgroundColor: scheme.surfaceContainerHighest,
-            color: scheme.primary,
+            backgroundColor: AppColors.softFill,
+            color: AppColors.primary,
           ),
         ),
       ],
@@ -262,27 +248,11 @@ class TeamMemberCard extends StatelessWidget {
   static Widget statusBadge(bool present) {
     return Builder(
       builder: (context) {
-        final scheme = Theme.of(context).colorScheme;
+        final color = present ? AppColors.success : AppColors.danger;
 
-        final bg = present ? scheme.tertiaryContainer : scheme.errorContainer;
-        final text = present
-            ? scheme.onTertiaryContainer
-            : scheme.onErrorContainer;
-
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(
-            color: bg,
-            borderRadius: BorderRadius.circular(30),
-          ),
-          child: Text(
-            present ? "Present" : "Absent",
-            style: TextStyle(
-              color: text,
-              fontWeight: FontWeight.w600,
-              fontSize: 11,
-            ),
-          ),
+        return PremiumStatusPill(
+          label: present ? "Present" : "Absent",
+          color: color,
         );
       },
     );

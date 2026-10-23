@@ -25,7 +25,7 @@ class SubscriptionExpiredScreen extends ConsumerWidget {
                   const Text(
                     "Plan Expired",
                     style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
-                  ),
+                   ),
 
                   const SizedBox(height: 10),
 
