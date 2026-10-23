@@ -317,6 +317,15 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
       _seenInCall = false;
       _joinedAt = null;
       _exitReloads = 0;
+      _pipRestoreGraceUntil = null;
+      // Fresh join must not inherit a previous Leave's hangup flags.
+      unawaited(() async {
+        try {
+          await _controller?.runJavaScript(
+            'window.__hrmsUserHangup=false;window.__hrmsLeftSent=false;window.__hrmsJoinedPosted=false;',
+          );
+        } catch (_) {}
+      }());
     }
 
     if (_controller != null) {
@@ -364,6 +373,11 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
             _joinedAt ??= DateTime.now();
             _joinRefreshes = 0;
             _exitReloads = 0;
+            return;
+          }
+          // User tapped Hang up / Leave — always end (never blocked by PiP grace).
+          if (raw == 'left:user-hangup') {
+            _completeMeetingExit();
             return;
           }
           // Explicit hang-up from Meet toolbar, or Jitsi “Meeting ended” page.
@@ -616,27 +630,69 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
     }
   }
 
-  /// Shows “Meeting Ended Successfully” for 1s, then returns to the dashboard.
+  /// Clears JS PiP/minimize guards that can block Hang up / Leave.
+  Future<void> _forceUserHangupFlags() async {
+    final controller = _controller;
+    if (controller == null) return;
+    try {
+      await controller.runJavaScript(r'''
+(function () {
+  window.__hrmsUserHangup = true;
+  window.__hrmsHangupIgnore = false;
+  window.__hrmsPipRestoreGrace = false;
+  window.__hrmsMeetingMinimized = false;
+  window.__hrmsAppBackgrounded = false;
+  if (window.__hrmsHangupIgnoreTimer) {
+    clearTimeout(window.__hrmsHangupIgnoreTimer);
+    window.__hrmsHangupIgnoreTimer = null;
+  }
+  if (window.__hrmsPipRestoreGraceTimer) {
+    clearTimeout(window.__hrmsPipRestoreGraceTimer);
+    window.__hrmsPipRestoreGraceTimer = null;
+  }
+  if (window.__hrmsLeftTimer) {
+    clearTimeout(window.__hrmsLeftTimer);
+    window.__hrmsLeftTimer = null;
+  }
+  try {
+    if (window.APP && APP.conference && typeof APP.conference.hangup === 'function') {
+      APP.conference.hangup();
+    }
+  } catch (e) {}
+})();
+''');
+    } catch (_) {}
+  }
+
+  /// Shows “Meeting Ended Successfully”, then returns to the dashboard.
   /// Used for Meet hang-up, close page, and in-app Leave — never leave the user
   /// on Jitsi’s “close this tab” screen (Back from there caused a red overlay).
   void _completeMeetingExit() {
-    if (_leaving || _showEndedBanner) return;
+    if (_showEndedBanner) return;
+    // Allow retry if a previous leave got stuck mid-flight (_leaving stuck true).
+    _leaving = false;
+    _pipRestoreGraceUntil = null;
     _dismissCustomView();
     _stopNativeShare();
     MeetingCallKeepAlive.stop();
-    // Keep session active briefly so the banner covers the meeting shell.
+    // Mark banner first so a hangup postMessage cannot re-enter this method.
     if (mounted) {
       setState(() {
         _showEndedBanner = true;
         _confirmingLeave = false;
         _sharing = false;
       });
+    } else {
+      _showEndedBanner = true;
     }
+    // Clear hangup-ignore guards and ask Meet to hang up so the next join
+    // gets a free camera and Leave is not blocked by stale PiP flags.
+    unawaited(_forceUserHangupFlags());
     final session = ref.read(meetingSessionProvider);
     if (session.isActive && !session.expanded) {
       ref.read(meetingSessionProvider.notifier).expand();
     }
-    Future<void>.delayed(const Duration(seconds: 1), () {
+    Future<void>.delayed(const Duration(milliseconds: 800), () {
       if (!mounted) return;
       _leaveMeeting(userInitiated: true);
     });
@@ -1029,8 +1085,8 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
 })();
 ''';
 
-  /// After camera on→off, Android WebView leaves a paused <video> with its
-  /// default play glyph. Hide that overlay so Jitsi’s avatar initial shows.
+  /// Camera-off: hide paused WebView play-glyph so Jitsi avatar shows.
+  /// Camera-on: never hide live tracks — force muted play so Android paints.
   static const _jitsiCameraOffAvatarFixJs = r'''
 (function () {
   if (window.__hrmsCameraOffAvatarReady) {
@@ -1050,6 +1106,7 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
       'video::-webkit-media-controls-overlay-play-button { display: none !important; opacity: 0 !important; }',
       'video::-webkit-media-controls-play-button { display: none !important; }',
       'video { -webkit-appearance: none; }',
+      /* Only true camera-off tiles — never hide a live camera feed */
       'video.hrms-camera-off {',
       '  opacity: 0 !important;',
       '  visibility: hidden !important;',
@@ -1113,6 +1170,136 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
     }
   }
 
+  /** Local / prejoin tiles are muted — Android WebView blocks unmuted autoplay. */
+  function looksLocalOrMuted(el) {
+    try {
+      if (el.muted || el.defaultMuted) return true;
+      var wrap = el.closest
+        ? (el.closest('.videocontainer') ||
+            el.closest('[class*="tile"]') ||
+            el.closest('[class*="prejoin"]') ||
+            el.closest('[class*="Prejoin"]') ||
+            el.closest('.premeeting-screen') ||
+            el.parentElement)
+        : el.parentElement;
+      if (!wrap) return false;
+      var cls = ((wrap.className || '') + '').toString().toLowerCase();
+      var id = ((wrap.id || '') + '').toString().toLowerCase();
+      if (cls.indexOf('local') !== -1 || id.indexOf('local') !== -1) return true;
+      if (cls.indexOf('prejoin') !== -1 || cls.indexOf('premeeting') !== -1) return true;
+      var label = ((wrap.getAttribute('aria-label') || '') + ' ' + (wrap.getAttribute('title') || '')).toLowerCase();
+      if (label.indexOf('you') !== -1 || label.indexOf('local') !== -1) return true;
+    } catch (e) {}
+    return false;
+  }
+
+  /**
+   * Kick Android WebView to paint a live camera track.
+   * Do not use videoWidth/readyState to *hide* live tracks — that left camera-on blank.
+   */
+  function forcePlayLiveVideo(el) {
+    if (!el) return;
+    try {
+      el.controls = false;
+      el.removeAttribute('controls');
+      el.setAttribute('playsinline', 'true');
+      el.setAttribute('webkit-playsinline', 'true');
+      el.setAttribute('x5-playsinline', 'true');
+      if ('playsInline' in el) el.playsInline = true;
+    } catch (e) {}
+    try {
+      el.style.removeProperty('display');
+      el.style.removeProperty('visibility');
+      el.style.removeProperty('opacity');
+    } catch (e) {}
+    var localish = looksLocalOrMuted(el);
+    try {
+      if (localish) {
+        el.muted = true;
+        el.defaultMuted = true;
+        el.autoplay = true;
+        el.setAttribute('muted', '');
+        el.setAttribute('autoplay', '');
+      }
+      var stream = el.srcObject;
+      if (stream && stream.getVideoTracks) {
+        stream.getVideoTracks().forEach(function (t) {
+          try {
+            if (t && t.readyState === 'live') t.enabled = true;
+          } catch (err) {}
+        });
+      }
+    } catch (e) {}
+    try {
+      var p = el.play();
+      if (p && typeof p.catch === 'function') {
+        p.catch(function () {
+          if (!localish) return;
+          // Rebind stream — kicks decoder when autoplay was blocked.
+          try {
+            var s = el.srcObject;
+            if (!s) return;
+            el.srcObject = null;
+            el.srcObject = s;
+            el.muted = true;
+            var p2 = el.play();
+            if (p2 && typeof p2.catch === 'function') p2.catch(function () {});
+          } catch (err) {}
+        });
+      }
+    } catch (e) {}
+  }
+
+  function showJitsiAvatar(el) {
+    try {
+      var wrap = el.closest
+        ? (el.closest('.videocontainer') ||
+            el.closest('[class*="thumbnail"]') ||
+            el.closest('[class*="tile"]') ||
+            el.parentElement)
+        : el.parentElement;
+      if (!wrap) return;
+      var avatars = wrap.querySelectorAll(
+        '.avatar-container, .avatar, [class*="avatar"], [class*="Avatar"]'
+      );
+      for (var i = 0; i < avatars.length; i++) {
+        try {
+          avatars[i].style.removeProperty('display');
+          avatars[i].style.removeProperty('visibility');
+          avatars[i].style.removeProperty('opacity');
+        } catch (e) {}
+      }
+    } catch (e) {}
+  }
+
+  function hideForcedAvatarOverVideo(el) {
+    try {
+      var wrap = el.closest
+        ? (el.closest('.videocontainer') ||
+            el.closest('[class*="thumbnail"]') ||
+            el.closest('[class*="tile"]') ||
+            el.parentElement)
+        : el.parentElement;
+      if (!wrap) return;
+      // Do not fight Jitsi's own avatar for remote camera-off; only clear
+      // inline styles we may have left from a previous camera-off pass.
+      var avatars = wrap.querySelectorAll(
+        '.avatar-container, .avatar, [class*="avatar"], [class*="Avatar"]'
+      );
+      for (var i = 0; i < avatars.length; i++) {
+        try {
+          if (avatars[i].style.getPropertyValue('z-index') === '5') {
+            avatars[i].style.removeProperty('z-index');
+            avatars[i].style.removeProperty('display');
+            avatars[i].style.removeProperty('visibility');
+            avatars[i].style.removeProperty('opacity');
+            avatars[i].style.removeProperty('position');
+          }
+        } catch (e) {}
+      }
+    } catch (e) {}
+  }
+
   window.__hrmsFixCameraOffAvatars = function () {
     ensureStyle();
     var nodes = document.querySelectorAll('video');
@@ -1124,31 +1311,60 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
         el.setAttribute('playsinline', 'true');
         el.setAttribute('webkit-playsinline', 'true');
       } catch (e) {}
+
       if (isScreenShareVideo(el)) {
         el.classList.remove('hrms-camera-off');
-        try { if (el.paused) el.play(); } catch (e) {}
+        hideForcedAvatarOverVideo(el);
+        forcePlayLiveVideo(el);
         continue;
       }
+
       var live = hasLiveVideo(el);
-      var blank = !live || el.readyState < 2 || el.videoWidth === 0;
-      if (blank) {
-        el.classList.add('hrms-camera-off');
-      } else {
+      if (live) {
+        // Camera ON (or remote live feed): show video, never hide for blank frames.
         el.classList.remove('hrms-camera-off');
+        hideForcedAvatarOverVideo(el);
+        forcePlayLiveVideo(el);
+        continue;
       }
+
+      // No live enabled track → camera off / empty: hide play-glyph, let avatar show.
+      el.classList.add('hrms-camera-off');
+      showJitsiAvatar(el);
     }
   };
 
   ensureStyle();
   window.__hrmsFixCameraOffAvatars();
 
-  ['play', 'pause', 'ended', 'emptied', 'loadeddata', 'resize'].forEach(function (evt) {
+  ['play', 'pause', 'ended', 'emptied', 'loadeddata', 'loadedmetadata', 'resize', 'playing'].forEach(function (evt) {
     document.addEventListener(evt, function (e) {
       if (e && e.target && e.target.tagName === 'VIDEO') {
         window.__hrmsFixCameraOffAvatars();
       }
     }, true);
   });
+
+  // Camera / video toolbar toggles — refresh immediately so on→visible, off→avatar.
+  document.addEventListener('click', function (e) {
+    try {
+      var t = e.target;
+      if (!t) return;
+      var btn = t.closest ? t.closest('button, [role="button"]') : null;
+      if (!btn) return;
+      var label = ((btn.getAttribute('aria-label') || '') + ' ' + (btn.getAttribute('title') || '')).toLowerCase();
+      if (label.indexOf('video') === -1 && label.indexOf('camera') === -1) return;
+      setTimeout(function () {
+        if (window.__hrmsFixCameraOffAvatars) window.__hrmsFixCameraOffAvatars();
+      }, 80);
+      setTimeout(function () {
+        if (window.__hrmsFixCameraOffAvatars) window.__hrmsFixCameraOffAvatars();
+      }, 400);
+      setTimeout(function () {
+        if (window.__hrmsFixCameraOffAvatars) window.__hrmsFixCameraOffAvatars();
+      }, 1000);
+    } catch (err) {}
+  }, true);
 
   if (!window.__hrmsCameraOffObserver && document.documentElement) {
     window.__hrmsCameraOffObserver = new MutationObserver(function () {
@@ -1168,7 +1384,7 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
   if (!window.__hrmsCameraOffTimer) {
     window.__hrmsCameraOffTimer = setInterval(function () {
       window.__hrmsFixCameraOffAvatars();
-    }, 1000);
+    }, 700);
   }
 })();
 ''';
@@ -2221,6 +2437,7 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
     }
     if (fromHangup) {
       // Minimize / PiP / restore can synthesize hangup — never blank or end.
+      // User-initiated Leave always proceeds (shouldIgnoreHangup is false then).
       if (shouldIgnoreHangup()) {
         try { if (window.HrmsMeeting) HrmsMeeting.postMessage('left:transient'); } catch (e) {}
         return;
@@ -2228,7 +2445,9 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
       if (window.__hrmsLeftSent) return;
       window.__hrmsLeftSent = true;
       hideMeetingUi();
-      try { if (window.HrmsMeeting) HrmsMeeting.postMessage('left:hangup'); } catch (e) {}
+      // left:user-hangup is never ignored by Flutter PiP/minimize guards.
+      var msg = window.__hrmsUserHangup ? 'left:user-hangup' : 'left:hangup';
+      try { if (window.HrmsMeeting) HrmsMeeting.postMessage(msg); } catch (e) {}
       return;
     }
     // Transient disconnect — do NOT mark left permanently or blank the UI.
@@ -2247,6 +2466,9 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
   function notifyJoined() {
     if (!stillInCall()) return;
     window.__hrmsJoinedSent = true;
+    // Fresh (re)join must allow Leave again — prior hangup left these sticky.
+    window.__hrmsLeftSent = false;
+    window.__hrmsUserHangup = false;
     if (window.__hrmsLeftTimer) {
       clearTimeout(window.__hrmsLeftTimer);
       window.__hrmsLeftTimer = null;
@@ -2256,7 +2478,30 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
     try { if (window.HrmsMeeting) HrmsMeeting.postMessage('joined'); } catch (e) {}
   }
 
+  function clearHangupGuards() {
+    window.__hrmsHangupIgnore = false;
+    window.__hrmsPipRestoreGrace = false;
+    if (window.__hrmsHangupIgnoreTimer) {
+      clearTimeout(window.__hrmsHangupIgnoreTimer);
+      window.__hrmsHangupIgnoreTimer = null;
+    }
+    if (window.__hrmsPipRestoreGraceTimer) {
+      clearTimeout(window.__hrmsPipRestoreGraceTimer);
+      window.__hrmsPipRestoreGraceTimer = null;
+    }
+  }
+
+  /** User tapped Hang up / Leave — must never be blocked by PiP/minimize guards. */
+  function markUserHangup() {
+    window.__hrmsUserHangup = true;
+    window.__hrmsMeetingMinimized = false;
+    window.__hrmsAppBackgrounded = false;
+    clearHangupGuards();
+  }
+
   function shouldIgnoreHangup() {
+    // Explicit Leave / Hang up always wins.
+    if (window.__hrmsUserHangup) return false;
     // Hidden / restoring call UI cannot produce a real hangup click.
     // __hrmsPipRestoreGrace covers Android PiP tap-to-expand blips.
     // Do NOT include screen-share flags — that left users stuck on the
@@ -2269,6 +2514,7 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
   }
 
   function shouldIgnoreTransientLeave() {
+    if (window.__hrmsUserHangup) return false;
     return shouldIgnoreHangup() || !!window.__hrmsPipRestoreGrace;
   }
 
@@ -2287,14 +2533,22 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
       return;
     }
     // Spurious hangup while minimized / PiP / restoring — keep the call.
+    // User-initiated hangup never takes this path (markUserHangup first).
     if (shouldIgnoreHangup()) {
       try { if (window.HrmsMeeting) HrmsMeeting.postMessage('left:transient'); } catch (e) {}
       return;
     }
-    var delay = 400;
+    var delay = window.__hrmsUserHangup ? 200 : 400;
     window.__hrmsLeftTimer = setTimeout(function () {
       window.__hrmsLeftTimer = null;
-      if (shouldIgnoreHangup() || stillInCall()) return;
+      if (shouldIgnoreHangup()) return;
+      // User hangup: always notify Flutter even if WebRTC is still tearing down.
+      // Old logic required !stillInCall() and often never fired → Leave "did nothing".
+      if (window.__hrmsUserHangup) {
+        notifyLeft(true);
+        return;
+      }
+      if (stillInCall()) return;
       notifyLeft(true);
     }, delay);
   }
@@ -2316,15 +2570,24 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
       APP.conference.__hrmsHangupWrapped = true;
       var orig = APP.conference.hangup.bind(APP.conference);
       APP.conference.hangup = function () {
-        // PiP restore / minimize must NOT actually disconnect WebRTC.
+        // Synthetic hangups during PiP/minimize must NOT disconnect WebRTC.
+        // Real toolbar Hang up sets __hrmsUserHangup via the click hook first.
         if (shouldIgnoreHangup()) {
           try { if (window.HrmsMeeting) HrmsMeeting.postMessage('left:transient'); } catch (e) {}
           return;
         }
+        markUserHangup();
         window.__hrmsSharing = false;
         window.__hrmsShareStarting = false;
         scheduleLeft(true);
-        return orig.apply(APP.conference, arguments);
+        try {
+          return orig.apply(APP.conference, arguments);
+        } finally {
+          // Ensure Flutter always gets the leave even if CONFERENCE_LEFT is delayed.
+          setTimeout(function () {
+            if (!window.__hrmsLeftSent) notifyLeft(true);
+          }, 600);
+        }
       };
     } catch (e) {}
   }
@@ -2426,13 +2689,18 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
       if (!isHangupLabel(text)) continue;
       el.setAttribute('data-hrms-hangup-confirm', '1');
       el.addEventListener('click', function () {
-        if (shouldIgnoreHangup()) return;
+        // Always treat toolbar / confirm Hang up as intentional user leave.
+        markUserHangup();
         var inToolbar = !!(this.closest('#new-toolbox') || this.closest('.new-toolbox') || this.closest('.toolbox-content-items'));
         if (!inToolbar) {
           notifyLeft(true);
           return;
         }
         scheduleLeft(true);
+        // If Jitsi hangup is slow/stuck, still end the HRMS session.
+        setTimeout(function () {
+          if (!window.__hrmsLeftSent) notifyLeft(true);
+        }, 900);
       }, true);
     }
   }
@@ -2851,26 +3119,12 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
                   // fullscreen (otherwise "HRMS Meet" overlaps the clock).
                   child: SafeArea(
                     bottom: false,
+                    // No Flutter back chrome — Meet has its own UI; system Back
+                    // still minimizes via PopScope below.
                     child: Stack(
                       fit: StackFit.expand,
                       children: [
-                        Column(
-                          children: [
-                            if (!_pipMode && !_showEndedBanner)
-                              _MeetingChrome(
-                                title: session.title ?? 'Meeting',
-                                onBack: () {
-                                  // Never minimize onto a dead “Meeting ended”
-                                  // WebView (that path produced the red overlay).
-                                  if (_showEndedBanner) return;
-                                  ref
-                                      .read(meetingSessionProvider.notifier)
-                                      .minimize();
-                                },
-                              ),
-                            Expanded(child: _buildWebView()),
-                          ],
-                        ),
+                        _buildWebView(),
                         if (_customView != null && !_pipMode && !_showEndedBanner)
                           Positioned.fill(
                             child: ColoredBox(
@@ -2970,57 +3224,6 @@ class _MeetingEndedBanner extends StatelessWidget {
               ],
             ),
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _MeetingChrome extends StatelessWidget {
-  const _MeetingChrome({
-    required this.title,
-    required this.onBack,
-  });
-
-  final String title;
-  final VoidCallback onBack;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final iconColor = scheme.onSurface;
-
-    // Parent meeting shell already applies SafeArea for the status bar.
-    return Material(
-      color: scheme.surface,
-      elevation: 1,
-      child: SizedBox(
-        height: 48,
-        child: Row(
-          children: [
-            GestureDetector(
-              onTap: onBack,
-              behavior: HitTestBehavior.opaque,
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Icon(
-                  Icons.arrow_back_rounded,
-                  color: iconColor,
-                ),
-              ),
-            ),
-            Expanded(
-              child: Text(
-                title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: iconColor,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-          ],
         ),
       ),
     );
