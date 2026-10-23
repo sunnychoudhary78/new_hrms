@@ -67,6 +67,31 @@ class NotificationNotifier extends AsyncNotifier<List<Map<String, dynamic>>> {
     }
   }
 
+  /// ✅ Mark all unread notifications as read
+  Future<void> markAllAsRead() async {
+    final currentList = state.value ?? [];
+    final unreadIds = currentList
+        .where((n) => n['is_read'] == false)
+        .map((n) => n['id']?.toString())
+        .whereType<String>()
+        .where((id) => id.isNotEmpty)
+        .toList();
+
+    if (unreadIds.isEmpty) return;
+
+    state = AsyncData([
+      for (final n in currentList) {...n, 'is_read': true},
+    ]);
+
+    try {
+      final api = ref.read(notificationApiServiceProvider);
+      await Future.wait(unreadIds.map(api.markAsRead));
+    } catch (e) {
+      state = AsyncData(currentList);
+      rethrow;
+    }
+  }
+
   /// 🗑️ Delete single notification (Optimistic update)
   Future<void> deleteNotification(String id) async {
     final api = ref.read(notificationApiServiceProvider);

@@ -30,10 +30,14 @@ class MarkAttendancePunchHero extends StatelessWidget {
     final dash = HomeDashColors.of(context);
     final scheme = Theme.of(context).colorScheme;
     final punchLabel = isCheckedIn ? 'Punch Out' : 'Punch In';
-    // Punch In = green, Punch Out = red
+    // Inner circle: Punch In = green, Punch Out = red
     final colors = isCheckedIn
         ? const [Color(0xFFEF4444), Color(0xFFDC2626)]
         : const [Color(0xFF22C55E), Color(0xFF16A34A)];
+    // Outer ring: green while punched in, red when punched out
+    final ringColor = isCheckedIn
+        ? const Color(0xFF22C55E)
+        : const Color(0xFFEF4444);
 
     return Container(
       width: double.infinity,
@@ -72,8 +76,10 @@ class MarkAttendancePunchHero extends StatelessWidget {
                   CustomPaint(
                     size: const Size(168, 168),
                     painter: _RingPainter(
-                      progress: isCheckedIn ? progress.clamp(0.05, 1.0) : 0.12,
-                      color: colors.first,
+                      // Punched in → green progress; punched out → full red ring
+                      progress:
+                          isCheckedIn ? progress.clamp(0.05, 1.0) : 1.0,
+                      color: ringColor,
                     ),
                   ),
                   Container(

@@ -76,6 +76,10 @@ class HomeWelcomeAttendanceCard extends ConsumerWidget {
           final configReady = mobileConfigAsync.hasValue;
           final canPunch =
               configReady && (isCheckedIn ? canPunchOut : canPunchIn);
+          final mobileConfig = mobileConfigAsync.asData?.value;
+          final requireSelfie = isCheckedIn
+              ? (mobileConfig?.requireMobileCheckoutSelfie ?? false)
+              : (mobileConfig?.requireMobileCheckinSelfie ?? false);
 
           Future<void> handlePunch() async {
             if (!canPunch) return;
@@ -158,16 +162,9 @@ class HomeWelcomeAttendanceCard extends ConsumerWidget {
                           ],
                         ),
                         const SizedBox(height: 8),
-                        Text(
-                          role.isNotEmpty
-                              ? 'Ready to make today count · $role'
-                              : 'Ready to make today count ✨',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.white.withValues(alpha: 0.82),
-                            height: 1.35,
-                            fontWeight: FontWeight.w500,
-                          ),
+                        _PunchStatusChip(
+                          isCheckedIn: isCheckedIn,
+                          role: role,
                         ),
                       ],
                     ),
@@ -176,6 +173,7 @@ class HomeWelcomeAttendanceCard extends ConsumerWidget {
                   _FingerprintBadge(
                     isCheckedIn: isCheckedIn,
                     enabled: canPunch,
+                    requireSelfie: requireSelfie,
                     onTap: handlePunch,
                   ),
                 ],
@@ -243,61 +241,222 @@ class HomeWelcomeAttendanceCard extends ConsumerWidget {
   }
 }
 
+class _PunchStatusChip extends StatelessWidget {
+  final bool isCheckedIn;
+  final String role;
+
+  const _PunchStatusChip({
+    required this.isCheckedIn,
+    required this.role,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final statusColor = isCheckedIn
+        ? HomeDashColors.accentGreen
+        : const Color(0xFFFBBF24);
+    final statusLabel = isCheckedIn ? 'PUNCHED IN' : 'PUNCHED OUT';
+    final hint = isCheckedIn
+        ? (role.isNotEmpty ? 'Working · $role' : 'You are currently in')
+        : (role.isNotEmpty ? 'Ready · $role' : 'Tap thumb to punch in');
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.18),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: statusColor.withValues(alpha: 0.65),
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 7,
+                height: 7,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: statusColor,
+                  boxShadow: [
+                    BoxShadow(
+                      color: statusColor.withValues(alpha: 0.55),
+                      blurRadius: 6,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 7),
+              Text(
+                statusLabel,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.4,
+                  color: Colors.white.withValues(alpha: 0.98),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          hint,
+          style: TextStyle(
+            fontSize: 12,
+            color: Colors.white.withValues(alpha: 0.82),
+            height: 1.35,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _FingerprintBadge extends StatelessWidget {
   final bool isCheckedIn;
   final bool enabled;
+  final bool requireSelfie;
   final VoidCallback onTap;
 
   const _FingerprintBadge({
     required this.isCheckedIn,
     required this.enabled,
+    required this.requireSelfie,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    final accent = !enabled
+    // Next action: Punch Out (red) when already in, Punch In (green) when out.
+    final actionColor = !enabled
         ? const Color(0xFF94A3B8)
         : (isCheckedIn
             ? HomeDashColors.accentRed
             : HomeDashColors.accentGreen);
+    final actionLabel = isCheckedIn ? 'PUNCH OUT' : 'PUNCH IN';
 
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: enabled ? onTap : null,
-        customBorder: const CircleBorder(),
-        child: Ink(
-          width: 68,
-          height: 68,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: Colors.white.withValues(alpha: 0.16),
-          ),
-          child: Center(
-            child: Container(
-              width: 52,
-              height: 52,
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: enabled ? onTap : null,
+            customBorder: const CircleBorder(),
+            child: Ink(
+              width: 76,
+              height: 76,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: Colors.white,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.12),
-                    blurRadius: 10,
-                    offset: const Offset(0, 3),
-                  ),
-                ],
+                color: Colors.white.withValues(alpha: 0.14),
+                border: Border.all(
+                  color: actionColor.withValues(alpha: enabled ? 0.9 : 0.35),
+                  width: 2.5,
+                ),
               ),
-              child: Icon(
-                Icons.fingerprint_rounded,
-                size: 28,
-                color: accent,
+              child: Center(
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Container(
+                      width: 56,
+                      height: 56,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.white,
+                        boxShadow: [
+                          BoxShadow(
+                            color: actionColor.withValues(
+                              alpha: enabled ? 0.35 : 0.12,
+                            ),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Icon(
+                        Icons.fingerprint_rounded,
+                        size: 30,
+                        color: actionColor,
+                      ),
+                    ),
+                    if (requireSelfie)
+                      Positioned(
+                        right: -4,
+                        bottom: -2,
+                        child: Container(
+                          width: 22,
+                          height: 22,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: actionColor,
+                            border: Border.all(color: Colors.white, width: 1.5),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.18),
+                                blurRadius: 4,
+                                offset: const Offset(0, 1),
+                              ),
+                            ],
+                          ),
+                          child: const Icon(
+                            Icons.camera_alt_rounded,
+                            size: 11,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
               ),
             ),
           ),
         ),
-      ),
+        const SizedBox(height: 6),
+        Text(
+          actionLabel,
+          style: TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 0.3,
+            color: Colors.white.withValues(alpha: enabled ? 0.95 : 0.55),
+          ),
+        ),
+        if (requireSelfie) ...[
+          const SizedBox(height: 3),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.camera_alt_rounded,
+                  size: 9,
+                  color: Colors.white.withValues(alpha: 0.9),
+                ),
+                const SizedBox(width: 3),
+                Text(
+                  'Selfie',
+                  style: TextStyle(
+                    fontSize: 9,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white.withValues(alpha: 0.9),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ],
     );
   }
 }
@@ -481,8 +640,10 @@ class _LivePunchTimelineState extends State<_LivePunchTimeline> {
               inTime != null ? _fmt(inTime) : '—',
               style: TextStyle(
                 fontSize: 11,
-                fontWeight: FontWeight.w600,
-                color: soft,
+                fontWeight: FontWeight.w700,
+                color: inTime != null
+                    ? HomeDashColors.accentGreen
+                    : soft,
               ),
             ),
             const Spacer(),
@@ -490,8 +651,10 @@ class _LivePunchTimelineState extends State<_LivePunchTimeline> {
               outTime != null ? _fmt(outTime) : '—',
               style: TextStyle(
                 fontSize: 11,
-                fontWeight: FontWeight.w600,
-                color: soft,
+                fontWeight: FontWeight.w700,
+                color: outTime != null
+                    ? HomeDashColors.accentRed
+                    : soft,
               ),
             ),
           ],

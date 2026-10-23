@@ -9,8 +9,12 @@ class AttendanceOverviewCard extends StatelessWidget {
 
   const AttendanceOverviewCard({super.key, required this.dashboard});
 
+  /// Days shown in overview (Leave excluded from chart + count).
+  double _overviewTotal(AttendanceDistribution d) =>
+      d.worked + d.absent + d.weekOff + d.holiday;
+
   String _trackedDaysLabel(AttendanceDistribution d) {
-    final total = d.total;
+    final total = _overviewTotal(d);
     if (total <= 0) return '0';
     if (total == total.roundToDouble()) return total.toStringAsFixed(0);
     return total.toStringAsFixed(1);
@@ -192,13 +196,11 @@ class _AttendancePieChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final total = distribution.total;
+    final total = distribution.worked +
+        distribution.absent +
+        distribution.weekOff +
+        distribution.holiday;
     final labeled = <({double value, Color color, String label})>[
-      (
-        value: distribution.leave,
-        color: HomeDashColors.leave,
-        label: 'Leave',
-      ),
       (
         value: distribution.absent,
         color: HomeDashColors.absent,
@@ -276,12 +278,6 @@ class _PieLegend extends StatelessWidget {
           label: 'Working',
           value: distribution.worked,
           countText: countLabel(distribution.worked),
-        ),
-        _LegendItem(
-          color: HomeDashColors.leave,
-          label: 'Leave',
-          value: distribution.leave,
-          countText: countLabel(distribution.leave),
         ),
         _LegendItem(
           color: HomeDashColors.absent,
