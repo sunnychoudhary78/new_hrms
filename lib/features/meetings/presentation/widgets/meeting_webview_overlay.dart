@@ -38,6 +38,9 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
   Widget? _customView;
   VoidCallback? _hideCustomView;
   bool _sharing = false;
+  /// After screen-share stop, MediaProjection teardown resumes the app and
+  /// would re-arm leave guards — skip that one resume grace so Leave works.
+  bool _skipResumeLeaveGrace = false;
   bool _frameBusy = false;
   String? _pendingShareFrame;
   bool _leaving = false;
@@ -221,9 +224,16 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
       return;
     }
     final session = ref.read(meetingSessionProvider);
+    // Only skip after screen-share *stop* — share *start* consent still needs
+    // a short grace so synthetic CONFERENCE_LEFT does not end the call.
+    final skipLeaveGrace = _skipResumeLeaveGrace;
+    if (skipLeaveGrace) {
+      _skipResumeLeaveGrace = false;
+    }
     if (session.isActive && _seenInCall) {
       // Do not shorten an existing PiP restore window (15s hangup ignore).
-      if (!_inPipRestoreGrace) {
+      // Skip arming after screen-share stop — that made Leave appear broken.
+      if (!_inPipRestoreGrace && !skipLeaveGrace) {
         _armPipRestoreGrace();
       }
       // Keep the user's in-app minimize (floating chip). Only force-expand
@@ -238,7 +248,12 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
     // Clear backgrounded only after restore guards are armed.
     _appBackgrounded = false;
     await _setJsBackgrounded(false);
-    await _setJsPipState(inPip: false, restoreGrace: true);
+    if (skipLeaveGrace) {
+      await _clearShareLeaveGuards();
+      await _setJsPipState(inPip: false, restoreGrace: false);
+    } else {
+      await _setJsPipState(inPip: false, restoreGrace: true);
+    }
     await _kickMedia();
     // Never auto-end after resume. Explicit Leave / hang-up only.
   }
@@ -381,13 +396,10 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
             return;
           }
           // Explicit hang-up from Meet toolbar, or Jitsi “Meeting ended” page.
-          // Ignore only while the call UI is hidden / restoring — not while
-          // screen-sharing (that used to leave users stuck on the ended page).
+          // Ignore only while the call UI is hidden — not during restore-grace
+          // (screen-share consent arms grace and used to block Leave after stop).
           if (raw == 'left:hangup' || raw == 'meeting-ended') {
-            if (_pipMode ||
-                _appBackgrounded ||
-                _isMinimizedInApp ||
-                _inPipRestoreGrace) {
+            if (_pipMode || _appBackgrounded || _isMinimizedInApp) {
               return;
             }
             _completeMeetingExit();
@@ -642,6 +654,9 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
   window.__hrmsPipRestoreGrace = false;
   window.__hrmsMeetingMinimized = false;
   window.__hrmsAppBackgrounded = false;
+  window.__hrmsSharing = false;
+  window.__hrmsShareStarting = false;
+  window.__hrmsShareEnding = false;
   if (window.__hrmsHangupIgnoreTimer) {
     clearTimeout(window.__hrmsHangupIgnoreTimer);
     window.__hrmsHangupIgnoreTimer = null;
@@ -655,9 +670,15 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
     window.__hrmsLeftTimer = null;
   }
   try {
+    if (window.__hrmsForceStopScreenShare) window.__hrmsForceStopScreenShare();
+  } catch (e) {}
+  try {
     if (window.APP && APP.conference && typeof APP.conference.hangup === 'function') {
       APP.conference.hangup();
     }
+  } catch (e) {}
+  try {
+    if (window.HrmsMeeting) HrmsMeeting.postMessage('left:user-hangup');
   } catch (e) {}
 })();
 ''');
@@ -727,6 +748,8 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
       _appBackgrounded = false;
       _pipMode = false;
       _pipRestoreGraceUntil = null;
+      _skipResumeLeaveGrace = false;
+      _sharing = false;
     });
   }
 
@@ -734,10 +757,12 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
     final value = event?.toString() ?? '';
     if (value == '__stopped__') {
       _pendingShareFrame = null;
+      _skipResumeLeaveGrace = true;
       if (mounted && _sharing) setState(() => _sharing = false);
       _controller?.runJavaScript(
         'window.__hrmsForceStopScreenShare&&window.__hrmsForceStopScreenShare()',
       );
+      unawaited(_clearShareLeaveGuards());
       return;
     }
     _pushFrame(value);
@@ -799,8 +824,40 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
     if (mounted) setState(() => _sharing = false);
   }
 
+  /// Screen-share consent/stop backgrounds the app and arms restore-grace /
+  /// hangup-ignore. Clear those so Leave Meeting works again after share.
+  Future<void> _clearShareLeaveGuards() async {
+    _pipRestoreGraceUntil = null;
+    _appBackgrounded = false;
+    final controller = _controller;
+    if (controller == null) return;
+    try {
+      await controller.runJavaScript(r'''
+(function () {
+  window.__hrmsHangupIgnore = false;
+  window.__hrmsPipRestoreGrace = false;
+  window.__hrmsAppBackgrounded = false;
+  window.__hrmsMeetingMinimized = false;
+  window.__hrmsSharing = false;
+  window.__hrmsShareStarting = false;
+  window.__hrmsShareEnding = false;
+  if (window.__hrmsHangupIgnoreTimer) {
+    clearTimeout(window.__hrmsHangupIgnoreTimer);
+    window.__hrmsHangupIgnoreTimer = null;
+  }
+  if (window.__hrmsPipRestoreGraceTimer) {
+    clearTimeout(window.__hrmsPipRestoreGraceTimer);
+    window.__hrmsPipRestoreGraceTimer = null;
+  }
+})();
+''');
+    } catch (_) {}
+  }
+
   Future<void> _stopNativeShare() async {
     _pendingShareFrame = null;
+    // Next app-resume (MediaProjection teardown) must not re-arm leave guards.
+    _skipResumeLeaveGrace = true;
     if (mounted && _sharing) setState(() => _sharing = false);
     // Re-inject stop helpers, then remove the Jitsi desktop track BEFORE
     // native capture ends — otherwise remotes freeze on the last frame.
@@ -823,6 +880,14 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
         'window.__hrmsForceStopScreenShare&&window.__hrmsForceStopScreenShare()',
       );
     } catch (_) {}
+    // Consent/stop lifecycle armed leave guards — clear so Leave works again.
+    await _clearShareLeaveGuards();
+    // Resume may fire after this method; clear again shortly.
+    Future<void>.delayed(const Duration(milliseconds: 600), () {
+      if (!mounted || _leaving || _showEndedBanner) return;
+      _skipResumeLeaveGrace = false;
+      unawaited(_clearShareLeaveGuards());
+    });
   }
 
   Future<void> _injectLeaveHook() async {
@@ -2004,6 +2069,25 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
       window.__hrmsCancelScreenShare({ stopMediaNow: true });
     }
 
+    function clearLeaveGuardsAfterShare() {
+      // MediaProjection consent/stop arms hangup-ignore / pip-restore grace.
+      // Leaving those set blocks Leave Meeting after share stops.
+      window.__hrmsShareEnding = false;
+      window.__hrmsShareStarting = false;
+      window.__hrmsSharing = false;
+      window.__hrmsHangupIgnore = false;
+      window.__hrmsPipRestoreGrace = false;
+      window.__hrmsAppBackgrounded = false;
+      if (window.__hrmsHangupIgnoreTimer) {
+        clearTimeout(window.__hrmsHangupIgnoreTimer);
+        window.__hrmsHangupIgnoreTimer = null;
+      }
+      if (window.__hrmsPipRestoreGraceTimer) {
+        clearTimeout(window.__hrmsPipRestoreGraceTimer);
+        window.__hrmsPipRestoreGraceTimer = null;
+      }
+    }
+
     // Kick removeTrack / toggleScreenSharing(false) immediately (sync start).
     var job = stopJitsiScreenShare().then(function () {
       // Small delay so presence/PC sender teardown is on the wire first.
@@ -2016,6 +2100,7 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
     }).catch(function () {
       stopCanvasMedia();
     }).then(function () {
+      clearLeaveGuardsAfterShare();
       window.__hrmsForceStopRunning = null;
     });
     window.__hrmsForceStopRunning = job;
@@ -2430,14 +2515,15 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
   }
 
   function notifyLeft(fromHangup) {
-    if (!window.__hrmsJoinedSent) return;
+    // User Leave must always reach Flutter even if "joined" was missed.
+    if (!window.__hrmsJoinedSent && !window.__hrmsUserHangup) return;
     if (window.__hrmsLeftTimer) {
       clearTimeout(window.__hrmsLeftTimer);
       window.__hrmsLeftTimer = null;
     }
     if (fromHangup) {
       // Minimize / PiP / restore can synthesize hangup — never blank or end.
-      // User-initiated Leave always proceeds (shouldIgnoreHangup is false then).
+      // User-initiated Leave always proceeds.
       if (shouldIgnoreHangup()) {
         try { if (window.HrmsMeeting) HrmsMeeting.postMessage('left:transient'); } catch (e) {}
         return;
@@ -2491,11 +2577,14 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
     }
   }
 
-  /** User tapped Hang up / Leave — must never be blocked by PiP/minimize guards. */
+  /** User tapped Hang up / Leave — must never be blocked by PiP/minimize/share guards. */
   function markUserHangup() {
     window.__hrmsUserHangup = true;
     window.__hrmsMeetingMinimized = false;
     window.__hrmsAppBackgrounded = false;
+    window.__hrmsSharing = false;
+    window.__hrmsShareStarting = false;
+    window.__hrmsShareEnding = false;
     clearHangupGuards();
   }
 
@@ -2513,6 +2602,18 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
       window.__hrmsHangupIgnore);
   }
 
+  /**
+   * Block APP.conference.hangup() only when the user cannot tap Leave
+   * (PiP / minimized / backgrounded). Restore-grace after screen-share
+   * consent must NOT block the real Leave button.
+   */
+  function shouldBlockHangupCall() {
+    if (window.__hrmsUserHangup) return false;
+    return !!(window.__hrmsAppBackgrounded ||
+      window.__hrmsPipMode ||
+      window.__hrmsMeetingMinimized);
+  }
+
   function shouldIgnoreTransientLeave() {
     if (window.__hrmsUserHangup) return false;
     return shouldIgnoreHangup() || !!window.__hrmsPipRestoreGrace;
@@ -2523,7 +2624,8 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
   // Screen-share MediaProjection consent, home minimize, and PiP restore also
   // briefly drop WebRTC — do not treat that as a real hangup.
   function scheduleLeft(fromHangup) {
-    if (!window.__hrmsJoinedSent || window.__hrmsLeftSent) return;
+    if (window.__hrmsLeftSent) return;
+    if (!window.__hrmsJoinedSent && !window.__hrmsUserHangup) return;
     if (window.__hrmsLeftTimer) clearTimeout(window.__hrmsLeftTimer);
     // Non-hangup leaves are always treated as transient for HRMS session
     // lifetime — PiP restore / minimize must never end the meeting.
@@ -2538,16 +2640,15 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
       try { if (window.HrmsMeeting) HrmsMeeting.postMessage('left:transient'); } catch (e) {}
       return;
     }
-    var delay = window.__hrmsUserHangup ? 200 : 400;
+    // User Leave: notify Flutter immediately (do not wait for WebRTC teardown).
+    if (window.__hrmsUserHangup) {
+      notifyLeft(true);
+      return;
+    }
+    var delay = 400;
     window.__hrmsLeftTimer = setTimeout(function () {
       window.__hrmsLeftTimer = null;
       if (shouldIgnoreHangup()) return;
-      // User hangup: always notify Flutter even if WebRTC is still tearing down.
-      // Old logic required !stillInCall() and often never fired → Leave "did nothing".
-      if (window.__hrmsUserHangup) {
-        notifyLeft(true);
-        return;
-      }
       if (stillInCall()) return;
       notifyLeft(true);
     }, delay);
@@ -2565,30 +2666,54 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
 
   function wrapHangup() {
     try {
-      if (!window.APP || !APP.conference || typeof APP.conference.hangup !== 'function') return;
-      if (APP.conference.__hrmsHangupWrapped) return;
-      APP.conference.__hrmsHangupWrapped = true;
-      var orig = APP.conference.hangup.bind(APP.conference);
-      APP.conference.hangup = function () {
-        // Synthetic hangups during PiP/minimize must NOT disconnect WebRTC.
-        // Real toolbar Hang up sets __hrmsUserHangup via the click hook first.
-        if (shouldIgnoreHangup()) {
-          try { if (window.HrmsMeeting) HrmsMeeting.postMessage('left:transient'); } catch (e) {}
-          return;
-        }
-        markUserHangup();
-        window.__hrmsSharing = false;
-        window.__hrmsShareStarting = false;
-        scheduleLeft(true);
-        try {
-          return orig.apply(APP.conference, arguments);
-        } finally {
-          // Ensure Flutter always gets the leave even if CONFERENCE_LEFT is delayed.
-          setTimeout(function () {
-            if (!window.__hrmsLeftSent) notifyLeft(true);
-          }, 600);
-        }
-      };
+      if (!window.APP || !APP.conference) return;
+      if (typeof APP.conference.hangup === 'function' && !APP.conference.__hrmsHangupWrapped) {
+        APP.conference.__hrmsHangupWrapped = true;
+        var orig = APP.conference.hangup.bind(APP.conference);
+        APP.conference.hangup = function () {
+          // Only block when call UI is hidden. Never block Leave after
+          // screen-share consent (restore-grace used to swallow hangup()).
+          if (shouldBlockHangupCall()) {
+            try { if (window.HrmsMeeting) HrmsMeeting.postMessage('left:transient'); } catch (e) {}
+            return;
+          }
+          markUserHangup();
+          window.__hrmsSharing = false;
+          window.__hrmsShareStarting = false;
+          window.__hrmsShareEnding = false;
+          scheduleLeft(true);
+          try {
+            return orig.apply(APP.conference, arguments);
+          } finally {
+            setTimeout(function () {
+              if (!window.__hrmsLeftSent) notifyLeft(true);
+            }, 600);
+          }
+        };
+      }
+      // Some Meet builds leave via conference.leave() (Leave call menu).
+      if (typeof APP.conference.leave === 'function' && !APP.conference.__hrmsLeaveWrapped) {
+        APP.conference.__hrmsLeaveWrapped = true;
+        var origLeave = APP.conference.leave.bind(APP.conference);
+        APP.conference.leave = function () {
+          if (shouldBlockHangupCall()) {
+            try { if (window.HrmsMeeting) HrmsMeeting.postMessage('left:transient'); } catch (e) {}
+            return Promise.resolve();
+          }
+          markUserHangup();
+          window.__hrmsSharing = false;
+          window.__hrmsShareStarting = false;
+          window.__hrmsShareEnding = false;
+          scheduleLeft(true);
+          try {
+            return origLeave.apply(APP.conference, arguments);
+          } finally {
+            setTimeout(function () {
+              if (!window.__hrmsLeftSent) notifyLeft(true);
+            }, 600);
+          }
+        };
+      }
     } catch (e) {}
   }
 
@@ -2673,34 +2798,69 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
   }
 
   function isHangupLabel(text) {
+    if (!text) return false;
     return text.indexOf('hang up') !== -1 ||
+      text.indexOf('hangup') !== -1 ||
+      text.indexOf('leave call') !== -1 ||
+      text.indexOf('leave the call') !== -1 ||
       text.indexOf('leave the meeting') !== -1 ||
       text.indexOf('leave meeting') !== -1 ||
+      text.indexOf('leave conference') !== -1 ||
       text.indexOf('end meeting') !== -1 ||
-      text.indexOf('end call') !== -1;
+      text.indexOf('end call') !== -1 ||
+      text.indexOf('end conference') !== -1;
   }
 
   function hookConfirmButtons() {
-    var nodes = document.querySelectorAll('button');
+    var nodes = document.querySelectorAll(
+      'button, [role="menuitem"], [role="button"]'
+    );
     for (var i = 0; i < nodes.length; i++) {
       var el = nodes[i];
       if (el.getAttribute('data-hrms-hangup-confirm') === '1') continue;
-      var text = ((el.getAttribute('aria-label') || '') + ' ' + (el.getAttribute('title') || '') + ' ' + (el.textContent || '')).toLowerCase();
+      var text = ((el.getAttribute('aria-label') || '') + ' ' +
+        (el.getAttribute('title') || '') + ' ' +
+        (el.textContent || '')).toLowerCase().replace(/\s+/g, ' ').trim();
       if (!isHangupLabel(text)) continue;
       el.setAttribute('data-hrms-hangup-confirm', '1');
       el.addEventListener('click', function () {
-        // Always treat toolbar / confirm Hang up as intentional user leave.
-        markUserHangup();
-        var inToolbar = !!(this.closest('#new-toolbox') || this.closest('.new-toolbox') || this.closest('.toolbox-content-items'));
-        if (!inToolbar) {
+        var label = ((this.getAttribute('aria-label') || '') + ' ' +
+          (this.getAttribute('title') || '') + ' ' +
+          (this.textContent || '')).toLowerCase();
+        var role = ((this.getAttribute('role') || '') + '').toLowerCase();
+        var inMenu = role === 'menuitem' || !!(this.closest && (
+          this.closest('[role="menu"]') ||
+          this.closest('[role="dialog"]') ||
+          this.closest('[class*="hangup"]') ||
+          this.closest('.dialog')
+        ));
+        var isLeaveAction =
+          label.indexOf('leave call') !== -1 ||
+          label.indexOf('leave the call') !== -1 ||
+          label.indexOf('leave conference') !== -1 ||
+          label.indexOf('end meeting for all') !== -1 ||
+          (inMenu && isHangupLabel(label));
+
+        // Menu / confirm Leave → end immediately. Toolbar opener may only
+        // open the hangup menu; wrapHangup handles the real hangup().
+        if (isLeaveAction) {
+          markUserHangup();
           notifyLeft(true);
+          setTimeout(function () {
+            try {
+              if (window.APP && APP.conference && APP.conference.hangup) {
+                APP.conference.hangup();
+              }
+            } catch (e) {}
+          }, 50);
+          setTimeout(function () {
+            if (!window.__hrmsLeftSent) notifyLeft(true);
+          }, 900);
           return;
         }
-        scheduleLeft(true);
-        // If Jitsi hangup is slow/stuck, still end the HRMS session.
-        setTimeout(function () {
-          if (!window.__hrmsLeftSent) notifyLeft(true);
-        }, 900);
+
+        // Toolbar hangup control — mark so wrapHangup is not blocked by grace.
+        markUserHangup();
       }, true);
     }
   }
@@ -3078,6 +3238,7 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
           _customView = null;
           _hideCustomView = null;
           _sharing = false;
+          _skipResumeLeaveGrace = false;
           _leaving = false;
           _seenInCall = false;
           _joinedAt = null;
