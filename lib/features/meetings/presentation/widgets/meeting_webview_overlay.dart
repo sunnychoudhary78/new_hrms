@@ -1365,6 +1365,25 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
     } catch (e) {}
   }
 
+  function isSettingsPreviewVideo(el) {
+    if (!el) return false;
+    try {
+      if (el.getAttribute && el.getAttribute('data-hrms-settings-preview') === '1') return true;
+      if (!el.closest) return false;
+      if (el.closest('[data-hrms-settings-preview="1"]')) return true;
+      if (el.closest('.settings-dialog') ||
+          el.closest('.settings-pane') ||
+          el.closest('[class*="settings-dialog"]') ||
+          el.closest('[class*="SettingsDialog"]') ||
+          el.closest('[class*="video-preview"]') ||
+          el.closest('[class*="VideoPreview"]') ||
+          el.closest('[role="dialog"]')) {
+        return true;
+      }
+    } catch (e) {}
+    return false;
+  }
+
   window.__hrmsFixCameraOffAvatars = function () {
     ensureStyle();
     var nodes = document.querySelectorAll('video');
@@ -1376,6 +1395,18 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
         el.setAttribute('playsinline', 'true');
         el.setAttribute('webkit-playsinline', 'true');
       } catch (e) {}
+
+      // Never hide Meeting Settings camera preview (was blank black box).
+      if (isSettingsPreviewVideo(el)) {
+        el.classList.remove('hrms-camera-off');
+        try {
+          el.style.removeProperty('display');
+          el.style.removeProperty('visibility');
+          el.style.removeProperty('opacity');
+        } catch (e) {}
+        forcePlayLiveVideo(el);
+        continue;
+      }
 
       if (isScreenShareVideo(el)) {
         el.classList.remove('hrms-camera-off');
@@ -2913,9 +2944,10 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
 })();
 ''';
 
-  /// Android WebView often cannot open a second camera stream while the
-  /// meeting already holds the device. Jitsi Video settings then shows a
-  /// black preview. Reuse / clone the live local track for settings previews.
+  /// Android WebView often cannot open a second camera while the meeting
+  /// holds the device — Video settings preview stays black. Bind / create a
+  /// muted preview from the live local track (front by default) and refresh
+  /// when the camera dropdown changes.
   static const _jitsiVideoPreviewFixJs = r'''
 (function () {
   if (window.__hrmsVideoPreviewFixReady) {
@@ -2928,6 +2960,17 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
     if (!track) return true;
     var label = ((track.label || '') + ' ' + (track.contentHint || '')).toLowerCase();
     return label.indexOf('screen') !== -1 || label.indexOf('display') !== -1 || label.indexOf('web contents') !== -1;
+  }
+
+  function facingFromLabel(label) {
+    var t = (label || '').toLowerCase();
+    if (t.indexOf('back') !== -1 || t.indexOf('rear') !== -1 || t.indexOf('environment') !== -1) {
+      return 'environment';
+    }
+    if (t.indexOf('front') !== -1 || t.indexOf('user') !== -1 || t.indexOf('facing front') !== -1) {
+      return 'user';
+    }
+    return '';
   }
 
   function streamFromJitsiLocal() {
@@ -2960,12 +3003,26 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
     }
   }
 
+  function inSettingsUi(el) {
+    if (!el || !el.closest) return false;
+    return !!(el.closest('.settings-dialog') ||
+      el.closest('.settings-pane') ||
+      el.closest('[class*="settings-dialog"]') ||
+      el.closest('[class*="SettingsDialog"]') ||
+      el.closest('[class*="video-preview"]') ||
+      el.closest('[class*="VideoPreview"]') ||
+      el.closest('[aria-label*="Settings"]') ||
+      el.closest('[role="dialog"]') ||
+      el.closest('[data-hrms-video-settings="1"]'));
+  }
+
   function streamFromDomVideos() {
     try {
       var nodes = document.querySelectorAll('video');
       for (var i = 0; i < nodes.length; i++) {
         var el = nodes[i];
-        if (inSettingsDialog(el)) continue;
+        if (inSettingsUi(el)) continue;
+        if (el.getAttribute('data-hrms-settings-preview') === '1') continue;
         var stream = el.srcObject;
         if (!stream) continue;
         var tracks = stream.getVideoTracks();
@@ -2982,6 +3039,7 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
   }
 
   function cloneVideoOnly(stream) {
+    if (!stream) return null;
     try {
       var cloned = stream.clone();
       cloned.getAudioTracks().forEach(function (t) {
@@ -3002,39 +3060,220 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
     }
   }
 
-  function inSettingsDialog(el) {
-    if (!el || !el.closest) return false;
-    return !!(el.closest('.settings-dialog') ||
-      el.closest('.settings-pane') ||
-      el.closest('[class*="settings-dialog"]') ||
-      el.closest('[class*="SettingsDialog"]') ||
-      el.closest('[class*="video-preview"]') ||
-      el.closest('[class*="VideoPreview"]') ||
-      el.closest('[aria-label*="Settings"]') ||
-      el.closest('[role="dialog"]'));
+  function findVideoSettingsRoot() {
+    var candidates = document.querySelectorAll(
+      '[role="dialog"], .settings-dialog, .settings-pane, [class*="settings-dialog"], [class*="SettingsDialog"], [class*="settings-content"], [class*="Settings"]'
+    );
+    for (var i = 0; i < candidates.length; i++) {
+      var root = candidates[i];
+      var text = '';
+      try { text = (root.innerText || root.textContent || ''); } catch (e) {}
+      if (!text) continue;
+      if (/mirror my video/i.test(text) && /camera/i.test(text)) {
+        try { root.setAttribute('data-hrms-video-settings', '1'); } catch (e) {}
+        return root;
+      }
+      if (/\bVideo\b/.test(text) && /facing front|facing back|camera\s*\d/i.test(text)) {
+        try { root.setAttribute('data-hrms-video-settings', '1'); } catch (e) {}
+        return root;
+      }
+    }
+    return document.querySelector('[data-hrms-video-settings="1"]');
   }
 
-  function looksLikePreviewVideo(el) {
-    if (!el || el.tagName !== 'VIDEO') return false;
-    if (!inSettingsDialog(el)) return false;
-    var rect = null;
-    try { rect = el.getBoundingClientRect(); } catch (e) {}
-    // Ignore tiny sink / hidden elements.
-    if (rect && rect.width > 0 && rect.width < 40) return false;
+  function selectedCameraLabel(root) {
+    if (!root) return '';
+    try {
+      var select = root.querySelector('select');
+      if (select && select.options && select.selectedIndex >= 0) {
+        return (select.options[select.selectedIndex].text || select.value || '').toString();
+      }
+      var combo = root.querySelector(
+        '[role="combobox"], [aria-haspopup="listbox"], button[class*="select"], [class*="Dropdown"], [class*="dropdown"]'
+      );
+      if (combo) {
+        return ((combo.getAttribute('aria-label') || '') + ' ' + (combo.textContent || '')).toString();
+      }
+    } catch (e) {}
+    return '';
+  }
+
+  function mirrorEnabled(root) {
+    if (!root) return true;
+    try {
+      var labels = root.querySelectorAll('label, div, span');
+      for (var i = 0; i < labels.length; i++) {
+        var t = (labels[i].textContent || '').toLowerCase();
+        if (t.indexOf('mirror my video') === -1) continue;
+        var input = labels[i].querySelector('input[type="checkbox"]');
+        if (!input && labels[i].htmlFor) {
+          try {
+            input = document.getElementById(labels[i].htmlFor);
+          } catch (e) {}
+        }
+        if (!input) {
+          var prev = labels[i].previousElementSibling;
+          if (prev && prev.matches && prev.matches('input[type="checkbox"]')) input = prev;
+        }
+        if (!input) {
+          var nearby = labels[i].parentElement && labels[i].parentElement.querySelector('input[type="checkbox"]');
+          if (nearby) input = nearby;
+        }
+        if (input) return !!input.checked;
+      }
+      var boxes = root.querySelectorAll('input[type="checkbox"]');
+      if (boxes.length === 1) return !!boxes[0].checked;
+    } catch (e) {}
     return true;
   }
 
-  function bindPreview(el, stream) {
+  function ensurePreviewVideo(root) {
+    if (!root) return null;
+    var existing = root.querySelector('video[data-hrms-settings-preview="1"]');
+    if (existing) return existing;
+    var videos = root.querySelectorAll('video');
+    for (var i = 0; i < videos.length; i++) {
+      var el = videos[i];
+      var rect = null;
+      try { rect = el.getBoundingClientRect(); } catch (e) {}
+      if (rect && rect.width > 40 && rect.height > 40) {
+        try { el.setAttribute('data-hrms-settings-preview', '1'); } catch (e) {}
+        return el;
+      }
+      if (!rect || rect.width === 0) {
+        try { el.setAttribute('data-hrms-settings-preview', '1'); } catch (e) {}
+        return el;
+      }
+    }
+    var host = root.querySelector(
+      '[class*="preview"], [class*="Preview"], [class*="video-preview"], [class*="VideoPreview"]'
+    );
+    if (!host) {
+      host = document.createElement('div');
+      host.setAttribute('data-hrms-settings-preview-host', '1');
+      host.style.cssText = 'width:100%;min-height:180px;margin:12px 0;border-radius:12px;overflow:hidden;background:#0b1220;';
+      var footer = root.querySelector('[class*="dialog-footer"], [class*="DialogFooter"], footer');
+      if (footer && footer.parentElement) {
+        footer.parentElement.insertBefore(host, footer);
+      } else {
+        root.appendChild(host);
+      }
+    }
+    var video = document.createElement('video');
+    video.setAttribute('data-hrms-settings-preview', '1');
+    video.setAttribute('playsinline', 'true');
+    video.setAttribute('webkit-playsinline', 'true');
+    video.setAttribute('muted', '');
+    video.setAttribute('autoplay', '');
+    video.muted = true;
+    video.autoplay = true;
+    video.playsInline = true;
+    video.style.cssText = 'width:100%;height:220px;object-fit:cover;background:#0b1220;display:block;';
+    host.appendChild(video);
+    return video;
+  }
+
+  function bindPreview(el, stream, mirror) {
     if (!el || !stream) return;
     try {
+      el.classList.remove('hrms-camera-off');
+      el.setAttribute('data-hrms-settings-preview', '1');
       el.setAttribute('playsinline', 'true');
       el.setAttribute('webkit-playsinline', 'true');
       el.muted = true;
+      el.defaultMuted = true;
       el.autoplay = true;
+      el.controls = false;
+      el.removeAttribute('controls');
+      el.style.removeProperty('display');
+      el.style.removeProperty('visibility');
+      el.style.removeProperty('opacity');
+      el.style.setProperty('transform', mirror ? 'scaleX(-1)' : 'none', 'important');
       if (el.srcObject !== stream) el.srcObject = stream;
       var play = el.play();
-      if (play && typeof play.catch === 'function') play.catch(function () {});
+      if (play && typeof play.catch === 'function') {
+        play.catch(function () {
+          try {
+            var s = el.srcObject;
+            el.srcObject = null;
+            el.srcObject = s;
+            el.muted = true;
+            el.play().catch(function () {});
+          } catch (err) {}
+        });
+      }
     } catch (e) {}
+  }
+
+  function stopPreviewOwnedStream() {
+    var owned = window.__hrmsSettingsPreviewOwned;
+    window.__hrmsSettingsPreviewOwned = null;
+    if (!owned) return;
+    try {
+      owned.getTracks().forEach(function (t) {
+        try { t.stop(); } catch (e) {}
+      });
+    } catch (e) {}
+  }
+
+  function openCameraStream(preferredFacing, deviceId) {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      return Promise.resolve(null);
+    }
+    var gum = navigator.mediaDevices.__hrmsOrigGetUserMedia ||
+      navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
+    var attempts = [];
+    if (deviceId) {
+      attempts.push({ audio: false, video: { deviceId: { exact: deviceId } } });
+      attempts.push({ audio: false, video: { deviceId: deviceId } });
+    }
+    if (preferredFacing) {
+      attempts.push({ audio: false, video: { facingMode: { ideal: preferredFacing } } });
+      attempts.push({ audio: false, video: { facingMode: preferredFacing } });
+    }
+    attempts.push({ audio: false, video: true });
+
+    function tryNext(i) {
+      if (i >= attempts.length) return Promise.resolve(null);
+      return gum(attempts[i]).catch(function () { return tryNext(i + 1); });
+    }
+    return tryNext(0);
+  }
+
+  function extractDeviceId(constraints) {
+    try {
+      var v = constraints && constraints.video;
+      if (!v || typeof v !== 'object') return '';
+      if (typeof v.deviceId === 'string') return v.deviceId;
+      if (v.deviceId && v.deviceId.exact) return v.deviceId.exact;
+      if (v.deviceId && v.deviceId.ideal) return v.deviceId.ideal;
+    } catch (e) {}
+    return '';
+  }
+
+  function extractFacing(constraints) {
+    try {
+      var v = constraints && constraints.video;
+      if (!v || typeof v !== 'object') return '';
+      if (typeof v.facingMode === 'string') return v.facingMode;
+      if (v.facingMode && v.facingMode.exact) return v.facingMode.exact;
+      if (v.facingMode && v.facingMode.ideal) return v.facingMode.ideal;
+    } catch (e) {}
+    return '';
+  }
+
+  function localMatchesFacing(facing) {
+    if (!facing) return true;
+    var local = getLocalCameraStream();
+    if (!local) return false;
+    try {
+      var t = local.getVideoTracks()[0];
+      var labelFacing = facingFromLabel(t && t.label);
+      if (!labelFacing) return facing === 'user';
+      return labelFacing === facing;
+    } catch (e) {
+      return facing === 'user';
+    }
   }
 
   function patchGetUserMedia() {
@@ -3042,48 +3281,136 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
     if (navigator.mediaDevices.__hrmsGumPreviewPatched) return;
     navigator.mediaDevices.__hrmsGumPreviewPatched = true;
     var orig = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
+    navigator.mediaDevices.__hrmsOrigGetUserMedia = orig;
     navigator.mediaDevices.getUserMedia = function (constraints) {
-      // Try a real open first so camera switching still works. If Android
-      // rejects a second camera client, reuse the live meeting track.
-      return orig(constraints).catch(function (err) {
+      return orig(constraints).then(function (stream) {
+        // Keep settings preview in sync when Meet opens a camera for the pane.
+        try {
+          if (constraints && constraints.video && findVideoSettingsRoot()) {
+            setTimeout(function () {
+              if (window.__hrmsFixVideoPreviews) window.__hrmsFixVideoPreviews(true);
+            }, 50);
+          }
+        } catch (e) {}
+        return stream;
+      }).catch(function (err) {
         var wantsVideo = !!(constraints && constraints.video);
         if (!wantsVideo) return Promise.reject(err);
-        var fallback = getLocalCameraStream();
-        if (!fallback) return Promise.reject(err);
-        var cloned = cloneVideoOnly(fallback);
-        if (!cloned) return Promise.reject(err);
-        return cloned;
+        var facing = extractFacing(constraints) || 'user';
+        var deviceId = extractDeviceId(constraints);
+        // Prefer cloning the in-call track when the requested camera matches.
+        if (!deviceId || localMatchesFacing(facing)) {
+          var fallback = getLocalCameraStream();
+          if (fallback && localMatchesFacing(facing || facingFromLabel(
+            (fallback.getVideoTracks()[0] && fallback.getVideoTracks()[0].label) || ''
+          ) || 'user')) {
+            var cloned = cloneVideoOnly(fallback);
+            if (cloned) return cloned;
+          }
+        }
+        return Promise.reject(err);
       });
     };
   }
 
-  window.__hrmsFixVideoPreviews = function () {
-    patchGetUserMedia();
-    var local = getLocalCameraStream();
-    if (!local) return;
-    var nodes = document.querySelectorAll('video');
-    for (var i = 0; i < nodes.length; i++) {
-      var el = nodes[i];
-      if (!looksLikePreviewVideo(el)) continue;
-      var hasLive = false;
-      try {
-        hasLive = !!(el.srcObject && el.srcObject.getVideoTracks().some(function (t) {
-          return t.readyState === 'live' && !isScreenTrack(t);
-        })) && el.videoWidth > 0;
-      } catch (e) {}
-      if (hasLive) continue;
-      bindPreview(el, cloneVideoOnly(local) || local);
+  function applySettingsPreview(force) {
+    var root = findVideoSettingsRoot();
+    if (!root) {
+      stopPreviewOwnedStream();
+      window.__hrmsSettingsPreviewKey = '';
+      return;
     }
+    var video = ensurePreviewVideo(root);
+    if (!video) return;
+    var label = selectedCameraLabel(root);
+    var facing = facingFromLabel(label) || 'user';
+    var mirror = mirrorEnabled(root);
+    var key = label + '|' + facing + '|' + (mirror ? '1' : '0');
+    var hasLive = false;
+    try {
+      hasLive = !!(video.srcObject && video.srcObject.getVideoTracks().some(function (t) {
+        return t && t.readyState === 'live' && !isScreenTrack(t);
+      })) && video.videoWidth > 0;
+    } catch (e) {}
+    if (!force && hasLive && window.__hrmsSettingsPreviewKey === key) {
+      video.style.setProperty('transform', mirror ? 'scaleX(-1)' : 'none', 'important');
+      return;
+    }
+    window.__hrmsSettingsPreviewKey = key;
+
+    // Default / matching front (or current) camera: clone in-call track (reliable on Android).
+    var local = getLocalCameraStream();
+    if (local && localMatchesFacing(facing)) {
+      stopPreviewOwnedStream();
+      bindPreview(video, cloneVideoOnly(local) || local, mirror);
+      return;
+    }
+
+    // Different camera selected — try a dedicated preview stream.
+    if (window.__hrmsSettingsPreviewBusy) return;
+    window.__hrmsSettingsPreviewBusy = true;
+    openCameraStream(facing, '').then(function (stream) {
+      window.__hrmsSettingsPreviewBusy = false;
+      if (!findVideoSettingsRoot()) {
+        if (stream) {
+          try { stream.getTracks().forEach(function (t) { t.stop(); }); } catch (e) {}
+        }
+        return;
+      }
+      if (stream) {
+        stopPreviewOwnedStream();
+        window.__hrmsSettingsPreviewOwned = stream;
+        bindPreview(video, stream, mirror);
+        return;
+      }
+      // Last resort: show local even if facing may not match.
+      if (local) bindPreview(video, cloneVideoOnly(local) || local, mirror);
+    }).catch(function () {
+      window.__hrmsSettingsPreviewBusy = false;
+      if (local) bindPreview(video, cloneVideoOnly(local) || local, mirror);
+    });
+  }
+
+  window.__hrmsFixVideoPreviews = function (force) {
+    patchGetUserMedia();
+    applySettingsPreview(!!force);
   };
 
   patchGetUserMedia();
-  window.__hrmsFixVideoPreviews();
+  window.__hrmsFixVideoPreviews(true);
+
+  document.addEventListener('change', function (e) {
+    try {
+      var t = e.target;
+      if (!t) return;
+      if (!findVideoSettingsRoot()) return;
+      if (t.tagName === 'SELECT' || t.type === 'checkbox') {
+        window.__hrmsFixVideoPreviews(true);
+      }
+    } catch (err) {}
+  }, true);
+
+  document.addEventListener('click', function (e) {
+    try {
+      if (!findVideoSettingsRoot()) return;
+      var t = e.target;
+      if (!t || !t.closest) return;
+      var opt = t.closest('[role="option"], li, button, [role="menuitem"]');
+      if (!opt) return;
+      var text = ((opt.textContent || '') + ' ' + (opt.getAttribute('aria-label') || '')).toLowerCase();
+      if (text.indexOf('camera') === -1 && text.indexOf('facing') === -1 &&
+          text.indexOf('front') === -1 && text.indexOf('back') === -1) return;
+      setTimeout(function () { window.__hrmsFixVideoPreviews(true); }, 100);
+      setTimeout(function () { window.__hrmsFixVideoPreviews(true); }, 500);
+    } catch (err) {}
+  }, true);
+
   if (!window.__hrmsVideoPreviewObserver && document.documentElement) {
     window.__hrmsVideoPreviewObserver = new MutationObserver(function () {
       if (window.__hrmsVideoPreviewScanTimer) return;
       window.__hrmsVideoPreviewScanTimer = setTimeout(function () {
         window.__hrmsVideoPreviewScanTimer = null;
-        window.__hrmsFixVideoPreviews();
+        window.__hrmsFixVideoPreviews(false);
       }, 200);
     });
     window.__hrmsVideoPreviewObserver.observe(document.documentElement, {
@@ -3093,8 +3420,8 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
   }
   if (!window.__hrmsVideoPreviewTimer) {
     window.__hrmsVideoPreviewTimer = setInterval(function () {
-      window.__hrmsFixVideoPreviews();
-    }, 1000);
+      window.__hrmsFixVideoPreviews(false);
+    }, 800);
   }
 })();
 ''';
