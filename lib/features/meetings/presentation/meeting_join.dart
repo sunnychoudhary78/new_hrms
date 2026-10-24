@@ -48,7 +48,11 @@ const jitsiDisabledUiSounds = <String>[
 /// They must be on the raw URL. [Uri.replace] percent-encodes the fragment
 /// and Jitsi then ignores `disableDeepLinking`, so Android WebView is sent
 /// to the close/welcome page and the meeting overlay closes.
-String withJitsiJoinOverrides(String url, String name) {
+String withJitsiJoinOverrides(
+  String url,
+  String name, {
+  String? avatarUrl,
+}) {
   final hash = url.indexOf('#');
   final base = hash == -1 ? url : url.substring(0, hash);
   final existing = hash == -1 ? '' : url.substring(hash + 1);
@@ -69,6 +73,10 @@ String withJitsiJoinOverrides(String url, String name) {
   final trimmed = name.trim();
   if (trimmed.isNotEmpty && !existing.contains('userInfo.displayName')) {
     parts.add('userInfo.displayName="${Uri.encodeComponent(trimmed)}"');
+  }
+  final avatar = avatarUrl?.trim() ?? '';
+  if (avatar.isNotEmpty && !existing.contains('userInfo.avatarURL')) {
+    parts.add('userInfo.avatarURL="${Uri.encodeComponent(avatar)}"');
   }
   if (parts.isEmpty) return url;
   final fragment = existing.isEmpty
@@ -143,9 +151,14 @@ Future<MeetingJoinInfo?> joinMeetingById(
       AppSnackbar.info(context, info.note!);
     }
     final displayName = meetingUserDisplayName(ref);
+    final avatarUrl = ref.read(authProvider).profileUrl.trim();
     ref.read(meetingSessionProvider.notifier).start(
           meetingId: meetingId,
-          joinUrl: withJitsiJoinOverrides(info.url, displayName),
+          joinUrl: withJitsiJoinOverrides(
+            info.url,
+            displayName,
+            avatarUrl: avatarUrl.isEmpty ? null : avatarUrl,
+          ),
           title: title,
           displayName: displayName,
         );

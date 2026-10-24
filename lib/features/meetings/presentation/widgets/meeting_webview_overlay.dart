@@ -6,6 +6,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lms/features/auth/presentation/providers/auth_provider.dart';
 import 'package:lms/features/meetings/data/meeting_call_keepalive.dart';
 import 'package:lms/features/meetings/presentation/meeting_join.dart';
 import 'package:lms/features/meetings/presentation/providers/meeting_session_provider.dart';
@@ -573,9 +574,14 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
         return;
       }
       final name = session.displayName ?? '';
+      final avatarUrl = ref.read(authProvider).profileUrl.trim();
       ref.read(meetingSessionProvider.notifier).start(
             meetingId: meetingId,
-            joinUrl: withJitsiJoinOverrides(info.url, name),
+            joinUrl: withJitsiJoinOverrides(
+              info.url,
+              name,
+              avatarUrl: avatarUrl.isEmpty ? null : avatarUrl,
+            ),
             title: session.title,
             displayName: name,
           );
@@ -1150,11 +1156,15 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
     final controller = _controller;
     if (controller == null) return;
     final name = ref.read(meetingSessionProvider).displayName?.trim() ?? '';
-    if (name.isEmpty) return;
+    final avatarUrl = ref.read(authProvider).profileUrl.trim();
     final escaped = name.replaceAll(r'\', r'\\').replaceAll("'", r"\'");
+    final escapedAvatar =
+        avatarUrl.replaceAll(r'\', r'\\').replaceAll("'", r"\'");
     try {
       await controller.runJavaScript(
-        "window.__hrmsDisplayName = '$escaped';\n$_jitsiDisplayNameJs",
+        "window.__hrmsDisplayName = '$escaped';\n"
+        "window.__hrmsProfileAvatarUrl = '$escapedAvatar';\n"
+        '$_jitsiDisplayNameJs',
       );
     } catch (_) {}
   }
@@ -1162,7 +1172,6 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
   static const _jitsiDisplayNameJs = r'''
 (function () {
   var name = window.__hrmsDisplayName;
-  if (!name) return;
   function looksLikeNameInput(el) {
     if (!el || el.tagName !== 'INPUT') return false;
     var type = (el.getAttribute('type') || 'text').toLowerCase();
@@ -1171,6 +1180,7 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
     return hint.indexOf('name') !== -1 || hint.indexOf('display') !== -1;
   }
   function fill() {
+    if (!name) return;
     var inputs = document.querySelectorAll('input');
     for (var i = 0; i < inputs.length; i++) {
       var el = inputs[i];
@@ -1189,10 +1199,29 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
       }
     } catch (e) {}
   }
+  function applyAvatar() {
+    var url = (window.__hrmsProfileAvatarUrl || '').trim();
+    if (!url) return;
+    try {
+      if (window.APP && APP.API && typeof APP.API.executeCommand === 'function') {
+        APP.API.executeCommand('avatarUrl', url);
+        return;
+      }
+    } catch (e) {}
+    try {
+      if (window.APP && APP.conference && typeof APP.conference.changeLocalAvatarUrl === 'function') {
+        APP.conference.changeLocalAvatarUrl(url);
+      }
+    } catch (e) {}
+  }
   fill();
+  applyAvatar();
   setTimeout(fill, 400);
+  setTimeout(applyAvatar, 400);
   setTimeout(fill, 1200);
+  setTimeout(applyAvatar, 1200);
   setTimeout(fill, 2500);
+  setTimeout(applyAvatar, 2500);
 })();
 ''';
 
@@ -1274,7 +1303,8 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
 })();
 ''';
 
-  /// Camera-off: hide paused WebView play-glyph so Jitsi avatar shows.
+  /// Camera-off: fully hide paused WebView videos (opacity alone still showed
+  /// the big play glyph) so Jitsi avatar / profile photo can show.
   /// Camera-on: never hide live tracks — force muted play so Android paints.
   static const _jitsiCameraOffAvatarFixJs = r'''
 (function () {
@@ -1285,9 +1315,15 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
   window.__hrmsCameraOffAvatarReady = true;
 
   function ensureStyle() {
-    if (document.getElementById('hrms-camera-off-style') || !document.head) return;
-    var style = document.createElement('style');
-    style.id = 'hrms-camera-off-style';
+    var style = document.getElementById('hrms-camera-off-style');
+    if (!style) {
+      if (!document.head) return;
+      style = document.createElement('style');
+      style.id = 'hrms-camera-off-style';
+      document.head.appendChild(style);
+    }
+    // display:none is required on Android WebView — opacity/visibility still
+    // leaves the centered play triangle over camera-off tiles.
     style.textContent = [
       'video::-webkit-media-controls { display: none !important; }',
       'video::-webkit-media-controls-enclosure { display: none !important; }',
@@ -1295,20 +1331,47 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
       'video::-webkit-media-controls-overlay-play-button { display: none !important; opacity: 0 !important; }',
       'video::-webkit-media-controls-play-button { display: none !important; }',
       'video { -webkit-appearance: none; }',
-      /* Only true camera-off tiles — never hide a live camera feed */
       'video.hrms-camera-off {',
+      '  display: none !important;',
       '  opacity: 0 !important;',
       '  visibility: hidden !important;',
       '  pointer-events: none !important;',
+      '  width: 0 !important;',
+      '  height: 0 !important;',
+      '}',
+      'img.hrms-profile-avatar {',
+      '  display: block !important;',
+      '  width: 100% !important;',
+      '  height: 100% !important;',
+      '  max-width: 168px !important;',
+      '  max-height: 168px !important;',
+      '  object-fit: cover !important;',
+      '  border-radius: 50% !important;',
+      '  margin: 0 auto !important;',
       '}'
     ].join('');
-    document.head.appendChild(style);
+  }
+
+  function tileWrap(el) {
+    if (!el) return null;
+    try {
+      return el.closest
+        ? (el.closest('.videocontainer') ||
+            el.closest('[class*="thumbnail"]') ||
+            el.closest('[class*="tile"]') ||
+            el.closest('[data-testid]') ||
+            el.parentElement)
+        : el.parentElement;
+    } catch (e) {
+      return el.parentElement || null;
+    }
   }
 
   function hasLiveVideo(el) {
     try {
       var stream = el.srcObject;
       if (!stream || !stream.getVideoTracks) return false;
+      // enabled === false ⇒ camera muted/off. Do not use track.muted (network blip).
       return stream.getVideoTracks().some(function (t) {
         return t && t.readyState === 'live' && t.enabled !== false;
       });
@@ -1333,12 +1396,7 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
         });
         if (hit) return true;
       }
-      var wrap = el.closest
-        ? (el.closest('.videocontainer') ||
-            el.closest('[class*="tile"]') ||
-            el.closest('[data-testid]') ||
-            el.parentElement)
-        : el.parentElement;
+      var wrap = tileWrap(el);
       var text = '';
       if (wrap) {
         text = (
@@ -1359,18 +1417,22 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
     }
   }
 
+  function tileShowsAvatarMode(el) {
+    var wrap = tileWrap(el);
+    if (!wrap) return false;
+    try {
+      var cls = ((wrap.className || '') + '').toString().toLowerCase();
+      if (cls.indexOf('display-avatar') !== -1) return true;
+      if (cls.indexOf('display-video') !== -1) return false;
+    } catch (e) {}
+    return false;
+  }
+
   /** Local / prejoin tiles are muted — Android WebView blocks unmuted autoplay. */
   function looksLocalOrMuted(el) {
     try {
       if (el.muted || el.defaultMuted) return true;
-      var wrap = el.closest
-        ? (el.closest('.videocontainer') ||
-            el.closest('[class*="tile"]') ||
-            el.closest('[class*="prejoin"]') ||
-            el.closest('[class*="Prejoin"]') ||
-            el.closest('.premeeting-screen') ||
-            el.parentElement)
-        : el.parentElement;
+      var wrap = tileWrap(el);
       if (!wrap) return false;
       var cls = ((wrap.className || '') + '').toString().toLowerCase();
       var id = ((wrap.id || '') + '').toString().toLowerCase();
@@ -1378,6 +1440,20 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
       if (cls.indexOf('prejoin') !== -1 || cls.indexOf('premeeting') !== -1) return true;
       var label = ((wrap.getAttribute('aria-label') || '') + ' ' + (wrap.getAttribute('title') || '')).toLowerCase();
       if (label.indexOf('you') !== -1 || label.indexOf('local') !== -1) return true;
+    } catch (e) {}
+    return false;
+  }
+
+  function isLocalTile(wrap) {
+    if (!wrap) return false;
+    try {
+      var cls = ((wrap.className || '') + '').toString().toLowerCase();
+      var id = ((wrap.id || '') + '').toString().toLowerCase();
+      if (cls.indexOf('local') !== -1 || id.indexOf('local') !== -1) return true;
+      if (wrap.id === 'localVideoContainer') return true;
+      var label = ((wrap.getAttribute('aria-label') || '') + ' ' + (wrap.getAttribute('title') || '')).toLowerCase();
+      var name = (window.__hrmsDisplayName || '').toLowerCase().trim();
+      if (name && label.indexOf(name) !== -1) return true;
     } catch (e) {}
     return false;
   }
@@ -1400,6 +1476,8 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
       el.style.removeProperty('display');
       el.style.removeProperty('visibility');
       el.style.removeProperty('opacity');
+      el.style.removeProperty('width');
+      el.style.removeProperty('height');
     } catch (e) {}
     var localish = looksLocalOrMuted(el);
     try {
@@ -1410,21 +1488,12 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
         el.setAttribute('muted', '');
         el.setAttribute('autoplay', '');
       }
-      var stream = el.srcObject;
-      if (stream && stream.getVideoTracks) {
-        stream.getVideoTracks().forEach(function (t) {
-          try {
-            if (t && t.readyState === 'live') t.enabled = true;
-          } catch (err) {}
-        });
-      }
     } catch (e) {}
     try {
       var p = el.play();
       if (p && typeof p.catch === 'function') {
         p.catch(function () {
           if (!localish) return;
-          // Rebind stream — kicks decoder when autoplay was blocked.
           try {
             var s = el.srcObject;
             if (!s) return;
@@ -1439,45 +1508,109 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
     } catch (e) {}
   }
 
+  function applyProfileAvatar(wrap) {
+    if (!wrap || !isLocalTile(wrap)) return;
+    var url = (window.__hrmsProfileAvatarUrl || '').trim();
+    if (!url) return;
+    var containers = wrap.querySelectorAll(
+      '.avatar-container, .avatar, [class*="avatar-container"], [class*="Avatar"]'
+    );
+    for (var i = 0; i < containers.length; i++) {
+      var box = containers[i];
+      try {
+        box.style.setProperty('display', 'flex', 'important');
+        box.style.setProperty('visibility', 'visible', 'important');
+        box.style.setProperty('opacity', '1', 'important');
+        box.style.setProperty('align-items', 'center', 'important');
+        box.style.setProperty('justify-content', 'center', 'important');
+        box.style.setProperty('z-index', '3', 'important');
+      } catch (e) {}
+      var img = box.querySelector('img.hrms-profile-avatar');
+      if (!img) {
+        img = document.createElement('img');
+        img.className = 'hrms-profile-avatar';
+        img.alt = '';
+        img.referrerPolicy = 'no-referrer';
+        img.onload = function () {
+          try {
+            var kids = box.querySelectorAll('[class*="avatar-initial"], [class*="initial"]');
+            for (var k = 0; k < kids.length; k++) {
+              if (kids[k].tagName === 'IMG') continue;
+              kids[k].style.setProperty('display', 'none', 'important');
+            }
+          } catch (err) {}
+        };
+        img.onerror = function () {
+          try {
+            if (img.parentNode) img.parentNode.removeChild(img);
+          } catch (err) {}
+        };
+        try { box.insertBefore(img, box.firstChild); } catch (e) {
+          try { box.appendChild(img); } catch (e2) {}
+        }
+      }
+      if (img.getAttribute('src') !== url) img.setAttribute('src', url);
+    }
+  }
+
+  function applyLocalAvatarToJitsi() {
+    var url = (window.__hrmsProfileAvatarUrl || '').trim();
+    if (!url || window.__hrmsAvatarUrlApplied === url) return;
+    try {
+      if (window.APP && APP.API && typeof APP.API.executeCommand === 'function') {
+        APP.API.executeCommand('avatarUrl', url);
+        window.__hrmsAvatarUrlApplied = url;
+        return;
+      }
+    } catch (e) {}
+    try {
+      if (window.APP && APP.conference && typeof APP.conference.changeLocalAvatarUrl === 'function') {
+        APP.conference.changeLocalAvatarUrl(url);
+        window.__hrmsAvatarUrlApplied = url;
+      }
+    } catch (e) {}
+  }
+
   function showJitsiAvatar(el) {
     try {
-      var wrap = el.closest
-        ? (el.closest('.videocontainer') ||
-            el.closest('[class*="thumbnail"]') ||
-            el.closest('[class*="tile"]') ||
-            el.parentElement)
-        : el.parentElement;
+      var wrap = tileWrap(el);
       if (!wrap) return;
       var avatars = wrap.querySelectorAll(
         '.avatar-container, .avatar, [class*="avatar"], [class*="Avatar"]'
       );
       for (var i = 0; i < avatars.length; i++) {
         try {
-          avatars[i].style.removeProperty('display');
-          avatars[i].style.removeProperty('visibility');
-          avatars[i].style.removeProperty('opacity');
+          avatars[i].style.setProperty('display', 'flex', 'important');
+          avatars[i].style.setProperty('visibility', 'visible', 'important');
+          avatars[i].style.setProperty('opacity', '1', 'important');
+          avatars[i].style.setProperty('z-index', '2', 'important');
         } catch (e) {}
       }
+      // Also show any existing avatar <img> from Jitsi (remote profile / gravatar).
+      var imgs = wrap.querySelectorAll('.avatar-container img, [class*="avatar"] img');
+      for (var j = 0; j < imgs.length; j++) {
+        try {
+          imgs[j].style.setProperty('display', 'block', 'important');
+          imgs[j].style.setProperty('visibility', 'visible', 'important');
+          imgs[j].style.setProperty('opacity', '1', 'important');
+        } catch (e) {}
+      }
+      applyProfileAvatar(wrap);
     } catch (e) {}
   }
 
   function hideForcedAvatarOverVideo(el) {
     try {
-      var wrap = el.closest
-        ? (el.closest('.videocontainer') ||
-            el.closest('[class*="thumbnail"]') ||
-            el.closest('[class*="tile"]') ||
-            el.parentElement)
-        : el.parentElement;
+      var wrap = tileWrap(el);
       if (!wrap) return;
-      // Do not fight Jitsi's own avatar for remote camera-off; only clear
-      // inline styles we may have left from a previous camera-off pass.
       var avatars = wrap.querySelectorAll(
         '.avatar-container, .avatar, [class*="avatar"], [class*="Avatar"]'
       );
       for (var i = 0; i < avatars.length; i++) {
         try {
-          if (avatars[i].style.getPropertyValue('z-index') === '5') {
+          if (avatars[i].style.getPropertyValue('z-index') === '5' ||
+              avatars[i].style.getPropertyValue('z-index') === '3' ||
+              avatars[i].style.getPropertyValue('z-index') === '2') {
             avatars[i].style.removeProperty('z-index');
             avatars[i].style.removeProperty('display');
             avatars[i].style.removeProperty('visibility');
@@ -1510,6 +1643,7 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
 
   window.__hrmsFixCameraOffAvatars = function () {
     ensureStyle();
+    applyLocalAvatarToJitsi();
     var nodes = document.querySelectorAll('video');
     for (var i = 0; i < nodes.length; i++) {
       var el = nodes[i];
@@ -1520,13 +1654,15 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
         el.setAttribute('webkit-playsinline', 'true');
       } catch (e) {}
 
-      // Never hide Meeting Settings camera preview (was blank black box).
+      // Never hide Meeting Settings camera preview.
       if (isSettingsPreviewVideo(el)) {
         el.classList.remove('hrms-camera-off');
         try {
           el.style.removeProperty('display');
           el.style.removeProperty('visibility');
           el.style.removeProperty('opacity');
+          el.style.removeProperty('width');
+          el.style.removeProperty('height');
         } catch (e) {}
         forcePlayLiveVideo(el);
         continue;
@@ -1540,21 +1676,23 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
       }
 
       var live = hasLiveVideo(el);
-      if (live) {
-        // Camera ON (or remote live feed): show video, never hide for blank frames.
+      var avatarMode = tileShowsAvatarMode(el);
+      // Live camera (and not Jitsi avatar-only layout) → keep video; never hide.
+      if (live && !avatarMode) {
         el.classList.remove('hrms-camera-off');
         hideForcedAvatarOverVideo(el);
         forcePlayLiveVideo(el);
         continue;
       }
 
-      // No live enabled track → camera off / empty: hide play-glyph, let avatar show.
+      // Camera off / avatar mode / empty video: display:none kills WebView play glyph.
       el.classList.add('hrms-camera-off');
       showJitsiAvatar(el);
     }
   };
 
   ensureStyle();
+  applyLocalAvatarToJitsi();
   window.__hrmsFixCameraOffAvatars();
 
   ['play', 'pause', 'ended', 'emptied', 'loadeddata', 'loadedmetadata', 'resize', 'playing'].forEach(function (evt) {
@@ -1565,7 +1703,6 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
     }, true);
   });
 
-  // Camera / video toolbar toggles — refresh immediately so on→visible, off→avatar.
   document.addEventListener('click', function (e) {
     try {
       var t = e.target;
