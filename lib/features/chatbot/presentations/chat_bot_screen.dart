@@ -8,9 +8,10 @@ import 'package:lms/features/chatbot/presentation/providers/chatbot_provider.dar
 /// Suggestion chip data (icon + pastel tint, same style as Home quick actions)
 class _Suggestion {
   final String text;
+  final String textHi;
   final IconData icon;
   final Color tint;
-  const _Suggestion(this.text, this.icon, this.tint);
+  const _Suggestion(this.text, this.textHi, this.icon, this.tint);
 }
 
 class ChatBotScreen extends ConsumerStatefulWidget {
@@ -24,6 +25,23 @@ class _ChatBotScreenState extends ConsumerState<ChatBotScreen> {
   final _inputController = TextEditingController();
   final _inputFocusNode = FocusNode();
   final _scrollController = ScrollController();
+
+  /// 'en' or 'hi'
+  String _lang = 'en';
+  bool get _hi => _lang == 'hi';
+
+  /// Once Hindi has been used in this session we also tag English messages,
+  /// so switching back to English makes the bot answer in English again.
+  bool _hindiUsed = false;
+
+  /// When true, the initial screen (hero + suggested questions) is shown even
+  /// though the conversation has messages.
+  bool _showMenu = false;
+
+  static const _hiPrefix = 'Please reply in Hindi: ';
+  static const _enPrefix = 'Please reply in English: ';
+
+  String _t(String en, String hi) => _hi ? hi : en;
 
   static const _linkRoutes = <String, String>{
     '/leaves': '/leave-balance',
@@ -94,11 +112,16 @@ class _ChatBotScreenState extends ConsumerState<ChatBotScreen> {
 
     ref.listen<ChatbotState>(chatbotProvider, (previous, next) {
       if (previous?.messages.length != next.messages.length) {
+        // Any new message / opened conversation leaves the menu view.
+        if (_showMenu && next.messages.isNotEmpty) {
+          setState(() => _showMenu = false);
+        }
         _scrollToLatest();
       }
     });
 
     final busy = state.isSending || state.isLoadingHistory;
+    final showMenu = state.messages.isEmpty || _showMenu;
 
     return Scaffold(
       backgroundColor: _bg(context),
@@ -111,12 +134,13 @@ class _ChatBotScreenState extends ConsumerState<ChatBotScreen> {
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Your Assistant',
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.w500),
+            Text(
+              _t('Your Assistant', 'आपका असिस्टेंट'),
+              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w500),
             ),
             Text(
-              'Answers about your own HR data',
+              _t('Answers about your own HR data',
+                  'आपके HR डेटा से जुड़े जवाब'),
               style: TextStyle(
                 fontSize: 12,
                 color: scheme.onSurfaceVariant,
@@ -127,7 +151,7 @@ class _ChatBotScreenState extends ConsumerState<ChatBotScreen> {
         ),
         actions: [
           _AppBarCircleButton(
-            tooltip: 'Chat history',
+            tooltip: _t('Chat history', 'चैट हिस्ट्री'),
             icon: Icons.history_rounded,
             color: _card(context),
             shadow: _softShadow(context),
@@ -135,10 +159,12 @@ class _ChatBotScreenState extends ConsumerState<ChatBotScreen> {
           ),
           const SizedBox(width: 8),
           _NewChatPill(
+            label: _t('New chat', 'नई चैट'),
             enabled: !busy,
             gradient: _brandGradient(scheme),
             onTap: () {
               ref.read(chatbotProvider.notifier).startNewChat();
+              setState(() => _showMenu = false);
               _scrollToLatest();
             },
           ),
@@ -150,7 +176,7 @@ class _ChatBotScreenState extends ConsumerState<ChatBotScreen> {
         child: Column(
           children: [
             Expanded(
-              child: state.messages.isEmpty
+              child: showMenu
                   ? _emptyState(
                       context,
                       firstName: firstName,
@@ -162,8 +188,43 @@ class _ChatBotScreenState extends ConsumerState<ChatBotScreen> {
                   : _messageList(context, state),
             ),
             if (state.isSending) const _TypingIndicator(),
+            if (!showMenu) _backToMenuChip(context, busy),
             _inputBar(context, state),
           ],
+        ),
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Back to main menu
+  // ---------------------------------------------------------------------------
+  Widget _backToMenuChip(BuildContext context, bool busy) {
+    final scheme = Theme.of(context).colorScheme;
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 2),
+        child: ActionChip(
+          onPressed: busy
+              ? null
+              : () {
+                  _inputFocusNode.unfocus();
+                  setState(() => _showMenu = true);
+                },
+          avatar: Icon(Icons.apps_rounded, size: 16, color: scheme.primary),
+          label: Text(_t('Back to Main Menu', 'मुख्य मेनू पर वापस')),
+          labelStyle: TextStyle(
+            color: scheme.primary,
+            fontWeight: FontWeight.w600,
+            fontSize: 12.5,
+          ),
+          backgroundColor: scheme.primary.withValues(alpha: 0.08),
+          side: BorderSide.none,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+          visualDensity: VisualDensity.compact,
         ),
       ),
     );
@@ -206,7 +267,8 @@ class _ChatBotScreenState extends ConsumerState<ChatBotScreen> {
                     textCapitalization: TextCapitalization.sentences,
                     style: const TextStyle(fontSize: 15),
                     decoration: InputDecoration(
-                      hintText: 'Ask about your HR information...',
+                      hintText: _t('Ask about your HR information...',
+                          'अपनी HR जानकारी पूछें...'),
                       hintStyle: TextStyle(
                         color: scheme.onSurfaceVariant.withValues(alpha: 0.7),
                         fontSize: 14.5,
@@ -225,6 +287,17 @@ class _ChatBotScreenState extends ConsumerState<ChatBotScreen> {
                     ),
                     onChanged: (_) => setState(() {}),
                     onSubmitted: (_) => _send(),
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 7),
+                  child: _LanguageToggle(
+                    isHindi: _hi,
+                    onChanged: (hindi) => setState(() {
+                      _lang = hindi ? 'hi' : 'en';
+                      if (hindi) _hindiUsed = true;
+                    }),
                   ),
                 ),
                 const SizedBox(width: 6),
@@ -252,7 +325,8 @@ class _ChatBotScreenState extends ConsumerState<ChatBotScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            'AI answers can be wrong. Please verify important details.',
+            _t('AI answers can be wrong. Please verify important details.',
+                'AI के जवाब गलत हो सकते हैं। कृपया ज़रूरी जानकारी जाँच लें।'),
             style: TextStyle(fontSize: 11, color: scheme.onSurfaceVariant),
             textAlign: TextAlign.center,
           ),
@@ -262,7 +336,7 @@ class _ChatBotScreenState extends ConsumerState<ChatBotScreen> {
   }
 
   // ---------------------------------------------------------------------------
-  // Empty state
+  // Empty state / main menu
   // ---------------------------------------------------------------------------
   Widget _emptyState(
     BuildContext context, {
@@ -282,6 +356,7 @@ class _ChatBotScreenState extends ConsumerState<ChatBotScreen> {
           features['leaves'] == true)
         _Suggestion(
           'How many leaves do I have left?',
+          'मेरी कितनी छुट्टियाँ बची हैं?',
           Icons.eco_rounded,
           tint(const Color(0xFFDDF7E6)),
         ),
@@ -289,33 +364,39 @@ class _ChatBotScreenState extends ConsumerState<ChatBotScreen> {
           features['attendance'] == true)
         _Suggestion(
           'Show my attendance this month',
+          'इस महीने की मेरी अटेंडेंस दिखाओ',
           Icons.event_available_rounded,
           tint(const Color(0xFFDCE6FF)),
         ),
       if (permissions.contains('payroll.view') && features['payroll'] == true)
         _Suggestion(
           'Show my latest payslip',
+          'मेरी latest पेस्लिप दिखाओ',
           Icons.receipt_long_rounded,
           tint(const Color(0xFFFFF0C9)),
         ),
       if (permissions.contains('payroll.view') && features['payroll'] == true)
         _Suggestion(
           'How much overtime do I have this month?',
+          'इस महीने मेरा कितना ओवरटाइम है?',
           Icons.schedule_rounded,
           tint(const Color(0xFFE9E1FF)),
         ),
       _Suggestion(
         'When is the next holiday?',
+        'अगली छुट्टी कब है?',
         Icons.celebration_rounded,
         tint(const Color(0xFFFFE1EC)),
       ),
       _Suggestion(
         'Who is my reporting manager?',
+        'मेरे रिपोर्टिंग मैनेजर कौन हैं?',
         Icons.account_tree_rounded,
         tint(const Color(0xFFD9F3F7)),
       ),
       _Suggestion(
         'Any new announcements?',
+        'कोई नई घोषणा?',
         Icons.campaign_rounded,
         tint(const Color(0xFFFFE6D5)),
       ),
@@ -335,13 +416,6 @@ class _ChatBotScreenState extends ConsumerState<ChatBotScreen> {
             decoration: BoxDecoration(
               gradient: _brandGradient(scheme),
               borderRadius: BorderRadius.circular(28),
-              // boxShadow: [
-              //   BoxShadow(
-              //     color: scheme.primary.withValues(alpha: 0.28),
-              //     blurRadius: 24,
-              //     offset: const Offset(0, 10),
-              //   ),
-              // ],
             ),
             child: Row(
               children: [
@@ -368,7 +442,7 @@ class _ChatBotScreenState extends ConsumerState<ChatBotScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Hi $firstName 👋',
+                        _hi ? 'नमस्ते $firstName 👋' : 'Hi $firstName 👋',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
@@ -379,8 +453,12 @@ class _ChatBotScreenState extends ConsumerState<ChatBotScreen> {
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        'I can answer questions about your leave, attendance, '
-                        'payslips, overtime, holidays and company updates.',
+                        _t(
+                          'I can answer questions about your leave, attendance, '
+                              'payslips, overtime, holidays and company updates.',
+                          'मैं आपकी छुट्टी, अटेंडेंस, पेस्लिप, ओवरटाइम, '
+                              'हॉलिडे और कंपनी अपडेट्स के बारे में जवाब दे सकता हूँ।',
+                        ),
                         style: TextStyle(
                           color: Colors.white.withValues(alpha: 0.85),
                           fontSize: 12.5,
@@ -408,9 +486,9 @@ class _ChatBotScreenState extends ConsumerState<ChatBotScreen> {
             ),
           ],
           const SizedBox(height: 24),
-          const Text(
-            'Suggested Questions',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+          Text(
+            _t('Suggested Questions', 'सुझाए गए सवाल'),
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 12),
           Wrap(
@@ -440,6 +518,7 @@ class _ChatBotScreenState extends ConsumerState<ChatBotScreen> {
     bool dark,
     ColorScheme scheme,
   ) {
+    final label = _hi ? s.textHi : s.text;
     return SizedBox(
       width: width,
       child: Material(
@@ -447,12 +526,11 @@ class _ChatBotScreenState extends ConsumerState<ChatBotScreen> {
         borderRadius: BorderRadius.circular(22),
         child: InkWell(
           borderRadius: BorderRadius.circular(22),
-          onTap: () => _send(s.text),
+          onTap: () => _send(label),
           child: Ink(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(22),
-             // boxShadow: _softShadow(context),
               border: dark ? Border.all(color: scheme.outlineVariant) : null,
             ),
             child: Column(
@@ -473,7 +551,7 @@ class _ChatBotScreenState extends ConsumerState<ChatBotScreen> {
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  s.text,
+                  label,
                   maxLines: 3,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
@@ -507,6 +585,17 @@ class _ChatBotScreenState extends ConsumerState<ChatBotScreen> {
     );
   }
 
+  /// Removes the hidden language instruction before showing a user message.
+  String _displayText(String content) {
+    if (content.startsWith(_hiPrefix)) {
+      return content.substring(_hiPrefix.length);
+    }
+    if (content.startsWith(_enPrefix)) {
+      return content.substring(_enPrefix.length);
+    }
+    return content;
+  }
+
   Widget _userBubble(BuildContext context, ChatbotMessage message) {
     final scheme = Theme.of(context).colorScheme;
     return Align(
@@ -525,16 +614,9 @@ class _ChatBotScreenState extends ConsumerState<ChatBotScreen> {
             bottomLeft: Radius.circular(22),
             bottomRight: Radius.circular(6),
           ),
-          // boxShadow: [
-          //   BoxShadow(
-          //     color: scheme.primary.withValues(alpha: 0.22),
-          //     blurRadius: 14,
-          //     offset: const Offset(0, 5),
-          //   ),
-          // ],
         ),
         child: Text(
-          message.content,
+          _displayText(message.content),
           style: TextStyle(
             color: scheme.onPrimary,
             height: 1.4,
@@ -596,37 +678,38 @@ class _ChatBotScreenState extends ConsumerState<ChatBotScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   MarkdownBody(
-  data: message.content,
-  selectable: true,
-  styleSheet: MarkdownStyleSheet.fromTheme(theme).copyWith(
-    p: theme.textTheme.bodyMedium?.copyWith(
-      height: 1.5,
-      fontSize: 14.5,
-    ),
-    // Column content ke hisaab se, max 96px, phir word-boundary par wrap
-    tableColumnWidth: const MinColumnWidth(
-      IntrinsicColumnWidth(),
-      FixedColumnWidth(96),
-    ),
-    tableBorder: TableBorder.all(
-      color: scheme.outlineVariant,
-      borderRadius: BorderRadius.circular(8),
-    ),
-    tableCellsPadding: const EdgeInsets.symmetric(
-      horizontal: 8,
-      vertical: 6,
-    ),
-    tableHead: const TextStyle(
-      fontWeight: FontWeight.w700,
-      fontSize: 12.5,
-    ),
-    tableBody: theme.textTheme.bodyMedium?.copyWith(
-      fontSize: 12.5,
-      height: 1.3,
-    ),
-    tableHeadAlign: TextAlign.center,
-  ),
-),
+                    data: message.content,
+                    selectable: true,
+                    styleSheet: MarkdownStyleSheet.fromTheme(theme).copyWith(
+                      p: theme.textTheme.bodyMedium?.copyWith(
+                        height: 1.5,
+                        fontSize: 14.5,
+                      ),
+                      // Every column takes the width its content needs.
+                      // flutter_markdown wraps tables in a horizontal
+                      // SingleChildScrollView, so wide tables (attendance)
+                      // can be swiped sideways and no column gets cropped.
+                      tableColumnWidth: const IntrinsicColumnWidth(),
+                      tablePadding: const EdgeInsets.only(bottom: 4),
+                      tableBorder: TableBorder.all(
+                        color: scheme.outlineVariant,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      tableCellsPadding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 6,
+                      ),
+                      tableHead: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 12,
+                      ),
+                      tableBody: theme.textTheme.bodyMedium?.copyWith(
+                        fontSize: 12,
+                        height: 1.3,
+                      ),
+                      tableHeadAlign: TextAlign.center,
+                    ),
+                  ),
                   if (availableLinks.isNotEmpty) ...[
                     const SizedBox(height: 12),
                     Wrap(
@@ -720,7 +803,7 @@ class _ChatBotScreenState extends ConsumerState<ChatBotScreen> {
                     ? null
                     : () => ref.read(chatbotProvider.notifier).retry(message),
                 icon: const Icon(Icons.refresh_rounded, size: 17),
-                label: const Text('Retry'),
+                label: Text(_t('Retry', 'दोबारा कोशिश करें')),
                 style: TextButton.styleFrom(
                   foregroundColor: scheme.onErrorContainer,
                   padding: EdgeInsets.zero,
@@ -739,10 +822,22 @@ class _ChatBotScreenState extends ConsumerState<ChatBotScreen> {
   void _send([String? suggestion]) {
     final text = (suggestion ?? _inputController.text).trim();
     if (text.isEmpty || text.runes.length > 1000) return;
+
+    // Hidden language instruction (stripped again in the user bubble).
+    final String payload;
+    if (_hi) {
+      payload = '$_hiPrefix$text';
+    } else if (_hindiUsed) {
+      payload = '$_enPrefix$text';
+    } else {
+      payload = text;
+    }
+
     _inputController.clear();
     _inputFocusNode.unfocus();
-    ref.read(chatbotProvider.notifier).send(text);
-    setState(() {});
+    setState(() => _showMenu = false);
+    ref.read(chatbotProvider.notifier).send(payload);
+    _scrollToLatest();
   }
 
   Future<void> _showConversationHistory() async {
@@ -770,17 +865,17 @@ class _ChatBotScreenState extends ConsumerState<ChatBotScreen> {
                     padding: const EdgeInsets.fromLTRB(20, 0, 12, 8),
                     child: Row(
                       children: [
-                        const Expanded(
+                        Expanded(
                           child: Text(
-                            'Chat history',
-                            style: TextStyle(
+                            _t('Chat history', 'चैट हिस्ट्री'),
+                            style: const TextStyle(
                               fontSize: 20,
                               fontWeight: FontWeight.w800,
                             ),
                           ),
                         ),
                         IconButton(
-                          tooltip: 'Refresh history',
+                          tooltip: _t('Refresh history', 'हिस्ट्री रिफ्रेश करें'),
                           onPressed: state.isLoadingConversations
                               ? null
                               : () => ref
@@ -805,7 +900,7 @@ class _ChatBotScreenState extends ConsumerState<ChatBotScreen> {
                         : state.conversations.isEmpty
                         ? Center(
                             child: Text(
-                              'No previous chats',
+                              _t('No previous chats', 'कोई पुरानी चैट नहीं'),
                               style: TextStyle(color: scheme.onSurfaceVariant),
                             ),
                           )
@@ -843,8 +938,8 @@ class _ChatBotScreenState extends ConsumerState<ChatBotScreen> {
                                   ),
                                   title: Text(
                                     conversation.title.isEmpty
-                                        ? 'Untitled chat'
-                                        : conversation.title,
+                                        ? _t('Untitled chat', 'बिना नाम की चैट')
+                                        : _displayText(conversation.title),
                                     maxLines: 2,
                                     overflow: TextOverflow.ellipsis,
                                     style: const TextStyle(
@@ -864,12 +959,15 @@ class _ChatBotScreenState extends ConsumerState<ChatBotScreen> {
                                         ),
                                   onTap: () {
                                     Navigator.pop(sheetContext);
+                                    if (mounted) {
+                                      setState(() => _showMenu = false);
+                                    }
                                     ref
                                         .read(chatbotProvider.notifier)
                                         .openConversation(conversation.id);
                                   },
                                   trailing: IconButton(
-                                    tooltip: 'Delete chat',
+                                    tooltip: _t('Delete chat', 'चैट हटाएँ'),
                                     onPressed:
                                         state.deletingConversationId != null
                                         ? null
@@ -911,16 +1009,17 @@ class _ChatBotScreenState extends ConsumerState<ChatBotScreen> {
       context: sheetContext,
       builder: (dialogContext) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        title: const Text('Delete chat?'),
-        content: const Text('This conversation will be permanently deleted.'),
+        title: Text(_t('Delete chat?', 'चैट हटाएँ?')),
+        content: Text(_t('This conversation will be permanently deleted.',
+            'यह बातचीत हमेशा के लिए हटा दी जाएगी।')),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Cancel'),
+            child: Text(_t('Cancel', 'रद्द करें')),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('Delete'),
+            child: Text(_t('Delete', 'हटाएँ')),
           ),
         ],
       ),
@@ -947,6 +1046,57 @@ class _ChatBotScreenState extends ConsumerState<ChatBotScreen> {
 // =============================================================================
 // Small widgets
 // =============================================================================
+
+/// Compact "EN / हि" switch shown inside the input bar.
+class _LanguageToggle extends StatelessWidget {
+  final bool isHindi;
+  final ValueChanged<bool> onChanged;
+
+  const _LanguageToggle({required this.isHindi, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
+    Widget segment(String label, bool selected, VoidCallback onTap) {
+      return GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+          decoration: BoxDecoration(
+            color: selected ? scheme.primary : Colors.transparent,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: selected ? scheme.onPrimary : scheme.onSurfaceVariant,
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(2),
+      decoration: BoxDecoration(
+        color: scheme.primary.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          segment('EN', !isHindi, () => onChanged(false)),
+          segment('हि', isHindi, () => onChanged(true)),
+        ],
+      ),
+    );
+  }
+}
 
 class _AppBarCircleButton extends StatelessWidget {
   final String tooltip;
@@ -988,11 +1138,13 @@ class _AppBarCircleButton extends StatelessWidget {
 }
 
 class _NewChatPill extends StatelessWidget {
+  final String label;
   final bool enabled;
   final Gradient gradient;
   final VoidCallback onTap;
 
   const _NewChatPill({
+    required this.label,
     required this.enabled,
     required this.gradient,
     required this.onTap,
@@ -1011,14 +1163,14 @@ class _NewChatPill extends StatelessWidget {
             gradient: gradient,
             borderRadius: BorderRadius.circular(20),
           ),
-          child: const Row(
+          child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.add_rounded, size: 18, color: Colors.white),
-              SizedBox(width: 4),
+              const Icon(Icons.add_rounded, size: 18, color: Colors.white),
+              const SizedBox(width: 4),
               Text(
-                'New chat',
-                style: TextStyle(
+                label,
+                style: const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.w600,
                   fontSize: 13,
