@@ -65,11 +65,13 @@ import 'package:lms/features/meetings/presentation/screens/meeting_detail_screen
 import 'package:lms/features/meetings/presentation/screens/recordings_screen.dart';
 import 'package:lms/features/meetings/presentation/screens/recording_player_screen.dart';
 import 'package:lms/features/meetings/presentation/screens/recording_transcript_screen.dart';
+import 'package:lms/features/chatbot/presentations/chat_bot_screen.dart';
 
 class AppRoutes {
   static Map<String, WidgetBuilder> routes = {
     // ================= CORE =================
     '/home': (_) => const HomeScreen(),
+    '/chatbot': (_) => const ChatBotScreen(),
     '/login': (_) => const LoginScreen(),
     '/login-otp': (_) => const OtpLoginScreen(),
 

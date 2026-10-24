@@ -6,6 +6,7 @@ import 'package:lms/features/home/presentation/widgets/home_dashboard_style.dart
 import 'package:lms/features/home/presentation/widgets/home_dashboard_view.dart';
 import 'package:lms/features/notifications/presentation/providers/notifications_provider.dart';
 import 'package:lms/features/notifications/presentation/screens/notifications_screen.dart';
+import 'package:lms/features/chatbot/presentations/chat_bot_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -41,6 +42,17 @@ class HomeScreen extends StatelessWidget {
         ],
       ),
       body: const HomeDashboardView(),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const ChatBotScreen()),
+          );
+        },
+        backgroundColor: const Color.fromARGB(255, 42, 120, 246), // Deep navy blue
+        foregroundColor: Colors.white, // Icon color
+        child: const Icon(Icons.chat_bubble_outline_rounded),
+      ),
     );
   }
 }

@@ -40,6 +40,12 @@ class ApiEndpoints {
   static String myPayslipDownload(String id) =>
       '/payroll/my-payslips/$id/download';
 
+  // ───────── Chatbot ASSISTANT ─────────
+  static const String chatbotMessage = 'chatbot/message';
+  static const String chatbotConversations = 'chatbot/conversations';
+  static String chatbotConversation(String id) =>
+      '$chatbotConversations/${Uri.encodeComponent(id)}';
+
   // ───────── POLICIES ─────────
   static const String policies = 'policies';
 

@@ -99,14 +99,26 @@ Map<String, dynamic> resolveAuthFeatures(Map<String, dynamic> user) {
           rootCompanyId != companyId);
 
   if (isSubCompany) {
-    return mergeFeatureLayers([
+    final features = mergeFeatureLayers([
       planFeatures,
       companyFeatures,
       rootPlanFeatures,
       rootFeatures,
     ]);
+    if ([planFeatures, companyFeatures, rootPlanFeatures, rootFeatures].any(
+      (layer) => layer['chatbot'] == true,
+    )) {
+      features['chatbot'] = true;
+    }
+    return features;
   }
-  return mergeFeatureLayers([planFeatures, companyFeatures]);
+  final features = mergeFeatureLayers([planFeatures, companyFeatures]);
+  if ([planFeatures, companyFeatures, rootPlanFeatures, rootFeatures].any(
+    (layer) => layer['chatbot'] == true,
+  )) {
+    features['chatbot'] = true;
+  }
+  return features;
 }
 
 /// JS `!!value` for feature flags (`true`, `1`, `"true"`).
