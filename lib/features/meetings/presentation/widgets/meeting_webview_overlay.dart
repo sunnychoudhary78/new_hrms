@@ -971,9 +971,133 @@ class _MeetingPersistentHostState extends ConsumerState<MeetingPersistentHost>
     try {
       await controller.runJavaScript(_jitsiIconFixJs);
       await controller.runJavaScript(_jitsiCameraOffAvatarFixJs);
+      await controller.runJavaScript(_jitsiHideVideoSettingsJs);
       await _injectSafeTopInset();
     } catch (_) {}
   }
+
+  /// Hide the Settings → Video tab in the in-app Meet WebView only.
+  /// Audio / Virtual backgrounds / other sections stay unchanged.
+  static const _jitsiHideVideoSettingsJs = r'''
+(function () {
+  if (window.__hrmsHideVideoSettingsReady) {
+    if (window.__hrmsHideVideoSettings) window.__hrmsHideVideoSettings();
+    return;
+  }
+  window.__hrmsHideVideoSettingsReady = true;
+
+  function stripVideoSectionFromConfig() {
+    try {
+      if (window.config && Array.isArray(config.settingsSections)) {
+        config.settingsSections = config.settingsSections.filter(function (s) {
+          return String(s).toLowerCase() !== 'video';
+        });
+      }
+    } catch (e) {}
+    try {
+      if (window.interfaceConfig && Array.isArray(interfaceConfig.SETTINGS_SECTIONS)) {
+        // Keep devices (audio) etc.; only strip an explicit "video" entry if present.
+        interfaceConfig.SETTINGS_SECTIONS = interfaceConfig.SETTINGS_SECTIONS.filter(function (s) {
+          return String(s).toLowerCase() !== 'video';
+        });
+      }
+    } catch (e) {}
+  }
+
+  function ensureStyle() {
+    if (document.getElementById('hrms-hide-video-settings') || !document.head) return;
+    var style = document.createElement('style');
+    style.id = 'hrms-hide-video-settings';
+    style.textContent = [
+      /* Settings sidebar / list: hide the Video entry only */
+      '[data-hrms-hide-video-settings="1"] {',
+      '  display: none !important;',
+      '  visibility: hidden !important;',
+      '  height: 0 !important;',
+      '  overflow: hidden !important;',
+      '  pointer-events: none !important;',
+      '}'
+    ].join('');
+    document.head.appendChild(style);
+  }
+
+  function labelText(el) {
+    try {
+      return ((el.getAttribute('aria-label') || '') + ' ' +
+        (el.getAttribute('title') || '') + ' ' +
+        (el.textContent || '')).toLowerCase().replace(/\s+/g, ' ').trim();
+    } catch (e) {
+      return '';
+    }
+  }
+
+  function isExactVideoLabel(text) {
+    if (!text) return false;
+    // Match Settings → "Video" tab only — not "Virtual backgrounds" / videoquality.
+    if (text === 'video') return true;
+    if (/^video\b/.test(text) && text.indexOf('virtual') === -1 &&
+        text.indexOf('quality') === -1 && text.indexOf('background') === -1) {
+      // e.g. "video" or "video settings"
+      return text.length <= 20;
+    }
+    return false;
+  }
+
+  function inSettingsShell(el) {
+    if (!el || !el.closest) return false;
+    return !!(el.closest('[role="dialog"]') ||
+      el.closest('.settings-dialog') ||
+      el.closest('.settings-pane') ||
+      el.closest('[class*="settings-dialog"]') ||
+      el.closest('[class*="SettingsDialog"]') ||
+      el.closest('[class*="settings-"]'));
+  }
+
+  window.__hrmsHideVideoSettings = function () {
+    ensureStyle();
+    stripVideoSectionFromConfig();
+    var nodes = document.querySelectorAll(
+      'button, [role="button"], [role="tab"], [role="menuitem"], a, div, li, span'
+    );
+    for (var i = 0; i < nodes.length; i++) {
+      var el = nodes[i];
+      if (!inSettingsShell(el)) continue;
+      var text = labelText(el);
+      if (!isExactVideoLabel(text)) continue;
+      // Prefer the clickable row (button / tab / menuitem), not a nested icon span.
+      var row = el;
+      if (el.tagName === 'SPAN' || el.tagName === 'DIV') {
+        var parent = el.closest('button, [role="button"], [role="tab"], [role="menuitem"], li, a');
+        if (parent && inSettingsShell(parent)) row = parent;
+      }
+      try { row.setAttribute('data-hrms-hide-video-settings', '1'); } catch (e) {}
+    }
+  };
+
+  ensureStyle();
+  stripVideoSectionFromConfig();
+  window.__hrmsHideVideoSettings();
+
+  if (!window.__hrmsHideVideoSettingsObserver && document.documentElement) {
+    window.__hrmsHideVideoSettingsObserver = new MutationObserver(function () {
+      if (window.__hrmsHideVideoSettingsScan) return;
+      window.__hrmsHideVideoSettingsScan = setTimeout(function () {
+        window.__hrmsHideVideoSettingsScan = null;
+        window.__hrmsHideVideoSettings();
+      }, 200);
+    });
+    window.__hrmsHideVideoSettingsObserver.observe(document.documentElement, {
+      childList: true,
+      subtree: true
+    });
+  }
+  if (!window.__hrmsHideVideoSettingsTimer) {
+    window.__hrmsHideVideoSettingsTimer = setInterval(function () {
+      window.__hrmsHideVideoSettings();
+    }, 1000);
+  }
+})();
+''';
 
   /// Push the in-call subject / timer below the OS status bar when the
   /// WebView is edge-to-edge in fullscreen.
