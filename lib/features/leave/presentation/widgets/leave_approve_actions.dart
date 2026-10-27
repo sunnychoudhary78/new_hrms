@@ -49,6 +49,8 @@ class LeaveApproveActions extends StatelessWidget {
               ),
             ),
             onPressed: () async {
+              final approveAction = _isRevocation ? 'approve_revocation' : 'approve';
+
               if (!_canShowPartialApprove) {
                 final comment = await _askApproveComment(context);
                 if (comment == null) return;
@@ -57,12 +59,12 @@ class LeaveApproveActions extends StatelessWidget {
                   context,
                   title: 'Approve leave',
                   message:
-                      'This will approve the full request using your comment for the audit trail.',
+                      'This will approve the full request. A comment is optional.',
                   confirmLabel: 'Approve',
                 );
                 if (!confirm) return;
 
-                await onApprove(request.id, 'approve', comment, null);
+                await onApprove(request.id, approveAction, comment, null);
                 return;
               }
 
@@ -80,12 +82,12 @@ class LeaveApproveActions extends StatelessWidget {
                   context,
                   title: 'Approve leave',
                   message:
-                      'All requested dates will be approved with your comment.',
+                      'All requested dates will be approved. A comment is optional.',
                   confirmLabel: 'Approve',
                 );
                 if (!confirm) return;
 
-                await onApprove(request.id, 'approve', comment, null);
+                await onApprove(request.id, approveAction, comment, null);
                 return;
               }
 
@@ -222,7 +224,6 @@ class LeaveApproveActions extends StatelessWidget {
 
   Future<String?> _askReason(BuildContext context) {
     final controller = TextEditingController();
-    String? errorText;
 
     return showDialog<String>(
       context: context,
@@ -264,7 +265,7 @@ class LeaveApproveActions extends StatelessWidget {
                         ),
                         const SizedBox(height: 6),
                         Text(
-                          'A clear reason is required for the employee and audit trail.',
+                          'A reason is optional — add context for the employee if helpful.',
                           style: theme.textTheme.bodyMedium?.copyWith(
                             color: scheme.onSurfaceVariant,
                             height: 1.4,
@@ -283,16 +284,9 @@ class LeaveApproveActions extends StatelessWidget {
                     maxLines: 5,
                     autofocus: true,
                     textCapitalization: TextCapitalization.sentences,
-                    onChanged: (_) {
-                      if (errorText != null) {
-                        setDialogState(() => errorText = null);
-                      }
-                    },
                     decoration: InputDecoration(
-                      labelText: 'Reason *',
-                      hintText:
-                          'Explain why this request cannot be approved…',
-                      errorText: errorText,
+                      labelText: 'Reason (optional)',
+                      hintText: 'Explain why this request cannot be approved…',
                       filled: true,
                       fillColor: scheme.surfaceContainerLow,
                       border: OutlineInputBorder(
@@ -310,16 +304,8 @@ class LeaveApproveActions extends StatelessWidget {
                   child: const Text('Cancel'),
                 ),
                 FilledButton(
-                  onPressed: () {
-                    final value = controller.text.trim();
-                    if (value.isEmpty) {
-                      setDialogState(() {
-                        errorText = 'Please enter a reason';
-                      });
-                      return;
-                    }
-                    Navigator.pop(dialogContext, value);
-                  },
+                  onPressed: () =>
+                      Navigator.pop(dialogContext, controller.text.trim()),
                   style: FilledButton.styleFrom(
                     backgroundColor: scheme.error,
                     foregroundColor: scheme.onError,
@@ -428,7 +414,6 @@ class LeaveApproveActions extends StatelessWidget {
     bool isPartial = false,
   }) {
     final controller = TextEditingController();
-    String? errorText;
 
     return showDialog<String>(
       context: context,
@@ -464,7 +449,7 @@ class LeaveApproveActions extends StatelessWidget {
                         Text(
                           isPartial
                               ? 'Comment for partial approval'
-                              : 'Manager comment',
+                              : 'Manager comment (optional)',
                           style: theme.textTheme.titleLarge?.copyWith(
                             fontWeight: FontWeight.w700,
                             height: 1.2,
@@ -473,8 +458,8 @@ class LeaveApproveActions extends StatelessWidget {
                         const SizedBox(height: 6),
                         Text(
                           isPartial
-                              ? 'Your note will be stored with the approved dates.'
-                              : 'Visible to HR and the employee on the request history.',
+                              ? 'Optional — stored with the approved dates if provided.'
+                              : 'Optional — visible to HR and the employee if provided.',
                           style: theme.textTheme.bodyMedium?.copyWith(
                             color: scheme.onSurfaceVariant,
                             height: 1.4,
@@ -493,15 +478,9 @@ class LeaveApproveActions extends StatelessWidget {
                     maxLines: 5,
                     autofocus: true,
                     textCapitalization: TextCapitalization.sentences,
-                    onChanged: (_) {
-                      if (errorText != null) {
-                        setDialogState(() => errorText = null);
-                      }
-                    },
                     decoration: InputDecoration(
-                      labelText: 'Comment *',
+                      labelText: 'Comment (optional)',
                       hintText: 'Add context for this decision…',
-                      errorText: errorText,
                       filled: true,
                       fillColor: scheme.surfaceContainerLow,
                       border: OutlineInputBorder(
@@ -519,16 +498,8 @@ class LeaveApproveActions extends StatelessWidget {
                   child: const Text('Cancel'),
                 ),
                 FilledButton(
-                  onPressed: () {
-                    final value = controller.text.trim();
-                    if (value.isEmpty) {
-                      setDialogState(() {
-                        errorText = 'Comment is required';
-                      });
-                      return;
-                    }
-                    Navigator.pop(dialogContext, value);
-                  },
+                  onPressed: () =>
+                      Navigator.pop(dialogContext, controller.text.trim()),
                   style: FilledButton.styleFrom(
                     backgroundColor: _kApproveAccent,
                     foregroundColor: Colors.white,
@@ -717,6 +688,9 @@ class LeaveApproveActions extends StatelessWidget {
     }
     return dates;
   }
+
+  bool get _isRevocation =>
+      request.status.trim().toLowerCase() == 'revocationrequested';
 
   bool get _canShowPartialApprove {
     final normalizedStatus = request.status.trim().toLowerCase();

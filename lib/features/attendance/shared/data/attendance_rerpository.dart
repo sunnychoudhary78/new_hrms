@@ -132,6 +132,12 @@ class AttendanceRepository {
     return list.map((e) => AttendanceRequest.fromJson(e)).toList();
   }
 
+  Future<List<AttendanceRequest>> fetchPendingAttendanceCorrections() async {
+    final list = await api.fetchAttendanceCorrectionsPending();
+
+    return list.map((e) => AttendanceRequest.fromJson(e)).toList();
+  }
+
   Future<void> updateCorrectionStatus({
     required String id,
     required String status,

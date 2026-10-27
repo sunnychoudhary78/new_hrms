@@ -38,11 +38,16 @@ class AttendanceRequest {
     final profilePic = user?['profile_picture'];
 
     return AttendanceRequest(
-      id: json['id'] as String,
-      type: (json['type'] as String).toUpperCase(),
-      status: (json['status'] as String).toUpperCase(),
+      id: json['id']?.toString() ?? '',
+      type: (json['type']?.toString() ?? '').toUpperCase(),
+      status: (json['status']?.toString() ?? '').toUpperCase(),
       reason: json['reason'] as String?,
-      targetDate: json['targetDate'] as String,
+
+      /// Remote requests have no `targetDate` — fall back to the range start.
+      targetDate:
+          json['targetDate']?.toString() ??
+          json['startDate']?.toString() ??
+          '',
 
       // proposed
       proposedCheckIn: json['proposedCheckIn'] as String?,

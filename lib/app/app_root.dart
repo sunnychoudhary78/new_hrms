@@ -99,9 +99,13 @@ class _AppRootState extends ConsumerState<AppRoot> {
     if (currentUserId != null && _lastUserId != currentUserId) {
       _lastUserId = currentUserId;
 
-      invalidateAllUserScopedData(ref);
-
-      _initPush(force: true);
+      // Deferred: ref.invalidate() marks the ancestor UncontrolledProviderScope
+      // as needing a rebuild, which is illegal while this widget is building.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        invalidateAllUserScopedData(ref);
+        _initPush(force: true);
+      });
     }
 
     final shouldShowStartupSplash =

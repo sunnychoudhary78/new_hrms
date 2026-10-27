@@ -94,6 +94,53 @@ class _LeaveApproveCardState extends State<LeaveApproveCard> {
                 ),
               ),
 
+              if (canTakeAction)
+                PopupMenuButton<_CardAction>(
+                  tooltip: 'Quick actions',
+                  icon: Icon(
+                    Icons.more_vert,
+                    color: scheme.onSurfaceVariant,
+                  ),
+                  onSelected: (action) {
+                    final isRevoke =
+                        r.status.toLowerCase() == 'revocationrequested';
+
+                    switch (action) {
+                      case _CardAction.approve:
+                        widget.onApprove?.call(
+                          r.id,
+                          isRevoke ? 'approve_revocation' : 'approve',
+                          null,
+                          null,
+                        );
+                        break;
+                      case _CardAction.quickReject:
+                        widget.onReject?.call(r.id, null);
+                        break;
+                    }
+                  },
+                  itemBuilder: (_) => const [
+                    PopupMenuItem(
+                      value: _CardAction.approve,
+                      child: ListTile(
+                        dense: true,
+                        contentPadding: EdgeInsets.zero,
+                        leading: Icon(Icons.check_rounded),
+                        title: Text('Approve'),
+                      ),
+                    ),
+                    PopupMenuItem(
+                      value: _CardAction.quickReject,
+                      child: ListTile(
+                        dense: true,
+                        contentPadding: EdgeInsets.zero,
+                        leading: Icon(Icons.close_rounded),
+                        title: Text('Quick reject'),
+                      ),
+                    ),
+                  ],
+                ),
+
               AppStatusPill(
                 label: r.status == "RevocationRequested"
                     ? "RevocationRequested"
@@ -238,3 +285,5 @@ class _LeaveApproveCardState extends State<LeaveApproveCard> {
     return status.toUpperCase();
   }
 }
+
+enum _CardAction { approve, quickReject }

@@ -8,8 +8,18 @@ class ApiEndpoints {
   static const String attendanceCorrectionsManaged =
       'attendance/corrections/managed';
   static const String attendanceCorrectionsMy = 'attendance/corrections/my';
+  static const String attendanceCorrectionsPending =
+      'attendance/corrections/pending';
   static const String mobileAttendanceConfig = 'attendance/mobile-config';
   static const String effectiveShift = 'shifts/effective';
+
+  // ───────── LEAVE ─────────
+  static const String leaveRequestsQuery = 'leave-requests/query';
+  static const String leaveManagerPending = 'leave-requests/manager/pending';
+
+  // ───────── PAYROLL ─────────
+  static String overtimeEntryStatus(String id) =>
+      'payroll/overtime-entries/$id/status';
 
   // ───────── COMPANY ─────────
   static const String companySettings = 'company-settings/my';

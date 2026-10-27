@@ -102,7 +102,11 @@ class LeaveApproveNotifier extends AsyncNotifier<List<ManagerLeaveRequest>> {
         isRevoke ? "Processing revoke rejection..." : "Rejecting leave...",
       );
 
-      await api.rejectLeave(id, comment);
+      await api.rejectLeave(
+        id,
+        comment,
+        action: isRevoke ? "reject_revocation" : "reject",
+      );
 
       await refresh();
 

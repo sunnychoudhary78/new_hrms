@@ -301,6 +301,12 @@ class AttendanceApiService {
     return res; // API already returns List
   }
 
+  Future<List<dynamic>> fetchAttendanceCorrectionsPending() async {
+    final res = await api.get(ApiEndpoints.attendanceCorrectionsPending);
+
+    return res; // API already returns List
+  }
+
   Future<void> updateCorrectionStatus({
     required String id,
     required Map<String, dynamic> body,

@@ -31,11 +31,12 @@ class LeaveBalance {
     final leaveTypeBalance = json['leave_type'];
 
     return LeaveBalance(
-      id: json['id'],
-      leaveTypeId: json['leave_type_id'],
-      available: (json['available'] as num).toDouble(),
-      carried: (json['carried'] as num).toDouble(),
-      pendingReserved: (json['pending_reserved'] as num).toDouble(),
+      id: json['id']?.toString() ?? '',
+      leaveTypeId:
+          (json['leave_type_id'] ?? leaveTypeBalance?['id'])?.toString() ?? '',
+      available: (json['available'] as num?)?.toDouble() ?? 0,
+      carried: (json['carried'] as num?)?.toDouble() ?? 0,
+      pendingReserved: (json['pending_reserved'] as num?)?.toDouble() ?? 0,
 
       // Prefer leave type API values if available
       name: leaveType?['name'] ?? leaveTypeBalance?['name'] ?? '',
