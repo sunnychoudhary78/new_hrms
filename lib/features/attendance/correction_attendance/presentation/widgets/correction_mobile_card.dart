@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:lms/core/theme/app_design.dart';
 import 'package:lms/features/attendance/correction_attendance/presentation/dialogs/review_request_dialog.dart';
+import 'package:lms/features/attendance/correction_attendance/presentation/widgets/quick_actions.dart';
 import 'package:lms/features/attendance/shared/utils/attendance_date_utils.dart';
 import 'package:lms/shared/widgets/premium_feature_components.dart';
 import '../../data/models/attendance_request_model.dart';
@@ -49,10 +50,7 @@ class RequestCard extends StatelessWidget {
                 color: AppColors.heroStart,
               ),
               const Spacer(),
-              PremiumStatusPill(
-                label: item.status,
-                color: statusColor,
-              ),
+              PremiumStatusPill(label: item.status, color: statusColor),
             ],
           ),
 
@@ -88,10 +86,7 @@ class RequestCard extends StatelessWidget {
                     children: [
                       Text(
                         "Original",
-                        style: TextStyle(
-                          color: AppColors.muted,
-                          fontSize: 12,
-                        ),
+                        style: TextStyle(color: AppColors.muted, fontSize: 12),
                       ),
                       const Spacer(),
                       Text(
@@ -131,50 +126,12 @@ class RequestCard extends StatelessWidget {
           const SizedBox(height: AppSpacing.md),
 
           if (item.status == "PENDING")
-            Row(
-              children: [
-                Expanded(
-                  child: FilledButton.tonalIcon(
-                    style: FilledButton.styleFrom(
-                      backgroundColor: AppColors.danger.withValues(alpha: 0.1),
-                      foregroundColor: AppColors.danger,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(AppRadius.md),
-                      ),
-                    ),
-                    onPressed: () {
-                      showReviewDialog(context: context, req: item);
-                    },
-                    icon: const Icon(Icons.close_rounded),
-                    label: const Text("Reject"),
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: FilledButton.icon(
-                    style: FilledButton.styleFrom(
-                      backgroundColor: AppColors.heroStart,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(AppRadius.md),
-                      ),
-                    ),
-                    onPressed: () {
-                      showReviewDialog(context: context, req: item);
-                    },
-                    icon: const Icon(Icons.check_rounded),
-                    label: const Text("Approve"),
-                  ),
-                ),
-              ],
-            )
+            ReviewActionBar(req: item)
           else
             Align(
               alignment: Alignment.centerRight,
               child: TextButton(
-                onPressed: () {
-                  showReviewDialog(context: context, req: item);
-                },
+                onPressed: () => showReviewDialog(context: context, req: item),
                 child: const Text("View details"),
               ),
             ),

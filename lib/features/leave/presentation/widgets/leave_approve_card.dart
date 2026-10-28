@@ -26,10 +26,14 @@ class LeaveApproveCard extends StatefulWidget {
 
 class _LeaveApproveCardState extends State<LeaveApproveCard> {
   bool expanded = false;
+
   bool get canTakeAction {
     final s = widget.request.status.toLowerCase();
 
-    return widget.isPending && (s == "pending" || s == "revocationrequested");
+    return widget.isPending &&
+        widget.onApprove != null &&
+        widget.onReject != null &&
+        (s == "pending" || s == "revocationrequested");
   }
 
   String formatDays(double days) {
@@ -43,6 +47,7 @@ class _LeaveApproveCardState extends State<LeaveApproveCard> {
     final r = widget.request;
     final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
     final cardRadius = isIOS ? AppRadius.md + 2 : AppRadius.lg;
+    final isRevoke = r.status == "RevocationRequested";
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
@@ -94,58 +99,7 @@ class _LeaveApproveCardState extends State<LeaveApproveCard> {
                 ),
               ),
 
-              if (canTakeAction)
-                PopupMenuButton<_CardAction>(
-                  tooltip: 'Quick actions',
-                  icon: Icon(
-                    Icons.more_vert,
-                    color: scheme.onSurfaceVariant,
-                  ),
-                  onSelected: (action) {
-                    final isRevoke =
-                        r.status.toLowerCase() == 'revocationrequested';
-
-                    switch (action) {
-                      case _CardAction.approve:
-                        widget.onApprove?.call(
-                          r.id,
-                          isRevoke ? 'approve_revocation' : 'approve',
-                          null,
-                          null,
-                        );
-                        break;
-                      case _CardAction.quickReject:
-                        widget.onReject?.call(r.id, null);
-                        break;
-                    }
-                  },
-                  itemBuilder: (_) => const [
-                    PopupMenuItem(
-                      value: _CardAction.approve,
-                      child: ListTile(
-                        dense: true,
-                        contentPadding: EdgeInsets.zero,
-                        leading: Icon(Icons.check_rounded),
-                        title: Text('Approve'),
-                      ),
-                    ),
-                    PopupMenuItem(
-                      value: _CardAction.quickReject,
-                      child: ListTile(
-                        dense: true,
-                        contentPadding: EdgeInsets.zero,
-                        leading: Icon(Icons.close_rounded),
-                        title: Text('Quick reject'),
-                      ),
-                    ),
-                  ],
-                ),
-
-              AppStatusPill(
-                label: r.status == "RevocationRequested"
-                    ? "RevocationRequested"
-                    : r.status,
-              ),
+              AppStatusPill(label: r.status),
             ],
           ),
 
@@ -159,7 +113,7 @@ class _LeaveApproveCardState extends State<LeaveApproveCard> {
                 size: 16,
                 color: scheme.onSurfaceVariant,
               ),
-              SizedBox(width: 6),
+              const SizedBox(width: 6),
               Text(
                 "${_format(r.startDate)} → ${_format(r.endDate)}",
                 style: Theme.of(
@@ -225,50 +179,56 @@ class _LeaveApproveCardState extends State<LeaveApproveCard> {
             ),
           ],
 
-          const SizedBox(height: AppSpacing.sm),
+          /// Revocation reason is important for the decision — always visible
+          if (isRevoke && r.revocationReason != null) ...[
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              "Revoke reason: ${r.revocationReason}",
+              style: const TextStyle(color: AppColors.statusDeepOrange),
+            ),
+          ],
 
-          GestureDetector(
-            onTap: () => setState(() => expanded = !expanded),
-            child: Row(
-              children: [
-                Text(
-                  expanded ? "Hide details" : "View details",
-                  style: TextStyle(
+          /// ACTIONS — visible right on the card, no need to expand
+          if (canTakeAction) ...[
+            const SizedBox(height: AppSpacing.md),
+            LeaveApproveActions(
+              request: r,
+              onApprove: widget.onApprove!,
+              onReject: widget.onReject!,
+            ),
+          ],
+
+          /// DETAILS (reason only)
+          if (r.reason.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.xs),
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => setState(() => expanded = !expanded),
+              child: Row(
+                children: [
+                  Text(
+                    expanded ? "Hide reason" : "View reason",
+                    style: TextStyle(
+                      color: scheme.primary,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  Icon(
+                    expanded ? Icons.expand_less : Icons.expand_more,
                     color: scheme.primary,
-                    fontWeight: FontWeight.w500,
+                  ),
+                ],
+              ),
+            ),
+            if (expanded)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text(
+                  r.reason,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: scheme.onSurfaceVariant,
                   ),
                 ),
-                Icon(
-                  expanded ? Icons.expand_less : Icons.expand_more,
-                  color: scheme.primary,
-                ),
-              ],
-            ),
-          ),
-
-          if (expanded) ...[
-            const SizedBox(height: AppSpacing.sm),
-
-            if (r.reason.isNotEmpty)
-              Text(
-                "Reason: ${r.reason}",
-                style: Theme.of(
-                  context,
-                ).textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
-              ),
-            if (r.status == "RevocationRequested" && r.revocationReason != null)
-              Text(
-                "Revoke Reason: ${r.revocationReason}",
-                style: const TextStyle(color: AppColors.statusDeepOrange),
-              ),
-
-            const SizedBox(height: AppSpacing.sm),
-
-            if (canTakeAction)
-              LeaveApproveActions(
-                request: r,
-                onApprove: widget.onApprove!,
-                onReject: widget.onReject!,
               ),
           ],
         ],
@@ -279,11 +239,4 @@ class _LeaveApproveCardState extends State<LeaveApproveCard> {
   String _format(String date) {
     return DateFormat("dd MMM yyyy").format(DateTime.parse(date));
   }
-
-  String displayStatus(String status) {
-    if (status == "RevocationRequested") return "REVOKE REQUEST";
-    return status.toUpperCase();
-  }
 }
-
-enum _CardAction { approve, quickReject }

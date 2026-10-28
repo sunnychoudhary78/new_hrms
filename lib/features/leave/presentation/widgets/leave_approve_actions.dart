@@ -4,8 +4,16 @@ import 'package:intl/intl.dart';
 
 import 'package:lms/features/leave/data/models/leave_approve_model.dart';
 
-/// Accent for positive actions — distinct from generic `primary`, tuned for clarity.
 const Color _kApproveAccent = Color(0xFF0F766E);
+
+/// Result returned by the approve bottom sheet.
+class _ApproveResult {
+  final String action;
+  final String? comment;
+  final List<String>? dates;
+
+  const _ApproveResult(this.action, this.comment, this.dates);
+}
 
 class LeaveApproveActions extends StatelessWidget {
   final ManagerLeaveRequest request;
@@ -21,647 +29,85 @@ class LeaveApproveActions extends StatelessWidget {
     required this.onReject,
   });
 
-  ShapeBorder _dialogShape() {
-    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
-    return RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(isIOS ? 14 : 24),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
-    final actionRadius = BorderRadius.circular(isIOS ? 12 : 14);
+    final radius = BorderRadius.circular(isIOS ? 12 : 14);
 
     return Row(
       children: [
         Expanded(
+          child: OutlinedButton.icon(
+            icon: const Icon(Icons.close_rounded, size: 20),
+            label: const Text('Reject'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: scheme.error,
+              side: BorderSide(color: scheme.error.withValues(alpha: 0.5)),
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              shape: RoundedRectangleBorder(borderRadius: radius),
+            ),
+            onPressed: () => _handleReject(context),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
           child: FilledButton.icon(
-            icon: const Icon(Icons.check_rounded, size: 22),
-            label: const Text('Approve'),
+            icon: const Icon(Icons.check_rounded, size: 20),
+            label: Text(_isRevocation ? 'Approve revoke' : 'Approve'),
             style: FilledButton.styleFrom(
               backgroundColor: _kApproveAccent,
               foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              shape: RoundedRectangleBorder(
-                borderRadius: actionRadius,
-              ),
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              shape: RoundedRectangleBorder(borderRadius: radius),
             ),
-            onPressed: () async {
-              final approveAction = _isRevocation ? 'approve_revocation' : 'approve';
-
-              if (!_canShowPartialApprove) {
-                final comment = await _askApproveComment(context);
-                if (comment == null) return;
-
-                final confirm = await _confirm(
-                  context,
-                  title: 'Approve leave',
-                  message:
-                      'This will approve the full request. A comment is optional.',
-                  confirmLabel: 'Approve',
-                );
-                if (!confirm) return;
-
-                await onApprove(request.id, approveAction, comment, null);
-                return;
-              }
-
-              final result = await _askApproveType(context);
-              if (result == null) return;
-
-              final comment = await _askApproveComment(
-                context,
-                isPartial: result == _ApproveAction.partial,
-              );
-              if (comment == null) return;
-
-              if (result == _ApproveAction.approve) {
-                final confirm = await _confirm(
-                  context,
-                  title: 'Approve leave',
-                  message:
-                      'All requested dates will be approved. A comment is optional.',
-                  confirmLabel: 'Approve',
-                );
-                if (!confirm) return;
-
-                await onApprove(request.id, approveAction, comment, null);
-                return;
-              }
-
-              final selectedDates = await _askPartialDates(context);
-              if (selectedDates == null || selectedDates.isEmpty) return;
-
-              final confirm = await _confirm(
-                context,
-                title: 'Confirm partial approval',
-                message:
-                    '${selectedDates.length} date${selectedDates.length == 1 ? '' : 's'} will be approved.',
-                confirmLabel: 'Confirm',
-              );
-              if (!confirm) return;
-
-              await onApprove(
-                request.id,
-                'partial_approve',
-                comment,
-                selectedDates,
-              );
-            },
-          ),
-        ),
-
-        const SizedBox(width: 12),
-
-        Expanded(
-          child: FilledButton.icon(
-            icon: const Icon(Icons.close_rounded, size: 22),
-            label: const Text('Reject'),
-            style: FilledButton.styleFrom(
-              backgroundColor: scheme.error,
-              foregroundColor: scheme.onError,
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              shape: RoundedRectangleBorder(
-                borderRadius: actionRadius,
-              ),
-            ),
-            onPressed: () async {
-              final reason = await _askReason(context);
-              if (reason == null) return;
-
-              await onReject(request.id, reason);
-            },
+            onPressed: () => _handleApprove(context),
           ),
         ),
       ],
     );
   }
 
-  Future<bool> _confirm(
-    BuildContext context, {
-    required String title,
-    String? message,
-    String confirmLabel = 'Confirm',
-  }) async {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
+  //////////////////////////////////////////////////////////////
+  /// HANDLERS — ONE SHEET EACH
+  //////////////////////////////////////////////////////////////
 
-    return await showDialog<bool>(
-          context: context,
-          barrierDismissible: true,
-          builder: (dialogContext) {
-            return AlertDialog(
-              shape: _dialogShape(),
-              contentPadding: const EdgeInsets.fromLTRB(24, 20, 24, 8),
-              title: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: _kApproveAccent.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: const Icon(
-                      Icons.verified_rounded,
-                      color: _kApproveAccent,
-                      size: 26,
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          title,
-                          style: theme.textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.w700,
-                            height: 1.2,
-                          ),
-                        ),
-                        if (message != null && message.isNotEmpty) ...[
-                          const SizedBox(height: 8),
-                          Text(
-                            message,
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: scheme.onSurfaceVariant,
-                              height: 1.4,
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              actionsAlignment: MainAxisAlignment.end,
-              actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(dialogContext, false),
-                  child: const Text('Cancel'),
-                ),
-                FilledButton(
-                  onPressed: () => Navigator.pop(dialogContext, true),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: _kApproveAccent,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: Text(confirmLabel),
-                ),
-              ],
-            );
-          },
-        ) ??
-        false;
-  }
-
-  Future<String?> _askReason(BuildContext context) {
-    final controller = TextEditingController();
-
-    return showDialog<String>(
+  Future<void> _handleApprove(BuildContext context) async {
+    final result = await showModalBottomSheet<_ApproveResult>(
       context: context,
-      builder: (dialogContext) {
-        final theme = Theme.of(dialogContext);
-        final scheme = theme.colorScheme;
-
-        return StatefulBuilder(
-          builder: (ctx, setDialogState) {
-            return AlertDialog(
-              shape: _dialogShape(),
-              contentPadding: const EdgeInsets.fromLTRB(24, 20, 24, 8),
-              title: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: scheme.errorContainer,
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: Icon(
-                      Icons.cancel_outlined,
-                      color: scheme.onErrorContainer,
-                      size: 26,
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Reject leave',
-                          style: theme.textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.w700,
-                            height: 1.2,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          'A reason is optional — add context for the employee if helpful.',
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: scheme.onSurfaceVariant,
-                            height: 1.4,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              content: SingleChildScrollView(
-                child: SizedBox(
-                  width: 400,
-                  child: TextField(
-                    controller: controller,
-                    maxLines: 5,
-                    autofocus: true,
-                    textCapitalization: TextCapitalization.sentences,
-                    decoration: InputDecoration(
-                      labelText: 'Reason (optional)',
-                      hintText: 'Explain why this request cannot be approved…',
-                      filled: true,
-                      fillColor: scheme.surfaceContainerLow,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              actionsAlignment: MainAxisAlignment.end,
-              actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(dialogContext),
-                  child: const Text('Cancel'),
-                ),
-                FilledButton(
-                  onPressed: () =>
-                      Navigator.pop(dialogContext, controller.text.trim()),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: scheme.error,
-                    foregroundColor: scheme.onError,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: const Text('Reject leave'),
-                ),
-              ],
-            );
-          },
-        );
-      },
+      isScrollControlled: true,
+      useSafeArea: true,
+      showDragHandle: true,
+      builder: (_) => _ApproveSheet(
+        request: request,
+        dateOptions: _requestedDateOptions(),
+        canPartial: _canShowPartialApprove,
+        isRevocation: _isRevocation,
+      ),
     );
+
+    if (result == null) return;
+
+    await onApprove(request.id, result.action, result.comment, result.dates);
   }
 
-  Future<_ApproveAction?> _askApproveType(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-
-    return showDialog<_ApproveAction>(
+  Future<void> _handleReject(BuildContext context) async {
+    final reason = await showModalBottomSheet<String>(
       context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          shape: _dialogShape(),
-          contentPadding: const EdgeInsets.fromLTRB(24, 20, 24, 8),
-          title: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: scheme.primaryContainer,
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Icon(
-                  Icons.task_alt_rounded,
-                  color: scheme.onPrimaryContainer,
-                  size: 26,
-                ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Approval type',
-                      style: theme.textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w700,
-                        height: 1.2,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      'This request spans multiple days. Choose how you want to approve.',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: scheme.onSurfaceVariant,
-                        height: 1.4,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _ApproveTypeCard(
-                scheme: scheme,
-                icon: Icons.event_available_rounded,
-                title: 'Full approval',
-                subtitle: 'Approve every day in this request',
-                onTap: () =>
-                    Navigator.pop(dialogContext, _ApproveAction.approve),
-              ),
-              const SizedBox(height: 12),
-              _ApproveTypeCard(
-                scheme: scheme,
-                icon: Icons.date_range_rounded,
-                title: 'Partial approval',
-                subtitle: 'Pick specific dates to approve',
-                onTap: () =>
-                    Navigator.pop(dialogContext, _ApproveAction.partial),
-              ),
-            ],
-          ),
-          actionsAlignment: MainAxisAlignment.end,
-          actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('Cancel'),
-            ),
-          ],
-        );
-      },
+      isScrollControlled: true,
+      useSafeArea: true,
+      showDragHandle: true,
+      builder: (_) => _RejectSheet(request: request),
     );
+
+    if (reason == null) return;
+
+    await onReject(request.id, reason.isEmpty ? null : reason);
   }
 
-  Future<String?> _askApproveComment(
-    BuildContext context, {
-    bool isPartial = false,
-  }) {
-    final controller = TextEditingController();
-
-    return showDialog<String>(
-      context: context,
-      builder: (dialogContext) {
-        final theme = Theme.of(dialogContext);
-        final scheme = theme.colorScheme;
-
-        return StatefulBuilder(
-          builder: (ctx, setDialogState) {
-            return AlertDialog(
-              shape: _dialogShape(),
-              contentPadding: const EdgeInsets.fromLTRB(24, 20, 24, 8),
-              title: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: _kApproveAccent.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: const Icon(
-                      Icons.comment_bank_outlined,
-                      color: _kApproveAccent,
-                      size: 26,
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          isPartial
-                              ? 'Comment for partial approval'
-                              : 'Manager comment (optional)',
-                          style: theme.textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.w700,
-                            height: 1.2,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          isPartial
-                              ? 'Optional — stored with the approved dates if provided.'
-                              : 'Optional — visible to HR and the employee if provided.',
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: scheme.onSurfaceVariant,
-                            height: 1.4,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              content: SingleChildScrollView(
-                child: SizedBox(
-                  width: 400,
-                  child: TextField(
-                    controller: controller,
-                    maxLines: 5,
-                    autofocus: true,
-                    textCapitalization: TextCapitalization.sentences,
-                    decoration: InputDecoration(
-                      labelText: 'Comment (optional)',
-                      hintText: 'Add context for this decision…',
-                      filled: true,
-                      fillColor: scheme.surfaceContainerLow,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              actionsAlignment: MainAxisAlignment.end,
-              actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(dialogContext),
-                  child: const Text('Cancel'),
-                ),
-                FilledButton(
-                  onPressed: () =>
-                      Navigator.pop(dialogContext, controller.text.trim()),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: _kApproveAccent,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: const Text('Continue'),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-  }
-
-  Future<List<String>?> _askPartialDates(BuildContext context) {
-    final requested = _requestedDateOptions();
-    if (requested.isEmpty) return Future.value(null);
-
-    final selected = requested.toSet();
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-
-    return showDialog<List<String>>(
-      context: context,
-      builder: (dialogContext) {
-        return StatefulBuilder(
-          builder: (ctx, setDialogState) {
-            final count = selected.length;
-
-            return AlertDialog(
-              shape: _dialogShape(),
-              contentPadding: const EdgeInsets.fromLTRB(24, 20, 24, 8),
-              title: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: scheme.secondaryContainer,
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: Icon(
-                      Icons.edit_calendar_rounded,
-                      color: scheme.onSecondaryContainer,
-                      size: 26,
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Select dates to approve',
-                          style: theme.textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.w700,
-                            height: 1.2,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          count == 0
-                              ? 'Choose at least one day.'
-                              : '$count day${count == 1 ? '' : 's'} selected',
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: scheme.onSurfaceVariant,
-                            height: 1.4,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              content: SizedBox(
-                width: 400,
-                child: Material(
-                  color: scheme.surfaceContainerLow,
-                  borderRadius: BorderRadius.circular(16),
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxHeight: 320),
-                    child: ListView(
-                      shrinkWrap: true,
-                      padding: const EdgeInsets.symmetric(vertical: 4),
-                      children: requested.map((date) {
-                        final checked = selected.contains(date);
-                        return CheckboxTheme(
-                          data: CheckboxThemeData(
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                          ),
-                          child: CheckboxListTile(
-                            value: checked,
-                            title: Text(
-                              _formatDisplayDate(date),
-                              style: theme.textTheme.bodyLarge?.copyWith(
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            subtitle: Text(
-                              date,
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: scheme.onSurfaceVariant,
-                              ),
-                            ),
-                            controlAffinity: ListTileControlAffinity.leading,
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                            ),
-                            onChanged: (v) {
-                              setDialogState(() {
-                                if (v == true) {
-                                  selected.add(date);
-                                } else {
-                                  selected.remove(date);
-                                }
-                              });
-                            },
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                  ),
-                ),
-              ),
-              actionsAlignment: MainAxisAlignment.end,
-              actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(dialogContext),
-                  child: const Text('Cancel'),
-                ),
-                FilledButton(
-                  onPressed: selected.isEmpty
-                      ? null
-                      : () => Navigator.pop(
-                            dialogContext,
-                            requested
-                                .where((date) => selected.contains(date))
-                                .toList(),
-                          ),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: _kApproveAccent,
-                    foregroundColor: Colors.white,
-                    disabledBackgroundColor: scheme.surfaceContainerHighest,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: const Text('Continue'),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-  }
+  //////////////////////////////////////////////////////////////
+  /// HELPERS
+  //////////////////////////////////////////////////////////////
 
   List<String> _requestedDateOptions() {
     if (request.requestedDates.isNotEmpty) {
@@ -693,11 +139,9 @@ class LeaveApproveActions extends StatelessWidget {
       request.status.trim().toLowerCase() == 'revocationrequested';
 
   bool get _canShowPartialApprove {
-    final normalizedStatus = request.status.trim().toLowerCase();
-    if (normalizedStatus == 'revocationrequested') return false;
+    if (_isRevocation) return false;
     if (request.isHalfDay) return false;
-    final options = _requestedDateOptions();
-    return options.length > 1;
+    return _requestedDateOptions().length > 1;
   }
 
   String _normalizeDate(dynamic rawDate) {
@@ -713,85 +157,298 @@ class LeaveApproveActions extends StatelessWidget {
       return value.length >= 10 ? value.substring(0, 10) : value;
     }
   }
-
-  String _formatDisplayDate(String ymd) {
-    final d = DateTime.tryParse(ymd);
-    if (d == null) return ymd;
-    return DateFormat('EEE, d MMM yyyy').format(d);
-  }
 }
 
-enum _ApproveAction { approve, partial }
+//////////////////////////////////////////////////////////////
+/// APPROVE SHEET
+//////////////////////////////////////////////////////////////
 
-class _ApproveTypeCard extends StatelessWidget {
-  const _ApproveTypeCard({
-    required this.scheme,
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.onTap,
+class _ApproveSheet extends StatefulWidget {
+  final ManagerLeaveRequest request;
+  final List<String> dateOptions;
+  final bool canPartial;
+  final bool isRevocation;
+
+  const _ApproveSheet({
+    required this.request,
+    required this.dateOptions,
+    required this.canPartial,
+    required this.isRevocation,
   });
 
-  final ColorScheme scheme;
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final VoidCallback onTap;
+  @override
+  State<_ApproveSheet> createState() => _ApproveSheetState();
+}
+
+class _ApproveSheetState extends State<_ApproveSheet> {
+  final _comment = TextEditingController();
+  bool _partial = false;
+  late final Set<String> _selected = widget.dateOptions.toSet();
+
+  @override
+  void dispose() {
+    _comment.dispose();
+    super.dispose();
+  }
+
+  String _fmt(String ymd) {
+    final d = DateTime.tryParse(ymd);
+    if (d == null) return ymd;
+    return DateFormat('EEE, d MMM').format(d);
+  }
+
+  void _submit() {
+    final comment = _comment.text.trim();
+    final c = comment.isEmpty ? null : comment;
+
+    if (_partial) {
+      final dates =
+          widget.dateOptions.where((d) => _selected.contains(d)).toList();
+      Navigator.pop(context, _ApproveResult('partial_approve', c, dates));
+    } else {
+      Navigator.pop(
+        context,
+        _ApproveResult(
+          widget.isRevocation ? 'approve_revocation' : 'approve',
+          c,
+          null,
+        ),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final r = widget.request;
 
-    return Material(
-      color: scheme.surface,
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: scheme.outlineVariant),
+    final totalDays = widget.dateOptions.length;
+    final canConfirm = !_partial || _selected.isNotEmpty;
+
+    final confirmLabel = widget.isRevocation
+        ? 'Approve revocation'
+        : _partial
+            ? 'Approve ${_selected.length} of $totalDays days'
+            : 'Approve leave';
+
+    return Padding(
+      padding: EdgeInsets.only(
+        left: 20,
+        right: 20,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 16,
       ),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: scheme.primaryContainer.withValues(alpha: 0.5),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(icon, color: scheme.onPrimaryContainer, size: 26),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              widget.isRevocation ? 'Approve revocation' : 'Approve leave',
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w700,
               ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      subtitle,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: scheme.onSurfaceVariant,
-                        height: 1.35,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Icon(
-                Icons.chevron_right_rounded,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '${r.employeeName} • ${r.leaveType}',
+              style: theme.textTheme.bodyMedium?.copyWith(
                 color: scheme.onSurfaceVariant,
               ),
+            ),
+
+            /// Full vs selected dates — only for multi-day requests
+            if (widget.canPartial) ...[
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: SegmentedButton<bool>(
+                  showSelectedIcon: false,
+                  segments: [
+                    ButtonSegment(
+                      value: false,
+                      label: Text('All $totalDays days'),
+                    ),
+                    const ButtonSegment(
+                      value: true,
+                      label: Text('Select dates'),
+                    ),
+                  ],
+                  selected: {_partial},
+                  onSelectionChanged: (v) => setState(() {
+                    _partial = v.first;
+                    if (_partial) _selected.addAll(widget.dateOptions);
+                  }),
+                ),
+              ),
             ],
-          ),
+
+            if (_partial) ...[
+              const SizedBox(height: 14),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: widget.dateOptions.map((date) {
+                  final on = _selected.contains(date);
+                  return FilterChip(
+                    label: Text(_fmt(date)),
+                    selected: on,
+                    selectedColor: _kApproveAccent.withValues(alpha: 0.15),
+                    checkmarkColor: _kApproveAccent,
+                    onSelected: (v) => setState(() {
+                      v ? _selected.add(date) : _selected.remove(date);
+                    }),
+                  );
+                }).toList(),
+              ),
+            ],
+
+            const SizedBox(height: 16),
+            TextField(
+              controller: _comment,
+              maxLines: 2,
+              textCapitalization: TextCapitalization.sentences,
+              decoration: InputDecoration(
+                labelText: 'Comment (optional)',
+                filled: true,
+                fillColor: scheme.surfaceContainerLow,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: canConfirm ? _submit : null,
+                style: FilledButton.styleFrom(
+                  backgroundColor: _kApproveAccent,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+                child: Text(confirmLabel),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+//////////////////////////////////////////////////////////////
+/// REJECT SHEET
+//////////////////////////////////////////////////////////////
+
+class _RejectSheet extends StatefulWidget {
+  final ManagerLeaveRequest request;
+
+  const _RejectSheet({required this.request});
+
+  @override
+  State<_RejectSheet> createState() => _RejectSheetState();
+}
+
+class _RejectSheetState extends State<_RejectSheet> {
+  final _reason = TextEditingController();
+
+  static const _quickReasons = [
+    'Team workload',
+    'Insufficient notice',
+    'Please reschedule',
+  ];
+
+  @override
+  void dispose() {
+    _reason.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final r = widget.request;
+
+    return Padding(
+      padding: EdgeInsets.only(
+        left: 20,
+        right: 20,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+      ),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Reject leave',
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '${r.employeeName} • ${r.leaveType}',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: scheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 14),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: _quickReasons
+                  .map(
+                    (t) => ActionChip(
+                      label: Text(t),
+                      onPressed: () => setState(() {
+                        _reason.text = t;
+                        _reason.selection = TextSelection.collapsed(
+                          offset: t.length,
+                        );
+                      }),
+                    ),
+                  )
+                  .toList(),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _reason,
+              maxLines: 3,
+              textCapitalization: TextCapitalization.sentences,
+              decoration: InputDecoration(
+                labelText: 'Reason (optional)',
+                hintText: 'Add context for the employee…',
+                filled: true,
+                fillColor: scheme.surfaceContainerLow,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: () => Navigator.pop(context, _reason.text.trim()),
+                style: FilledButton.styleFrom(
+                  backgroundColor: scheme.error,
+                  foregroundColor: scheme.onError,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+                child: const Text('Reject leave'),
+              ),
+            ),
+          ],
         ),
       ),
     );

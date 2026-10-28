@@ -36,9 +36,7 @@ class AttendanceApiService {
 
     final res = await api.get(
       ApiEndpoints.effectiveShift,
-      queryParams: {
-        if (userId != null && userId.isNotEmpty) "userId": userId,
-      },
+      queryParams: {if (userId != null && userId.isNotEmpty) "userId": userId},
     );
 
     debugPrint("✅ EFFECTIVE SHIFT: $res");
@@ -311,6 +309,12 @@ class AttendanceApiService {
     required String id,
     required Map<String, dynamic> body,
   }) async {
-    await api.patch("${ApiEndpoints.attendanceCorrections}/$id", body);
+    final url = "${ApiEndpoints.attendanceCorrections}/$id";
+    debugPrint("➡️ PATCH $url");
+    debugPrint("📦 BODY: $body");
+
+    final res = await api.patch(url, body);
+
+    debugPrint("📨 RESPONSE: $res");
   }
 }

@@ -1,10 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:lms/core/providers/global_loading_provider.dart';
+import 'package:lms/features/attendance/correction_attendance/presentation/widgets/quick_actions.dart';
 import 'package:lms/features/attendance/shared/utils/attendance_date_utils.dart';
 import '../../data/models/attendance_request_model.dart';
-import '../providers/attendance_requests_provider.dart';
 
 void showReviewDialog({
   required BuildContext context,
@@ -21,47 +19,20 @@ void showReviewDialog({
   );
 }
 
-class _ReviewDialog extends ConsumerStatefulWidget {
+class _ReviewDialog extends StatefulWidget {
   final AttendanceRequest req;
 
   const _ReviewDialog({required this.req});
 
   @override
-  ConsumerState<_ReviewDialog> createState() => _ReviewDialogState();
+  State<_ReviewDialog> createState() => _ReviewDialogState();
 }
 
-class _ReviewDialogState extends ConsumerState<_ReviewDialog> {
+class _ReviewDialogState extends State<_ReviewDialog> {
   final _noteController = TextEditingController();
-  String? _submittingAction;
+  bool _showNote = false;
 
-  Future<void> _update(String status) async {
-    if (_submittingAction != null) return;
-
-    setState(() => _submittingAction = status);
-
-    try {
-      await ref
-          .read(attendanceRequestsProvider.notifier)
-          .updateStatus(
-            id: widget.req.id,
-            status: status,
-            note: _noteController.text.trim().isEmpty
-                ? null
-                : _noteController.text.trim(),
-          );
-
-      final actionText = status == 'approve' ? 'approved' : 'rejected';
-      ref
-          .read(globalLoadingProvider.notifier)
-          .showSuccess("Correction request $actionText successfully");
-
-      if (mounted) Navigator.pop(context);
-    } catch (e) {
-      ref.read(globalLoadingProvider.notifier).showError(e.toString());
-    } finally {
-      if (mounted) setState(() => _submittingAction = null);
-    }
-  }
+  bool get _isPending => widget.req.status.toUpperCase() == 'PENDING';
 
   @override
   void dispose() {
@@ -69,27 +40,39 @@ class _ReviewDialogState extends ConsumerState<_ReviewDialog> {
     super.dispose();
   }
 
+  Color _statusColor(ColorScheme scheme) {
+    switch (widget.req.status.toUpperCase()) {
+      case 'APPROVED':
+        return const Color(0xFF22C55E);
+      case 'REJECTED':
+        return scheme.error;
+      default:
+        return const Color(0xFFF59E0B);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final req = widget.req;
-    final isSubmitting = _submittingAction != null;
+    final isPending = _isPending;
     final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
     final topRadius = isIOS ? 14.0 : 20.0;
-    final btnShape = RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(isIOS ? 12 : 20),
-    );
 
     return SafeArea(
       child: AnimatedPadding(
         duration: const Duration(milliseconds: 200),
         curve: Curves.easeOut,
-        padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom,
+        ),
         child: Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
             color: scheme.surface,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(topRadius)),
+            borderRadius: BorderRadius.vertical(
+              top: Radius.circular(topRadius),
+            ),
           ),
           child: SingleChildScrollView(
             keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
@@ -100,133 +83,123 @@ class _ReviewDialogState extends ConsumerState<_ReviewDialog> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(isIOS ? 12 : 14),
-                  color: scheme.primaryContainer,
-                ),
-                child: Row(
+                // Header: title + status + close in one row
+                Row(
                   children: [
-                    Icon(Icons.rule_folder_outlined, color: scheme.primary),
-                    const SizedBox(width: 10),
                     Expanded(
-                      child: Text(
-                        "Review ${req.type.toLowerCase()} request",
-                        style: TextStyle(
-                          fontWeight: FontWeight.w700,
-                          color: scheme.onPrimaryContainer,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            req.userName,
+                            style: Theme.of(context).textTheme.titleMedium
+                                ?.copyWith(fontWeight: FontWeight.w700),
+                          ),
+                          Text(
+                            '${req.type[0].toUpperCase()}${req.type.substring(1).toLowerCase()} request',
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(color: scheme.onSurfaceVariant),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (!isPending)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 5,
+                        ),
+                        decoration: BoxDecoration(
+                          color: _statusColor(scheme),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          req.status.toUpperCase(),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 11,
+                          ),
                         ),
                       ),
+                    IconButton(
+                      icon: Icon(Icons.close, color: scheme.onSurface),
+                      onPressed: () => Navigator.pop(context),
                     ),
                   ],
                 ),
-              ),
-              const SizedBox(height: 10),
 
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      req.userName,
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: scheme.onSurfaceVariant,
+                const SizedBox(height: 12),
+
+                if (req.isCorrection) ...[
+                  _InfoRow(
+                    'Proposed In',
+                    formatIsoToLocalTime(req.proposedCheckIn),
+                  ),
+                  _InfoRow(
+                    'Proposed Out',
+                    formatIsoToLocalTime(req.proposedCheckOut),
+                  ),
+                  const SizedBox(height: 8),
+                ],
+
+                const Text(
+                  'Reason',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 4),
+                Text(req.reason ?? '--'),
+
+                if (isPending) ...[
+                  const SizedBox(height: 8),
+
+                  // Note is optional and hidden by default -> no extra step.
+                  if (!_showNote)
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: TextButton.icon(
+                        onPressed: () => setState(() => _showNote = true),
+                        icon: const Icon(Icons.note_add_outlined, size: 18),
+                        label: const Text('Add note'),
+                      ),
+                    )
+                  else
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: TextField(
+                        controller: _noteController,
+                        autofocus: true,
+                        maxLines: 2,
+                        decoration: InputDecoration(
+                          labelText: 'Manager note (optional)',
+                          filled: true,
+                          fillColor: scheme.surfaceContainerLow,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(
+                              isIOS ? 12 : 16,
+                            ),
+                          ),
+                        ),
                       ),
                     ),
+
+                  const SizedBox(height: 16),
+
+                  ReviewActionBar(
+                    req: req,
+                    onDone: () =>
+                        Navigator.pop(context), // sheet close after success
                   ),
-                  IconButton(
-                    style: IconButton.styleFrom(
-                      splashFactory: isIOS
-                          ? NoSplash.splashFactory
-                          : InkSplash.splashFactory,
-                    ),
-                    icon: Icon(Icons.close, color: scheme.onSurface),
-                    onPressed: isSubmitting
-                        ? null
-                        : () => Navigator.pop(context),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 16),
-
-              if (req.isCorrection) ...[
-                _InfoRow(
-                  "Proposed In",
-                  formatIsoToLocalTime(req.proposedCheckIn),
-                ),
-                _InfoRow(
-                  "Proposed Out",
-                  formatIsoToLocalTime(req.proposedCheckOut),
-                ),
-                const SizedBox(height: 12),
-              ],
-
-              const Text(
-                "Reason",
-                style: TextStyle(fontWeight: FontWeight.w600),
-              ),
-              const SizedBox(height: 4),
-              Text(req.reason ?? "--"),
-
-              const SizedBox(height: 16),
-
-              TextField(
-                controller: _noteController,
-                maxLines: 3,
-                decoration: InputDecoration(
-                  labelText: "Manager Note (optional)",
-                  filled: true,
-                  fillColor: scheme.surfaceContainerLow,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(isIOS ? 12 : 16),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(isIOS ? 12 : 16),
-                    borderSide: BorderSide(color: scheme.primary),
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 24),
-
-              Row(
-                children: [
-                  Expanded(
-                    child: FilledButton.tonalIcon(
-                      style: FilledButton.styleFrom(shape: btnShape),
-                      onPressed: isSubmitting ? null : () => _update('reject'),
-                      icon: const Icon(Icons.close_rounded),
-                      label: _submittingAction == 'reject'
-                          ? const SizedBox(
-                              height: 16,
-                              width: 16,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Text("Reject"),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: FilledButton.icon(
-                      style: FilledButton.styleFrom(shape: btnShape),
-                      onPressed: isSubmitting ? null : () => _update('approve'),
-                      icon: const Icon(Icons.check_rounded),
-                      label: _submittingAction == 'approve'
-                          ? SizedBox(
-                              height: 16,
-                              width: 16,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: scheme.onPrimary,
-                              ),
-                            )
-                          : const Text("Approve"),
+                ] else ...[
+                  const SizedBox(height: 20),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('Close'),
                     ),
                   ),
                 ],
-              ),
               ],
             ),
           ),
@@ -248,7 +221,7 @@ class _InfoRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         children: [
-          Text("$label:", style: const TextStyle(fontWeight: FontWeight.w600)),
+          Text('$label:', style: const TextStyle(fontWeight: FontWeight.w600)),
           const SizedBox(width: 8),
           Expanded(child: Text(value ?? '--')),
         ],
